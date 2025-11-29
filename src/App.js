@@ -570,12 +570,12 @@ const SettingsPanel = ({ config, setConfig, t }) => {
                   <div className="grid grid-cols-1 gap-4">
                       <div>
                           <label className="block text-xs font-bold text-red-700 mb-1">{t.changeUser}</label>
-                          <input type="text" value={newUser} onChange={(e) => setNewUser(e.target.value)} className="w-full p-3 border border-red-200 rounded-lg bg-white" placeholder="New Username" />
+                          <input type="text" value={newUser} onChange={(e) => setNewUser(e.target.value)} className="w-full p-3 border border-red-200 rounded-lg bg-white" placeholder="New Username" autoComplete="off" />
                           <p className="text-[10px] text-gray-500 mt-1">Leave empty to keep current.</p>
                       </div>
                       <div>
                           <label className="block text-xs font-bold text-red-700 mb-1">{t.changePass}</label>
-                          <input type="text" value={newPass} onChange={(e) => setNewPass(e.target.value)} className="w-full p-3 border border-red-200 rounded-lg bg-white" placeholder="New Password" />
+                          <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} className="w-full p-3 border border-red-200 rounded-lg bg-white" placeholder="New Password" autoComplete="new-password" />
                           <p className="text-[10px] text-gray-500 mt-1">Leave empty to keep current.</p>
                       </div>
                       <div>
@@ -595,7 +595,7 @@ const SettingsPanel = ({ config, setConfig, t }) => {
 
 // --- VISTAS PRINCIPALES ---
 
-const AdminView = ({ t, config, setConfig, services, setServices, setView }) => {
+const AdminView = ({ t, config, setConfig, services, setServices, setView, lang }) => {
     const [authInput, setAuthInput] = useState({ user: '', pass: '' });
     const [recoveryInput, setRecoveryInput] = useState('');
     const [isAuth, setIsAuth] = useState(false);
@@ -729,18 +729,20 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView }) => 
                 <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center border border-gray-100">
                     <div className="bg-cyan-100 p-4 rounded-full inline-flex mb-6"><Lock className="w-8 h-8 text-cyan-600"/></div>
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">{t.login}</h2>
-                    <form onSubmit={handleLogin} className="space-y-4">
+                    <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
                         <input className="w-full p-4 border rounded-xl bg-gray-50 text-center outline-none focus:ring-2 ring-cyan-500 transition" 
                                type="text" 
                                placeholder={t.usernameLabel} 
                                value={authInput.user} 
-                               onChange={e => setAuthInput({...authInput, user: e.target.value})} />
+                               onChange={e => setAuthInput({...authInput, user: e.target.value})} 
+                               autoComplete="off" />
                         
                         <input className="w-full p-4 border rounded-xl bg-gray-50 text-center outline-none focus:ring-2 ring-cyan-500 transition" 
                                type="password" 
                                placeholder={t.passwordLabel} 
                                value={authInput.pass} 
-                               onChange={e => setAuthInput({...authInput, pass: e.target.value})} />
+                               onChange={e => setAuthInput({...authInput, pass: e.target.value})} 
+                               autoComplete="new-password" />
                                
                         <button className="w-full bg-cyan-600 text-white py-4 rounded-xl font-bold hover:bg-cyan-700 transition shadow-lg">{t.enter}</button>
                     </form>
@@ -1008,7 +1010,7 @@ ${extras}
       );
   }
 
-  if (view === 'admin') return <AdminView t={t} config={config} setConfig={setConfig} services={services} setServices={setServices} setView={setView} />;
+  if (view === 'admin') return <AdminView t={t} config={config} setConfig={setConfig} services={services} setServices={setServices} setView={setView} lang={lang} />;
 
   // --- STANDARD LAYOUT ---
   return (
