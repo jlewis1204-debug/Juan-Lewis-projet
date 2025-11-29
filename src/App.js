@@ -8,7 +8,6 @@ import {
 
 // --- IMPORTACIONES DE FIREBASE ---
 import { initializeApp } from "firebase/app";
-// CORRECCIÓN: Se añadió 'getDoc' aquí arriba y se eliminó el 'require' de abajo que causaba la pantalla blanca
 import { 
   getFirestore, collection, doc, onSnapshot, 
   updateDoc, setDoc, deleteDoc, addDoc, query, where, getDoc
@@ -45,6 +44,74 @@ const useTailwind = () => {
       script.src = "https://cdn.tailwindcss.com";
       document.head.appendChild(script);
     }
+  }, []);
+};
+
+// --- CONFIGURACIÓN "MODO APP" (PWA) ---
+// Este hook inyecta las etiquetas necesarias para que la web parezca una App nativa al guardarse
+const useAppMode = () => {
+  useEffect(() => {
+    // 1. Definir el Manifiesto de la App (Iconos, Colores, Nombre)
+    const manifest = {
+      name: "Fast Wave Laundry",
+      short_name: "Fast Wave",
+      start_url: ".",
+      display: "standalone", // Esto quita la barra de URL del navegador
+      background_color: "#ffffff",
+      theme_color: "#06b6d4", // Color Cyan de tu marca para la barra de estado
+      icons: [
+        {
+          src: "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=192&q=80",
+          sizes: "192x192",
+          type: "image/jpeg"
+        },
+        {
+          src: "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=512&q=80",
+          sizes: "512x512",
+          type: "image/jpeg"
+        }
+      ]
+    };
+
+    // 2. Convertir manifiesto a URL e inyectar
+    const stringManifest = JSON.stringify(manifest);
+    const blob = new Blob([stringManifest], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blob);
+    
+    let link = document.querySelector('link[rel="manifest"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'manifest';
+      document.head.appendChild(link);
+    }
+    link.href = manifestURL;
+
+    // 3. Inyectar Meta Tags para iOS (iPhone)
+    const metaTags = [
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+      { name: 'theme-color', content: '#06b6d4' }
+    ];
+
+    metaTags.forEach(tagInfo => {
+      let meta = document.querySelector(`meta[name="${tagInfo.name}"]`);
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = tagInfo.name;
+        document.head.appendChild(meta);
+      }
+      meta.content = tagInfo.content;
+    });
+
+    // 4. Icono para iPhone (Apple Touch Icon)
+    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+    if (!appleIcon) {
+      appleIcon = document.createElement('link');
+      appleIcon.rel = 'apple-touch-icon';
+      document.head.appendChild(appleIcon);
+    }
+    appleIcon.href = "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=180&q=80";
+
   }, []);
 };
 
@@ -1155,16 +1222,26 @@ export default function FastWaveApp() {
   const [myOrders, setMyOrders] = useState([]); // Para tracking del cliente
 
   useTailwind();
+  useAppMode(); // ACTIVAR MODO APP (PWA)
 
   useEffect(() => {
      if(db) {
-         getDoc(doc(db, 'settings', 'services')).then(snap => {
-             if(snap.exists()) setServices(snap.data().list);
-         }).catch(e => console.log("Using default services"));
+         // MODIFICADO: Usar onSnapshot en lugar de getDoc para los servicios
+         // Esto asegura que si el admin cambia una foto, la pantalla principal se actualice sola
+         const unsubscribeServices = onSnapshot(doc(db, 'settings', 'services'), (snap) => {
+             if(snap.exists()) {
+                 setServices(snap.data().list);
+             }
+         });
          
-         onSnapshot(doc(db, 'settings', 'general'), (snap) => {
+         const unsubscribeConfig = onSnapshot(doc(db, 'settings', 'general'), (snap) => {
              if(snap.exists()) setConfig(snap.data());
          });
+
+         return () => {
+             unsubscribeServices();
+             unsubscribeConfig();
+         };
      }
   }, []);
 
@@ -1508,7 +1585,9 @@ ${detailsBlock}
                       </div>
                   )}
                   <div className="h-40 overflow-hidden relative bg-white flex items-center justify-center">
-                      {s.type === 'component' && s.componentName === 'CustomIronIcon' ? (
+                      {(s.image && s.image !== '') ? (
+                          <img src={s.image} alt={s.name_en} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" onError={(e) => {e.target.src='https://placehold.co/400?text=' + s.name_en}} />
+                      ) : s.type === 'component' && s.componentName === 'CustomIronIcon' ? (
                         <div className="w-20 h-20"><CustomIronIcon /></div>
                       ) : (
                           <img src={s.image} alt={s.name_en} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" onError={(e) => {e.target.src='https://placehold.co/400?text=' + s.name_en}} />
