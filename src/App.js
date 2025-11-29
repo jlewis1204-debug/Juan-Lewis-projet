@@ -176,7 +176,7 @@ const LANGUAGES = {
     nameLabel: "Full Name",
     phoneLabel: "Phone Number",
     addressLabel: "Address",
-    sending: "Sending Order...",
+    sending: "Sending...",
     orderSent: "Order Sent Successfully!",
     emptyCart: "Your cart is empty",
     usernameLabel: "Username",
@@ -265,6 +265,168 @@ const LANGUAGES = {
     credsTitle: "Tus Credenciales:",
     user: "Usuario:",
     pass: "Clave:"
+  },
+  fr: {
+    title: "Fast Wave Blanchisserie",
+    heroSubtitle: "Vêtements frais, livrés à votre porte !",
+    orderNow: "Commencer",
+    sendOrder: "Envoyer Commande",
+    services: "Nos Services",
+    productsToAvoid: "Allergies / Éviter",
+    preferredAroma: "Sélection de Parfum",
+    details: "Détails de la Commande",
+    pickupInfo: "Info Ramassage",
+    deliveryInfo: "Info Livraison",
+    payment: "Paiement",
+    total: "Total Estimé",
+    submit: "Vérifier Commande",
+    status: { pending: "En Attente", confirmed: "Confirmé", picked_up: "Ramassé", cleaning: "Lavage", delivering: "Livraison", completed: "Terminé" },
+    express: "Express (24h)",
+    member: "Je suis Membre",
+    discountMsg: "Remise!",
+    successMsg: "Dernière Étape!",
+    successSub: "Envoyer les détails via WhatsApp ou SMS.",
+    orderNumberIs: "N°",
+    back: "Retour",
+    adminTitle: "Admin",
+    adminOrders: "Commandes",
+    adminServices: "Services",
+    adminSettings: "Réglages",
+    statsTitle: "Stats",
+    totalOrders: "Total",
+    totalRevenue: "Revenus",
+    deleteOrder: "Supprimer",
+    editServices: "Modifier",
+    genSettings: "Général",
+    save: "Enregistrer",
+    zelleConf: "Zelle",
+    busPhone: "WhatsApp",
+    disc: "Remise",
+    nameEs: "Nom (ES)",
+    nameEn: "Nom (EN)",
+    price: "Prix",
+    addNew: "Ajouter",
+    login: "Login",
+    enter: "Entrer",
+    wrongPin: "Erreur Identifiants",
+    sendWhastapp: "Confirmer via WhatsApp",
+    sendSMS: "Confirmer via SMS",
+    payCash: "Espèces / Carte",
+    payOnline: "Zelle / Virement",
+    pickupDate: "Date Ramassage",
+    pickupTime: "Heure Ramassage",
+    deliveryDate: "Date Livraison",
+    deliveryTime: "Heure Livraison",
+    payCashLabel: "À la livraison",
+    payOnlineLabel: "En ligne",
+    zelleNote: "Envoyer capture",
+    forgotPass: "Mot de passe oublié?",
+    recoverTitle: "Récupérer",
+    recoverDesc: "Entrez votre PIN.",
+    enterPin: "Entrer PIN",
+    reset: "Révéler",
+    wrongRecPin: "PIN Incorrect",
+    securitySettings: "Sécurité",
+    changeUser: "Changer Nom d'Utilisateur",
+    changePass: "Changer Mot de Passe",
+    changePin: "Changer PIN",
+    currentPass: "Actuel",
+    newPass: "Nouveau",
+    whatsappLabel: "Numéro WhatsApp",
+    fee: "Frais",
+    off: "REMISE",
+    nameLabel: "Nom",
+    phoneLabel: "Téléphone",
+    addressLabel: "Adresse",
+    sending: "Envoi...",
+    orderSent: "Envoyé!",
+    emptyCart: "Panier vide",
+    usernameLabel: "Utilisateur",
+    passwordLabel: "Mot de passe",
+    credsTitle: "Vos Identifiants:",
+    user: "User:",
+    pass: "Pass:"
+  },
+  hi: {
+    title: "फास्ट वेव लॉन्ड्री",
+    heroSubtitle: "ताज़ा कपड़े, सीधे आपके दरवाजे पर!",
+    orderNow: "शुरू करें",
+    sendOrder: "ऑर्डर भेजें",
+    services: "हमारी सेवाएँ",
+    productsToAvoid: "एलर्जी / बचें",
+    preferredAroma: "सुगंध चयन",
+    details: "विवरण",
+    pickupInfo: "पिकअप जानकारी",
+    deliveryInfo: "वितरण जानकारी",
+    payment: "भुगतान",
+    total: "कुल",
+    submit: "ऑर्डर की समीक्षा करें",
+    status: { pending: "लंबित", confirmed: "पुष्टि", picked_up: "पिकअप", cleaning: "धुलाई", delivering: "वितरण", completed: "पूर्ण" },
+    express: "एक्सप्रेस (24h)",
+    member: "सदस्य हूँ",
+    discountMsg: "छूट!",
+    successMsg: "अंतिम चरण!",
+    successSub: "व्हाट्सएप या एसएमएस के माध्यम से विवरण भेजें।",
+    orderNumberIs: "ऑर्डर #",
+    back: "वापस",
+    adminTitle: "एडमिन",
+    adminOrders: "ऑर्डर",
+    adminServices: "सेवाएँ",
+    adminSettings: "सेटिंग्स",
+    statsTitle: "आँकड़े",
+    totalOrders: "कुल ऑर्डर",
+    totalRevenue: "राजस्व",
+    deleteOrder: "हटाएँ",
+    editServices: "संपादित करें",
+    genSettings: "सेटिंग्स",
+    save: "सहेजें",
+    zelleConf: "ज़ेल",
+    busPhone: "व्हाट्सएप",
+    disc: "छूट",
+    nameEs: "नाम (ES)",
+    nameEn: "नाम (EN)",
+    price: "कीमत",
+    addNew: "जोड़ें",
+    login: "लॉगिन",
+    enter: "प्रवेश",
+    wrongPin: "गलत क्रेडेंशियल",
+    sendWhastapp: "व्हाट्सएप पर पुष्टि करें",
+    sendSMS: "एसएमएस द्वारा पुष्टि करें",
+    payCash: "नकद / कार्ड",
+    payOnline: "ज़ेल / ट्रांसफर",
+    pickupDate: "पिकअप तिथि",
+    pickupTime: "समय",
+    deliveryDate: "वितरण तिथि",
+    deliveryTime: "समय",
+    payCashLabel: "डिलीवरी पर",
+    payOnlineLabel: "ऑनलाइन",
+    zelleNote: "स्क्रीनशॉट भेजें",
+    forgotPass: "पासवर्ड भूल गए?",
+    recoverTitle: "पासवर्ड पुनर्प्राप्त करें",
+    recoverDesc: "पिन दर्ज करें।",
+    enterPin: "पिन दर्ज करें",
+    reset: "प्रकट करें",
+    wrongRecPin: "गलत पिन",
+    securitySettings: "सुरक्षा",
+    changeUser: "उपयोगकर्ता नाम बदलें",
+    changePass: "पासवर्ड बदलें",
+    changePin: "पिन बदलें",
+    currentPass: "वर्तमान",
+    newPass: "नया",
+    whatsappLabel: "व्हाट्सएप नंबर",
+    fee: "शुल्क",
+    off: "छूट",
+    nameLabel: "नाम",
+    phoneLabel: "फ़ोन",
+    addressLabel: "पता",
+    sending: "भेज रहा है...",
+    orderSent: "सफलता!",
+    emptyCart: "खाली",
+    usernameLabel: "उपयोगकर्ता नाम",
+    passwordLabel: "पासवर्ड",
+    credsTitle: "आपके क्रेडेंशियल:",
+    user: "User:",
+    pass: "Pass:"
   }
 };
 
@@ -351,21 +513,47 @@ const SettingsPanel = ({ config, setConfig, t }) => {
 
     const saveSettings = async () => {
         setSaveStatus('saving');
+        
+        // 1. Preparar datos limpios (sin undefined)
         const finalConfig = { 
             ...editConfig, 
             discountPercent: parseFloat(editConfig.discountPercent) || 0, 
             adminUsername: newUser ? newUser : (editConfig.adminUsername || 'admin'),
             adminPassword: newPass ? newPass : (editConfig.adminPassword || '1234'), 
-            recoveryPin: newPin ? newPin : (editConfig.recoveryPin || '0000') 
+            recoveryPin: newPin ? newPin : (editConfig.recoveryPin || '0000'),
+            // Asegurar campos opcionales
+            phone: editConfig.phone || '',
+            zelleNumber: editConfig.zelleNumber || '',
+            zelleMessage: editConfig.zelleMessage || ''
         };
+
+        // 2. Promesa de timeout para evitar bloqueo infinito (10 segundos)
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Timeout")), 10000)
+        );
+
         try {
-            if(db) await setDoc(doc(db, 'settings', 'general'), finalConfig);
+            if(db) {
+                // 3. Race: Lo que termine primero (guardar o timeout)
+                await Promise.race([
+                    setDoc(doc(db, 'settings', 'general'), finalConfig),
+                    timeoutPromise
+                ]);
+            }
+            
+            // Éxito
             setConfig(finalConfig);
             setNewUser('');
             setNewPass('');
             setNewPin('');
             setSaveStatus('saved');
-        } catch(e) { console.error(e); setSaveStatus('error'); }
+        } catch(e) { 
+            console.error("Error saving:", e); 
+            setSaveStatus('error');
+            alert("Error al guardar. Verifica tu conexión a internet.");
+        }
+        
+        // 4. Resetear botón siempre
         setTimeout(() => setSaveStatus('idle'), 2000);
     };
 
@@ -883,7 +1071,7 @@ export default function App() {
                 <label className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${isMember ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200' : 'border-gray-200 bg-white'}`}><input type="checkbox" checked={isMember} onChange={() => setIsMember(!isMember)} className="w-6 h-6 accent-yellow-500 mr-4" /><div><span className="font-bold text-lg block text-gray-800">{t.member}</span><span className="text-sm text-yellow-600 font-bold">{config.discountPercent}% {t.off}</span></div><Star className="w-8 h-8 text-yellow-400 ml-4 fill-current" /></label>
             </div>
           </div>
-          {cartCount > 0 && (<div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 animate-bounce-slow"><button onClick={() => setView('cart')} className="bg-gray-900 text-white w-full max-w-md py-4 px-8 rounded-full shadow-2xl flex justify-between items-center hover:scale-105 transition transform border-4 border-white/20 backdrop-blur-lg"><div className="flex items-center"><span className="bg-cyan-500 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg">{cartCount}</span><span className="font-bold text-lg">{t.sendOrder}</span></div><span className="font-mono text-2xl font-black tracking-tight">${getTotal().toFixed(2)}</span></button></div>)}
+          {cartCount > 0 && (<div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 animate-bounce-slow"><button onClick={() => setView('cart')} className="bg-gray-900 text-white w-full max-w-md py-4 px-8 rounded-full shadow-2xl flex justify-between items-center hover:scale-105 transition transform border-4 border-white/20 backdrop-blur-lg"><div className="flex items-center"><span className="bg-cyan-500 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg">{cartCount}</span><span className="font-bold text-lg">{t.orderNow}</span></div><span className="font-mono text-2xl font-black tracking-tight">${getTotal().toFixed(2)}</span></button></div>)}
         </div>
       )}
 
