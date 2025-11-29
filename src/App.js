@@ -3,7 +3,7 @@ import {
   ShoppingBag, Lock, Phone, Star, Droplet,
   Calendar, Truck, MessageCircle, Settings, 
   Edit2, ArrowLeft, Trash2, Plus, User, CheckCircle, CreditCard, AlertCircle,
-  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, ExternalLink
+  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, ExternalLink, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 // --- IMPORTACIONES DE FIREBASE ---
@@ -48,71 +48,36 @@ const useTailwind = () => {
 };
 
 // --- CONFIGURACIÓN "MODO APP" (PWA) ---
-// Este hook inyecta las etiquetas necesarias para que la web parezca una App nativa al guardarse
 const useAppMode = () => {
   useEffect(() => {
-    // 1. Definir el Manifiesto de la App (Iconos, Colores, Nombre)
     const manifest = {
       name: "Fast Wave Laundry",
       short_name: "Fast Wave",
       start_url: ".",
-      display: "standalone", // Esto quita la barra de URL del navegador
+      display: "standalone",
       background_color: "#ffffff",
-      theme_color: "#06b6d4", // Color Cyan de tu marca para la barra de estado
+      theme_color: "#06b6d4",
       icons: [
-        {
-          src: "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=192&q=80",
-          sizes: "192x192",
-          type: "image/jpeg"
-        },
-        {
-          src: "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=512&q=80",
-          sizes: "512x512",
-          type: "image/jpeg"
-        }
+        { src: "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=192&q=80", sizes: "192x192", type: "image/jpeg" },
+        { src: "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=512&q=80", sizes: "512x512", type: "image/jpeg" }
       ]
     };
-
-    // 2. Convertir manifiesto a URL e inyectar
     const stringManifest = JSON.stringify(manifest);
     const blob = new Blob([stringManifest], {type: 'application/json'});
     const manifestURL = URL.createObjectURL(blob);
-    
     let link = document.querySelector('link[rel="manifest"]');
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'manifest';
-      document.head.appendChild(link);
-    }
+    if (!link) { link = document.createElement('link'); link.rel = 'manifest'; document.head.appendChild(link); }
     link.href = manifestURL;
 
-    // 3. Inyectar Meta Tags para iOS (iPhone)
-    const metaTags = [
-      { name: 'apple-mobile-web-app-capable', content: 'yes' },
-      { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-      { name: 'theme-color', content: '#06b6d4' }
-    ];
-
-    metaTags.forEach(tagInfo => {
-      let meta = document.querySelector(`meta[name="${tagInfo.name}"]`);
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.name = tagInfo.name;
-        document.head.appendChild(meta);
-      }
-      meta.content = tagInfo.content;
-    });
-
-    // 4. Icono para iPhone (Apple Touch Icon)
-    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
-    if (!appleIcon) {
-      appleIcon = document.createElement('link');
-      appleIcon.rel = 'apple-touch-icon';
-      document.head.appendChild(appleIcon);
-    }
-    appleIcon.href = "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=180&q=80";
-
+    const metaTags = [{ name: 'apple-mobile-web-app-capable', content: 'yes' }, { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }, { name: 'theme-color', content: '#06b6d4' }];
+    metaTags.forEach(tagInfo => { let meta = document.querySelector(`meta[name="${tagInfo.name}"]`); if (!meta) { meta = document.createElement('meta'); meta.name = tagInfo.name; document.head.appendChild(meta); } meta.content = tagInfo.content; });
+    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]'); if (!appleIcon) { appleIcon = document.createElement('link'); appleIcon.rel = 'apple-touch-icon'; document.head.appendChild(appleIcon); } appleIcon.href = "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=180&q=80";
   }, []);
+};
+
+// --- HELPER: GENERAR ID CORTO (6 Caracteres) ---
+const generateShortId = () => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
 };
 
 // --- CONSTANTES ---
@@ -144,47 +109,22 @@ const CustomIronIcon = () => (
 );
 
 const CustomPackageIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
-    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-    <line x1="12" y1="22.08" x2="12" y2="12"></line>
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
 );
-
 const CustomInfoIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="12" r="10"></circle>
-    <line x1="12" y1="16" x2="12" y2="12"></line>
-    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
 );
-
 const CustomReceiptIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path>
-    <line x1="16" y1="8" x2="8" y2="8"></line>
-    <line x1="16" y1="12" x2="8" y2="12"></line>
-    <line x1="16" y1="16" x2="8" y2="16"></line>
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>
 );
-
 const CustomLoaderIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
 );
-
 const CustomUploadIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
 );
-
 const CustomCameraIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
 );
 
 // --- COMPONENTE LOGO ---
@@ -227,6 +167,7 @@ const AROMAS = [
 
 const LANGUAGES = {
   en: {
+    // ... existing translations ...
     title: "Fast Wave Laundry",
     heroSubtitle: "Fresh Clothes, Delivered Right to Your Door!",
     orderNow: "Start Washing",
@@ -325,6 +266,7 @@ const LANGUAGES = {
     uploadTip: "Click to upload"
   },
   es: {
+    // ... existing translations ...
     title: "Fast Wave Lavandería",
     heroSubtitle: "¡Ropa fresca, entregada en tu puerta!",
     orderNow: "Empezar Lavado",
@@ -421,6 +363,7 @@ const LANGUAGES = {
     uploadTip: "Clic para subir"
   },
   fr: {
+    // ... existing translations ...
     title: "Fast Wave Pressing",
     heroSubtitle: "Vêtements frais, livrés à votre porte !",
     orderNow: "Commencer",
@@ -519,6 +462,7 @@ const LANGUAGES = {
     uploadTip: "Cliquer pour télécharger"
   },
   hi: {
+    // ... existing translations ...
     title: "Fast Wave Laundry",
     heroSubtitle: "साफ़ कपड़े, आपके दरवाजे पर!",
     orderNow: "धुलाई शुरू करें",
@@ -718,6 +662,7 @@ const ServiceEditor = ({ services, setServices, t }) => {
 };
 
 const SettingsPanel = ({ config, setConfig, t }) => {
+    // ... existing settings panel code ...
     const [editConfig, setEditConfig] = useState({ ...config });
     const [saveStatus, setSaveStatus] = useState('idle');
     const [newUser, setNewUser] = useState('');
@@ -836,6 +781,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState('orders');
     const [loginStatus, setLoginStatus] = useState('idle');
+    const [expandedOrder, setExpandedOrder] = useState(null); // Nuevo estado para expandir tarjeta
     
     // Estado para edición
     const [editingOrder, setEditingOrder] = useState(null);
@@ -971,7 +917,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
         printWindow.document.write(`
             <html>
             <head>
-                <title>Order #${order.id}</title>
+                <title>Order #${order.orderNumber || order.id.slice(0,6)}</title>
                 <style>
                     body { font-family: monospace; padding: 20px; max-width: 400px; margin: 0 auto; }
                     h1 { border-bottom: 2px solid black; padding-bottom: 10px; text-align: center; }
@@ -985,7 +931,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
             <body>
                 <h1>Fast Wave Laundry</h1>
                 <div class="section">
-                    <strong>Order:</strong> #${order.id}<br>
+                    <strong>Order:</strong> #${order.orderNumber || order.id.slice(0,6)}<br>
                     <strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}<br>
                     <strong>Status:</strong> ${order.status.toUpperCase()}
                 </div>
@@ -1034,6 +980,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
     };
 
     if (!isAuth) {
+        // ... (login code remains same) ...
         return (
             <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
                <button onClick={() => setView('home')} className="absolute top-4 left-4 text-gray-500 font-bold flex items-center"><ArrowLeft className="mr-2"/> {t.back}</button>
@@ -1111,10 +1058,10 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                  {tab === 'orders' && (
                      <div className="space-y-4">
                          {orders.map(o => (
-                             <div key={o.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition hover:shadow-md">
+                             <div key={o.id} className={`bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition hover:shadow-md cursor-pointer ${expandedOrder === o.id ? 'ring-2 ring-cyan-200' : ''}`} onClick={() => setExpandedOrder(expandedOrder === o.id ? null : o.id)}>
                                  {editingOrder === o.id ? (
-                                     <div className="animate-fade-in bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                         <h4 className="font-bold text-blue-800 mb-4 flex items-center"><Edit2 className="w-4 h-4 mr-2"/> {t.editingOrder} #{o.id}</h4>
+                                     <div className="animate-fade-in bg-blue-50 p-4 rounded-lg border border-blue-200" onClick={e => e.stopPropagation()}>
+                                         <h4 className="font-bold text-blue-800 mb-4 flex items-center"><Edit2 className="w-4 h-4 mr-2"/> {t.editingOrder} #{o.orderNumber || o.id.slice(0,6)}</h4>
                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-500">{t.customerInfo}</label>
@@ -1162,28 +1109,72 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                                          </div>
                                      </div>
                                  ) : (
-                                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                         <div>
-                                             <div className="flex items-center gap-2 mb-1">
-                                                 <span className="font-mono font-bold text-cyan-600">#{o.id}</span>
-                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                                     o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                     o.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                                     'bg-blue-100 text-blue-700'
-                                                 }`}>{t.status[o.status]}</span>
+                                     <div className="flex flex-col gap-4">
+                                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="font-mono font-bold text-cyan-600 bg-cyan-50 px-2 py-1 rounded">#{o.orderNumber || o.id.slice(0,6)}</span>
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                                        o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                        o.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                        'bg-blue-100 text-blue-700'
+                                                    }`}>{t.status[o.status]}</span>
+                                                </div>
+                                                <h3 className="font-bold text-gray-800 flex items-center">{o.customer.name} {expandedOrder === o.id ? <ChevronUp className="w-4 h-4 ml-2 text-gray-400"/> : <ChevronDown className="w-4 h-4 ml-2 text-gray-400"/>}</h3>
+                                                <p className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()} • {o.items ? Object.values(o.items).reduce((a,b)=>a+b,0) : 0} items</p>
+                                                {o.adminNote && <p className="text-xs text-red-500 mt-1 font-bold">Note: {o.adminNote}</p>}
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-2 md:mt-0" onClick={e => e.stopPropagation()}>
+                                                <select value={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)} className="bg-gray-50 border border-gray-200 text-xs rounded p-2 font-bold outline-none cursor-pointer hover:border-cyan-500 transition">
+                                                    {Object.keys(t.status).map(s => <option key={s} value={s}>{t.status[s]}</option>)}
+                                                </select>
+                                                <button onClick={() => startEditing(o)} className="p-2 text-blue-500 hover:bg-blue-50 rounded" title="Edit"><Edit2 className="w-4 h-4"/></button>
+                                                <button onClick={() => printOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Print"><Printer className="w-4 h-4"/></button>
+                                                <button onClick={() => deleteOrder(o.id)} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-4 h-4"/></button>
+                                            </div>
+                                         </div>
+                                         
+                                         {/* EXPANDED DETAILS */}
+                                         {expandedOrder === o.id && (
+                                             <div className="mt-4 pt-4 border-t border-gray-100 animate-fade-in">
+                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                                     <div className="bg-gray-50 p-3 rounded">
+                                                         <h5 className="font-bold text-gray-700 mb-2">Customer Details</h5>
+                                                         <p><span className="font-bold">Phone:</span> {o.customer.phone}</p>
+                                                         <p><span className="font-bold">Address:</span> {o.customer.address}</p>
+                                                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.customer.address)}`} target="_blank" rel="noreferrer" className="text-cyan-600 font-bold text-xs mt-1 inline-flex items-center hover:underline"><MapPin className="w-3 h-3 mr-1"/> View Map</a>
+                                                     </div>
+                                                     <div className="bg-gray-50 p-3 rounded">
+                                                         <h5 className="font-bold text-gray-700 mb-2">Schedule</h5>
+                                                         <p><span className="font-bold">Pickup:</span> {o.details.pickupDate} ({o.details.pickupTime})</p>
+                                                         <p><span className="font-bold">Delivery:</span> {o.details.deliveryDate} ({o.details.deliveryTime})</p>
+                                                     </div>
+                                                 </div>
+                                                 <div className="mt-4">
+                                                     <h5 className="font-bold text-gray-700 mb-2 text-sm">Items & Costs</h5>
+                                                     <div className="space-y-1">
+                                                         {Object.entries(o.items).map(([id, qty]) => {
+                                                             const s = services.find(x => x.id === id);
+                                                             return (
+                                                                 <div key={id} className="flex justify-between text-sm border-b border-gray-100 pb-1">
+                                                                     <span>{qty}x {s ? s.name_en : id}</span>
+                                                                     <span className="font-bold text-gray-600">${((s?.price || 0) * qty).toFixed(2)}</span>
+                                                                 </div>
+                                                             )
+                                                         })}
+                                                     </div>
+                                                     <div className="flex justify-between items-center mt-3 pt-2 border-t border-dashed">
+                                                         <span className="font-bold text-cyan-800">TOTAL</span>
+                                                         <span className="font-black text-xl text-cyan-600">${o.total?.toFixed(2)}</span>
+                                                     </div>
+                                                     <div className="mt-2 text-xs text-gray-500 flex gap-2">
+                                                         {o.aroma && <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded">Aroma: {o.aroma}</span>}
+                                                         {o.express && <span className="bg-cyan-100 text-cyan-700 px-2 py-1 rounded">Express</span>}
+                                                         {o.isMember && <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded">Member</span>}
+                                                     </div>
+                                                 </div>
                                              </div>
-                                             <h3 className="font-bold text-gray-800">{o.customer.name}</h3>
-                                             <p className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()} • {o.items ? Object.values(o.items).reduce((a,b)=>a+b,0) : 0} items</p>
-                                             {o.adminNote && <p className="text-xs text-red-500 mt-1 font-bold">Note: {o.adminNote}</p>}
-                                         </div>
-                                         <div className="flex items-center gap-2">
-                                             <select value={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)} className="bg-gray-50 border border-gray-200 text-xs rounded p-2 font-bold outline-none cursor-pointer hover:border-cyan-500 transition">
-                                                 {Object.keys(t.status).map(s => <option key={s} value={s}>{t.status[s]}</option>)}
-                                             </select>
-                                             <button onClick={() => startEditing(o)} className="p-2 text-blue-500 hover:bg-blue-50 rounded" title="Edit"><Edit2 className="w-4 h-4"/></button>
-                                             <button onClick={() => printOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Print"><Printer className="w-4 h-4"/></button>
-                                             <button onClick={() => deleteOrder(o.id)} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-4 h-4"/></button>
-                                         </div>
+                                         )}
                                      </div>
                                  )}
                              </div>
@@ -1302,6 +1293,9 @@ export default function FastWaveApp() {
     e.preventDefault();
     setIsSubmitting(true);
     
+    // GENERAR ID CORTO PARA DISPLAY
+    const orderNum = generateShortId();
+
     const orderData = {
       customer: { name: form.name, phone: form.phone, address: form.address },
       items: cart,
@@ -1319,7 +1313,8 @@ export default function FastWaveApp() {
       total: cartTotals.finalTotal,
       status: 'pending',
       createdAt: new Date().toISOString(),
-      adminNote: ''
+      adminNote: '',
+      orderNumber: orderNum // GUARDAR EL ID CORTO
     };
 
     try {
@@ -1333,7 +1328,7 @@ export default function FastWaveApp() {
           localStorage.setItem('myOrders', JSON.stringify([...currentSaved, docRef.id]));
       } else {
           // Fallback demo
-          setLastOrder({ id: "DEMO-123", ...orderData });
+          setLastOrder({ id: "DEMO-123", ...orderData, orderNumber: orderNum });
       }
       setCart({});
       setForm({ name: '', phone: '', address: '', pickupDate: '', pickupTime: TIME_SLOTS[0], deliveryDate: '', deliveryTime: TIME_SLOTS[0], paymentMethod: 'cash' });
@@ -1349,7 +1344,8 @@ export default function FastWaveApp() {
   const getOwnerWhatsApp = () => {
       if (!lastOrder) return "#";
       const cleanPhone = (config.phone || '').replace(/\D/g, ''); 
-      
+      const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6); // Usar ID Corto
+
       // Format Items List for WhatsApp (Qty x Name ($Cost))
       const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => {
             const s = services.find(x => x.id === id);
@@ -1375,7 +1371,7 @@ export default function FastWaveApp() {
       if(lastOrder.isMember) detailsBlock += `%0a⭐ MIEMBRO`;
       if(lastOrder.adminNote) detailsBlock += `%0a📝 NOTA: ${lastOrder.adminNote}`;
 
-      const msg = `🧾 *ORDEN #${lastOrder.id}*
+      const msg = `🧾 *ORDEN #${displayId}*
 --------------------------------
 👤 *${lastOrder.customer.name}*
 📞 ${lastOrder.customer.phone}
@@ -1399,12 +1395,13 @@ ${detailsBlock}
   const getOwnerSMS = () => { 
       if (!lastOrder) return "#"; 
       const cleanPhone = (config.phone || '').replace(/\D/g,''); 
+      const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6);
       const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => {
           const s = services.find(x => x.id === id);
           const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id;
           return `${qty}x ${name}`;
       }).join(', '); 
-      const msg = `PEDIDO #${lastOrder.id}: ${lastOrder.customer.name}. Items: ${itemsList}. Total: $${lastOrder.total?.toFixed(2)}`; 
+      const msg = `PEDIDO #${displayId}: ${lastOrder.customer.name}. Items: ${itemsList}. Total: $${lastOrder.total?.toFixed(2)}`; 
       return `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`; 
   };
 
@@ -1415,7 +1412,7 @@ ${detailsBlock}
             <CheckCircle className="w-24 h-24 text-green-500 mx-auto mb-6 animate-bounce" />
             <h1 className="text-3xl font-black text-gray-800 mb-2">{t.successMsg}</h1>
             <p className="text-gray-500 mb-6">{t.successSub}</p>
-            <div className="bg-gray-100 p-4 rounded-xl mb-8 border-2 border-dashed border-gray-300"><p className="text-sm text-gray-500 uppercase font-bold">{t.orderNumberIs}</p><p className="text-xl font-mono font-black text-cyan-600 break-all">{lastOrder?.id}</p></div>
+            <div className="bg-gray-100 p-4 rounded-xl mb-8 border-2 border-dashed border-gray-300"><p className="text-sm text-gray-500 uppercase font-bold">{t.orderNumberIs}</p><p className="text-xl font-mono font-black text-cyan-600 break-all">{lastOrder?.orderNumber || lastOrder?.id.slice(0,6)}</p></div>
             <a href={getOwnerWhatsApp()} target="_blank" rel="noreferrer" className="w-full bg-green-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-green-600 transition flex items-center justify-center mb-4 transform hover:scale-105 animate-pulse border-4 border-green-200"><MessageCircle className="w-6 h-6 mr-3"/> {t.sendWhastapp}</a>
             <a href={getOwnerSMS()} className="w-full bg-blue-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-blue-600 transition flex items-center justify-center mb-4 transform hover:scale-105 border-4 border-blue-200"><Smartphone className="w-6 h-6 mr-3"/> {t.sendSMS}</a>
             <button onClick={() => setView('track')} className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-gray-900 transition flex items-center justify-center mt-4"><CustomReceiptIcon className="w-5 h-5 mr-2"/> {t.trackOrder || "Track Order"}</button>
@@ -1440,6 +1437,7 @@ ${detailsBlock}
                          <div key={o.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
                              <div className="flex justify-between items-start mb-3">
                                  <div>
+                                     <span className="font-mono text-xs font-bold bg-gray-100 px-2 py-1 rounded mr-2">#{o.orderNumber || o.id.slice(0,6)}</span>
                                      <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${o.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status] || o.status}</span>
                                      <p className="text-xs text-gray-400 mt-1">{new Date(o.createdAt).toLocaleDateString()}</p>
                                  </div>
