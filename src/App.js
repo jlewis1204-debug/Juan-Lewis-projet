@@ -8,7 +8,6 @@ import {
 
 // --- IMPORTACIONES DE FIREBASE ---
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 import { 
   getFirestore, collection, doc, onSnapshot, 
   updateDoc, setDoc, deleteDoc, addDoc 
@@ -26,13 +25,10 @@ const firebaseConfig = {
   measurementId: "G-RV7JTXY252"
 };
 
-// Inicializar Firebase
+// Inicializar Firebase (Modo Seguro)
 let db, auth;
 try {
   const app = initializeApp(firebaseConfig);
-  if (typeof window !== 'undefined') {
-    getAnalytics(app);
-  }
   db = getFirestore(app);
   auth = getAuth(app);
 } catch (error) {
@@ -497,7 +493,7 @@ const ServiceEditor = ({ services, setServices, t }) => {
       <div className="mt-6 flex gap-3">
         <button onClick={addNew} className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-bold flex items-center"><Plus className="w-4 h-4 mr-2"/> {t.addNew}</button>
         <button onClick={saveServices} disabled={saveStatus !== 'idle'} className={`flex-1 px-4 py-3 text-white rounded-lg font-bold flex justify-center items-center shadow-lg transition-all duration-300 ${saveStatus === 'saved' ? 'bg-green-500' : saveStatus === 'saving' ? 'bg-cyan-400' : 'bg-cyan-600'}`}>
-            {saveStatus === 'saved' ? "Saved!" : saveStatus === 'saving' ? <Loader2 className="animate-spin w-5 h-5"/> : t.save}
+            {saveStatus === 'saved' ? "Saved!" : saveStatus === 'saving' ? "..." : t.save}
         </button>
       </div>
     </div>
@@ -525,19 +521,16 @@ const SettingsPanel = ({ config, setConfig, t }) => {
             zelleMessage: editConfig.zelleMessage || ''
         };
 
-        // Timeout promise (10 seconds)
         const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error("Timeout")), 10000)
         );
 
         try {
-            // Check auth again
             if (auth && !auth.currentUser) {
                await signInAnonymously(auth);
             }
 
             if(db) {
-                // Race to avoid infinite hang
                 await Promise.race([
                     setDoc(doc(db, 'settings', 'general'), finalConfig),
                     timeoutPromise
@@ -594,7 +587,7 @@ const SettingsPanel = ({ config, setConfig, t }) => {
               </div>
             </div>
             <button onClick={saveSettings} disabled={saveStatus !== 'idle'} className={`w-full py-4 rounded-xl font-bold mt-8 flex items-center justify-center shadow-lg transition-all duration-300 text-white ${saveStatus === 'saved' ? 'bg-green-600' : saveStatus === 'saving' ? 'bg-cyan-500' : 'bg-cyan-600'}`}>
-                {saveStatus === 'saved' ? "Saved!" : saveStatus === 'saving' ? <Loader2 className="animate-spin w-5 h-5"/> : t.save}
+                {saveStatus === 'saved' ? "Saved!" : saveStatus === 'saving' ? "..." : t.save}
             </button>
         </div>
     );
@@ -609,14 +602,13 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView }) => 
     const [isRecoveryMode, setIsRecoveryMode] = useState(false);
     const [recoveredCreds, setRecoveredCreds] = useState(null);
     const [orders, setOrders] = useState([]);
-    const [tab, setTab] = useState('orders'); // orders, services, settings
+    const [tab, setTab] = useState('orders');
 
     useEffect(() => {
         if (!isAuth) return;
         let unsub = () => {};
         if (db) {
             try {
-                // Consulta para traer TODAS las ordenes de la colección
                 unsub = onSnapshot(collection(db, 'orders'), (snap) => {
                     setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)));
                 });
@@ -663,42 +655,37 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView }) => 
     };
     
     const getWhatsApp = (order) => { 
-        const cleanPhone = (config.phone || '').replace(/\D/g,''); 
+        const cleanPhone = (config.phone || '').replace(/\D/g, ''); 
         
-        // 1. Formatear Items (Lista Vertical con Puntos)
-        const itemsList = Object.entries(order.items)
-            .map(([id, qty]) => {
-                const s = services.find(x => x.id === id);
-                // Get name in current lang if possible or default to English/ID
-                const name = s ? (s.name_es || s.name_en) : id; 
-                return `• ${qty}x ${name}`; 
-            }).join('%0a'); // %0a es un salto de línea en WhatsApp Web
+        // 1. Cabecera y Cliente
+        const header = `🧾 *NUEVO PEDIDO #${order.id.slice(0,6)}*\n\n👤 *${order.customer.name}*\n📞 ${order.customer.phone}\n📍 ${order.customer.address}\n\n`;
+        
+        // 2. Fechas
+        const dates = `📅 *Recogida:* ${order.details.pickupDate} - ${order.details.pickupTime}\n🚚 *Entrega:* ${order.details.deliveryDate} - ${order.details.deliveryTime}\n\n`;
+        
+        // 3. Items
+        const itemsHeader = `🧺 *ARTÍCULOS:*\n`;
+        const itemsList = Object.entries(order.items).map(([id, qty]) => {
+            const s = services.find(x => x.id === id);
+            const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id; 
+            return `• ${qty}x ${name}`; 
+        }).join('\n');
 
-        // 2. Extras (Solo si existen)
-        const aromaTxt = order.aroma ? `%0a🌸 Aroma: ${order.aroma}` : '';
-        const allergiesTxt = order.allergies?.length ? `%0a⚠️ Alergias: ${order.allergies.join(', ')}` : '';
-        const expressTxt = order.express ? '%0a⚡ SERVICIO EXPRESS' : '';
-        const memberTxt = order.isMember ? '%0a⭐ MIEMBRO' : '';
-        const paymentTxt = `%0a💳 Pago: ${order.details.paymentMethod === 'online' ? 'Zelle/Online' : 'Efectivo'}`;
+        // 4. Extras (Alergias, Aroma, etc)
+        let extras = `\n\n✨ *DETALLES:*`;
+        if (order.aroma) extras += `\n🌸 Aroma: ${order.aroma}`;
+        if (order.allergies && order.allergies.length > 0) extras += `\n⚠️ Alergias: ${order.allergies.join(', ')}`;
+        if (order.express) extras += `\n⚡ SERVICIO EXPRESS`;
+        if (order.isMember) extras += `\n⭐ MIEMBRO`;
+        if (order.details.paymentMethod) extras += `\n💳 Pago: ${order.details.paymentMethod === 'online' ? 'Zelle/Online' : 'Efectivo'}`;
 
-        // 3. Mensaje Estructurado (Recibo)
-        const msg = `🧾 *NUEVO PEDIDO #${order.id.slice(0,6)}*
---------------------------------
-👤 *Cliente:* ${order.customer.name}
-📞 *Tel:* ${order.customer.phone}
-📍 *Dir:* ${order.customer.address}
---------------------------------
-📅 *Recogida:* ${order.details.pickupDate} - ${order.details.pickupTime}
+        // 5. Total
+        const footer = `\n\n💰 *TOTAL: $${order.total?.toFixed(2)}*`;
 
-🚚 *Entrega:* ${order.details.deliveryDate} - ${order.details.deliveryTime}
---------------------------------
-🧺 *Artículos:*
-${itemsList}
-${aromaTxt}${allergiesTxt}${expressTxt}${memberTxt}
---------------------------------${paymentTxt}
-💰 *TOTAL: $${order.total?.toFixed(2)}*`;
+        // Unir todo
+        const fullMessage = header + dates + itemsHeader + itemsList + extras + footer;
 
-        return `https://wa.me/${cleanPhone}?text=${msg}`; 
+        return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`; 
     };
     
     const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -835,17 +822,15 @@ export default function App() {
   const [cart, setCart] = useState({});
   const [lang, setLang] = useState('en');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Estado para el botón de enviar
-  const [itemAddedMsg, setItemAddedMsg] = useState(null); // Feedback visual al añadir
+  const [isSubmitting, setIsSubmitting] = useState(false); 
+  const [itemAddedMsg, setItemAddedMsg] = useState(null); 
   
-  // Logic States
   const [allergies, setAllergies] = useState([]);
   const [aroma, setAroma] = useState('Fresh');
   const [isExpress, setIsExpress] = useState(false);
   const [isMember, setIsMember] = useState(false);
   const [lastOrder, setLastOrder] = useState(null);
 
-  // Form State Inicial
   const initialFormState = {
     name: '', phone: '', address: '',
     pickupDate: '', pickupTime: TIME_SLOTS[0],
@@ -854,7 +839,6 @@ export default function App() {
   };
   const [form, setForm] = useState(initialFormState);
   
-  // Global Data
   const [services, setServices] = useState(INITIAL_SERVICES);
   const [config, setConfig] = useState({ 
     phone: '555-0199', 
@@ -868,9 +852,7 @@ export default function App() {
 
   const t = LANGUAGES[lang] || LANGUAGES.en;
 
-  // Init Data Loading
   useEffect(() => {
-    // Auth init for Firestore access
     if(auth) signInAnonymously(auth).catch(console.error);
     
     const fetchData = async () => {
@@ -893,7 +875,6 @@ export default function App() {
           if (val <= 0) { const copy = { ...prev }; delete copy[id]; return copy; } 
           return { ...prev, [id]: val }; 
       });
-      // Mostrar feedback visual si se añade
       if (delta > 0) {
           setItemAddedMsg(id);
           setTimeout(() => setItemAddedMsg(null), 1000);
@@ -914,7 +895,7 @@ export default function App() {
 
   const submitOrder = async (e) => {
     e.preventDefault();
-    if(cartCount === 0 || isSubmitting) return; // Evitar doble clic
+    if(cartCount === 0 || isSubmitting) return; 
     
     setIsSubmitting(true);
     
@@ -934,20 +915,16 @@ export default function App() {
     try {
         let refId = "DEMO-" + Math.floor(Math.random()*1000);
         if(db) {
-            // AQUÍ ES DONDE SE GUARDA EN LA NUBE (FIRESTORE)
-            // Una vez guardado, el admin lo verá automáticamente.
             const ref = await addDoc(collection(db, 'orders'), orderData);
             refId = ref.id;
         }
         setLastOrder({...orderData, id: refId}); 
         
-        // --- LIMPIEZA DE DATOS (IMPORTANTE) ---
-        setCart({}); // Vaciar carrito
-        setForm(initialFormState); // Reiniciar formulario para evitar duplicados
+        setCart({}); 
+        setForm(initialFormState); 
         setAllergies([]);
         setIsExpress(false);
         setIsMember(false);
-        // -------------------------------------
 
         setView('success');
     } catch (e) { 
@@ -962,19 +939,18 @@ export default function App() {
       if (!lastOrder) return "#"; 
       const cleanPhone = (config.phone || '').replace(/\D/g,''); 
       
-      // Formatear items (Lista Vertical)
       const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => {
           const s = services.find(x => x.id === id);
           const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id;
           return `• ${qty}x ${name}`; 
-      }).join('%0a');
+      }).join('\n');
 
-      // Extras
-      const aromaTxt = lastOrder.aroma ? `%0a🌸 Aroma: ${lastOrder.aroma}` : '';
-      const allergiesTxt = lastOrder.allergies?.length ? `%0a⚠️ Alergias: ${lastOrder.allergies.join(', ')}` : '';
-      const expressTxt = lastOrder.express ? '%0a⚡ SERVICIO EXPRESS' : '';
-      const memberTxt = lastOrder.isMember ? '%0a⭐ MIEMBRO' : '';
-      const paymentTxt = `%0a💳 Pago: ${lastOrder.details.paymentMethod === 'online' ? 'Zelle/Online' : 'Efectivo'}`;
+      let extras = `\n\n✨ *DETALLES:*`;
+      if (lastOrder.aroma) extras += `\n🌸 Aroma: ${lastOrder.aroma}`;
+      if (lastOrder.allergies && lastOrder.allergies.length > 0) extras += `\n⚠️ Alergias: ${lastOrder.allergies.join(', ')}`;
+      if (lastOrder.express) extras += `\n⚡ SERVICIO EXPRESS`;
+      if (lastOrder.isMember) extras += `\n⭐ MIEMBRO`;
+      if (lastOrder.details.paymentMethod) extras += `\n💳 Pago: ${lastOrder.details.paymentMethod === 'online' ? 'Zelle/Online' : 'Efectivo'}`;
 
       const msg = `🧾 *PEDIDO #${lastOrder.id.slice(0,6)}*
 --------------------------------
@@ -990,11 +966,11 @@ ${lastOrder.details.deliveryDate} - ${lastOrder.details.deliveryTime}
 --------------------------------
 🧺 *Artículos:*
 ${itemsList}
-${aromaTxt}${allergiesTxt}${expressTxt}${memberTxt}
---------------------------------${paymentTxt}
+${extras}
+--------------------------------
 💰 *TOTAL: $${lastOrder.total?.toFixed(2)}*`;
 
-      return `https://wa.me/${cleanPhone}?text=${msg}`; 
+      return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`; 
   };
 
   const getOwnerSMS = () => { 
@@ -1145,7 +1121,7 @@ ${aromaTxt}${allergiesTxt}${expressTxt}${memberTxt}
                 <label className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${isMember ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200' : 'border-gray-200 bg-white'}`}><input type="checkbox" checked={isMember} onChange={() => setIsMember(!isMember)} className="w-6 h-6 accent-yellow-500 mr-4" /><div><span className="font-bold text-lg block text-gray-800">{t.member}</span><span className="text-sm text-yellow-600 font-bold">{config.discountPercent}% {t.off}</span></div><Star className="w-8 h-8 text-yellow-400 ml-4 fill-current" /></label>
             </div>
           </div>
-          {cartCount > 0 && (<div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 animate-bounce-slow"><button onClick={() => setView('cart')} className="bg-gray-900 text-white w-full max-w-md py-4 px-8 rounded-full shadow-2xl flex justify-between items-center hover:scale-105 transition transform border-4 border-white/20 backdrop-blur-lg"><div className="flex items-center"><span className="bg-cyan-500 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg">{cartCount}</span><span className="font-bold text-lg">{t.orderNow}</span></div><span className="font-mono text-2xl font-black tracking-tight">${getTotal().toFixed(2)}</span></button></div>)}
+          {cartCount > 0 && (<div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 animate-bounce-slow"><button onClick={() => setView('cart')} className="bg-gray-900 text-white w-full max-w-md py-4 px-8 rounded-full shadow-2xl flex justify-between items-center hover:scale-105 transition transform border-4 border-white/20 backdrop-blur-lg"><div className="flex items-center"><span className="bg-cyan-500 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg">{cartCount}</span><span className="font-bold text-lg">{t.sendOrder}</span></div><span className="font-mono text-2xl font-black tracking-tight">${getTotal().toFixed(2)}</span></button></div>)}
         </div>
       )}
 
