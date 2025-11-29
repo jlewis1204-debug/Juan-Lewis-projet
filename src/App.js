@@ -460,12 +460,20 @@ const ServiceEditor = ({ services, setServices, t }) => {
     setSaveStatus('saving'); 
     try {
       const finalServices = localServices.map(s => ({...s, price: parseFloat(s.price) || 0})); 
+      // Verificar auth antes de guardar
+      if (auth && !auth.currentUser) {
+          try { await signInAnonymously(auth); } catch(e) { console.error(e); }
+      }
+      
       if(db) await setDoc(doc(db, 'settings', 'services'), { list: finalServices }); 
       setServices(finalServices); 
       setSaveStatus('saved'); 
     } catch(e) {
       console.error(e);
       setSaveStatus('error');
+      if (e.code === 'permission-denied') {
+          alert("Error: Permiso denegado. Revisa las reglas de Firestore.");
+      }
     }
     setTimeout(() => setSaveStatus('idle'), 2000); 
   };
@@ -527,17 +535,18 @@ const SettingsPanel = ({ config, setConfig, t }) => {
             zelleMessage: editConfig.zelleMessage || ''
         };
 
-        // 2. Promesa de timeout para evitar bloqueo infinito (10 segundos)
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Timeout")), 10000)
-        );
-
         try {
+            // Asegurar conexión antes de guardar
+            if (auth && !auth.currentUser) {
+                await signInAnonymously(auth);
+            }
+
             if(db) {
-                // 3. Race: Lo que termine primero (guardar o timeout)
+                // Usamos un timeout por si se queda pegado (5 segundos)
+                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000));
                 await Promise.race([
                     setDoc(doc(db, 'settings', 'general'), finalConfig),
-                    timeoutPromise
+                    timeout
                 ]);
             }
             
@@ -550,7 +559,15 @@ const SettingsPanel = ({ config, setConfig, t }) => {
         } catch(e) { 
             console.error("Error saving:", e); 
             setSaveStatus('error');
-            alert("Error al guardar. Verifica tu conexión a internet.");
+            
+            // MENSAJE DE ERROR AMIGABLE
+            if (e.message === "Timeout") {
+                alert("La conexión está lenta. Intenta de nuevo.");
+            } else if (e.code === 'permission-denied') {
+                alert("ERROR DE PERMISOS DE FIREBASE:\n\nNo tienes permiso para guardar.\n1. Ve a la Consola de Firebase.\n2. Entra a 'Firestore Database' -> 'Reglas'.\n3. Cambia 'allow read, write: if false;' a 'if true;'.");
+            } else {
+                alert("Error al guardar: " + e.message);
+            }
         }
         
         // 4. Resetear botón siempre
