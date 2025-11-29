@@ -31,7 +31,7 @@ let db, auth;
 try {
   const app = initializeApp(firebaseConfig);
   if (typeof window !== 'undefined') {
-    getAnalytics(app);
+    try { getAnalytics(app); } catch(e) {}
   }
   db = getFirestore(app);
   auth = getAuth(app);
@@ -471,8 +471,12 @@ const ServiceEditor = ({ services, setServices, t }) => {
     } catch(e) {
       console.error(e);
       setSaveStatus('error');
-      if (e.code === 'permission-denied') {
-          alert("Error: Permiso denegado. Revisa las reglas de Firestore.");
+      if (e.code === 'auth/configuration-not-found') {
+          alert("ERROR DE CONFIGURACIÓN FIREBASE:\n\nDebes activar el 'Sign-in method' Anónimo en tu consola de Firebase.\n\n1. Ve a Authentication\n2. Sign-in method\n3. Habilita Anonymous");
+      } else if (e.code === 'permission-denied') {
+          alert("ERROR DE PERMISOS FIREBASE:\n\nDebes permitir escritura en tu base de datos.\n\n1. Ve a Firestore Database\n2. Rules\n3. Cambia 'allow write: if false' a 'if true'");
+      } else {
+          alert("Error: " + e.message);
       }
     }
     setTimeout(() => setSaveStatus('idle'), 2000); 
@@ -563,8 +567,10 @@ const SettingsPanel = ({ config, setConfig, t }) => {
             // MENSAJE DE ERROR AMIGABLE
             if (e.message === "Timeout") {
                 alert("La conexión está lenta. Intenta de nuevo.");
+            } else if (e.code === 'auth/configuration-not-found') {
+                alert("ERROR DE CONFIGURACIÓN FIREBASE:\n\nDebes activar el 'Sign-in method' Anónimo en tu consola de Firebase.\n\n1. Ve a Authentication\n2. Sign-in method\n3. Habilita Anonymous");
             } else if (e.code === 'permission-denied') {
-                alert("ERROR DE PERMISOS DE FIREBASE:\n\nNo tienes permiso para guardar.\n1. Ve a la Consola de Firebase.\n2. Entra a 'Firestore Database' -> 'Reglas'.\n3. Cambia 'allow read, write: if false;' a 'if true;'.");
+                alert("ERROR DE PERMISOS FIREBASE:\n\nNo tienes permiso para guardar.\n1. Ve a la Consola de Firebase.\n2. Entra a 'Firestore Database' -> 'Reglas'.\n3. Cambia 'allow read, write: if false;' a 'if true;'.");
             } else {
                 alert("Error al guardar: " + e.message);
             }
