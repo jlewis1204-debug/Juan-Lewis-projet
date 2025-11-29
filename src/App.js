@@ -3,18 +3,19 @@ import {
   ShoppingBag, Lock, Phone, Star, Droplet,
   Calendar, Truck, MessageCircle, Settings, 
   Edit2, ArrowLeft, Trash2, Plus, User, CheckCircle, CreditCard, AlertCircle,
-  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone
+  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Loader2
 } from 'lucide-react';
 
 // --- IMPORTACIONES DE FIREBASE ---
 import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
 import { 
   getFirestore, collection, doc, onSnapshot, 
-  updateDoc, setDoc, deleteDoc, addDoc, getDoc 
+  updateDoc, setDoc, deleteDoc, addDoc 
 } from "firebase/firestore";
 import { getAuth, signInAnonymously } from "firebase/auth";
 
-// --- CONFIGURACIÓN DE FIREBASE ---
+// --- TU CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyA8Ujw8L5uErmgL_x3fNRx530fSWjavu7M",
   authDomain: "fast-wave-laundry-86d9f.firebaseapp.com",
@@ -29,10 +30,13 @@ const firebaseConfig = {
 let db, auth;
 try {
   const app = initializeApp(firebaseConfig);
+  if (typeof window !== 'undefined') {
+    getAnalytics(app);
+  }
   db = getFirestore(app);
   auth = getAuth(app);
 } catch (error) {
-  console.warn("Firebase init warning:", error);
+  console.warn("Error iniciando Firebase:", error);
 }
 
 // --- AUTO-CARGA DE ESTILOS TAILWIND ---
@@ -47,14 +51,14 @@ const useTailwind = () => {
   }, []);
 };
 
-// --- CONSTANTES Y DATOS ---
+// --- CONSTANTES ---
 const TIME_SLOTS = [
   "08:00 AM - 10:00 AM", "10:00 AM - 12:00 PM",
   "12:00 PM - 02:00 PM", "02:00 PM - 04:00 PM",
   "04:00 PM - 06:00 PM", "06:00 PM - 08:00 PM"
 ];
 
-// Componente SVG Personalizado para Plancha
+// Icono SVG Plancha
 const IronIcon = () => (
   <svg viewBox="0 0 64 64" className="w-full h-full p-4" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -172,7 +176,7 @@ const LANGUAGES = {
     nameLabel: "Full Name",
     phoneLabel: "Phone Number",
     addressLabel: "Address",
-    sending: "Sending...",
+    sending: "Sending Order...",
     orderSent: "Order Sent Successfully!",
     emptyCart: "Your cart is empty",
     usernameLabel: "Username",
@@ -185,7 +189,7 @@ const LANGUAGES = {
     title: "Fast Wave Lavandería",
     heroSubtitle: "¡Ropa fresca, entregada en tu puerta!",
     orderNow: "Empezar Lavado",
-    sendOrder: "Enviar Orden",
+    sendOrder: "Ir al Carrito",
     services: "Nuestros Servicios",
     productsToAvoid: "Alergias / Evitar",
     preferredAroma: "Selección de Aroma",
@@ -194,7 +198,7 @@ const LANGUAGES = {
     deliveryInfo: "Información de Entrega",
     payment: "Método de Pago",
     total: "Total Estimado",
-    submit: "Revisar Pedido",
+    submit: "Confirmar Pedido",
     status: { pending: "Pendiente", confirmed: "Confirmado", picked_up: "Recogido", cleaning: "Lavando", delivering: "En Reparto", completed: "Completado" },
     express: "Lavado Express (24h)",
     member: "Soy Miembro",
@@ -253,7 +257,7 @@ const LANGUAGES = {
     nameLabel: "Nombre Completo",
     phoneLabel: "Teléfono",
     addressLabel: "Dirección",
-    sending: "Enviando...",
+    sending: "Enviando Orden...",
     orderSent: "¡Orden Enviada!",
     emptyCart: "Tu carrito está vacío",
     usernameLabel: "Usuario",
@@ -261,168 +265,6 @@ const LANGUAGES = {
     credsTitle: "Tus Credenciales:",
     user: "Usuario:",
     pass: "Clave:"
-  },
-  fr: {
-    title: "Fast Wave Blanchisserie",
-    heroSubtitle: "Vêtements frais, livrés à votre porte !",
-    orderNow: "Commencer",
-    sendOrder: "Envoyer Commande",
-    services: "Nos Services",
-    productsToAvoid: "Allergies / Éviter",
-    preferredAroma: "Sélection de Parfum",
-    details: "Détails de la Commande",
-    pickupInfo: "Info Ramassage",
-    deliveryInfo: "Info Livraison",
-    payment: "Paiement",
-    total: "Total Estimé",
-    submit: "Vérifier Commande",
-    status: { pending: "En Attente", confirmed: "Confirmé", picked_up: "Ramassé", cleaning: "Lavage", delivering: "Livraison", completed: "Terminé" },
-    express: "Express (24h)",
-    member: "Je suis Membre",
-    discountMsg: "Remise!",
-    successMsg: "Dernière Étape!",
-    successSub: "Envoyer les détails via WhatsApp ou SMS.",
-    orderNumberIs: "N°",
-    back: "Retour",
-    adminTitle: "Admin",
-    adminOrders: "Commandes",
-    adminServices: "Services",
-    adminSettings: "Réglages",
-    statsTitle: "Stats",
-    totalOrders: "Total",
-    totalRevenue: "Revenus",
-    deleteOrder: "Supprimer",
-    editServices: "Modifier",
-    genSettings: "Général",
-    save: "Enregistrer",
-    zelleConf: "Zelle",
-    busPhone: "WhatsApp",
-    disc: "Remise",
-    nameEs: "Nom (ES)",
-    nameEn: "Nom (EN)",
-    price: "Prix",
-    addNew: "Ajouter",
-    login: "Login",
-    enter: "Entrer",
-    wrongPin: "Erreur Identifiants",
-    sendWhastapp: "Confirmer via WhatsApp",
-    sendSMS: "Confirmer via SMS",
-    payCash: "Espèces / Carte",
-    payOnline: "Zelle / Virement",
-    pickupDate: "Date Ramassage",
-    pickupTime: "Heure Ramassage",
-    deliveryDate: "Date Livraison",
-    deliveryTime: "Heure Livraison",
-    payCashLabel: "À la livraison",
-    payOnlineLabel: "En ligne",
-    zelleNote: "Envoyer capture",
-    forgotPass: "Mot de passe oublié?",
-    recoverTitle: "Récupérer",
-    recoverDesc: "Entrez votre PIN.",
-    enterPin: "Entrer PIN",
-    reset: "Révéler",
-    wrongRecPin: "PIN Incorrect",
-    securitySettings: "Sécurité",
-    changeUser: "Changer Nom d'Utilisateur",
-    changePass: "Changer Mot de Passe",
-    changePin: "Changer PIN",
-    currentPass: "Actuel",
-    newPass: "Nouveau",
-    whatsappLabel: "Numéro WhatsApp",
-    fee: "Frais",
-    off: "REMISE",
-    nameLabel: "Nom",
-    phoneLabel: "Téléphone",
-    addressLabel: "Adresse",
-    sending: "Envoi...",
-    orderSent: "Envoyé!",
-    emptyCart: "Panier vide",
-    usernameLabel: "Utilisateur",
-    passwordLabel: "Mot de passe",
-    credsTitle: "Vos Identifiants:",
-    user: "User:",
-    pass: "Pass:"
-  },
-  hi: {
-    title: "फास्ट वेव लॉन्ड्री",
-    heroSubtitle: "ताज़ा कपड़े, सीधे आपके दरवाजे पर!",
-    orderNow: "शुरू करें",
-    sendOrder: "ऑर्डर भेजें",
-    services: "हमारी सेवाएँ",
-    productsToAvoid: "एलर्जी / बचें",
-    preferredAroma: "सुगंध चयन",
-    details: "विवरण",
-    pickupInfo: "पिकअप जानकारी",
-    deliveryInfo: "वितरण जानकारी",
-    payment: "भुगतान",
-    total: "कुल",
-    submit: "ऑर्डर की समीक्षा करें",
-    status: { pending: "लंबित", confirmed: "पुष्टि", picked_up: "पिकअप", cleaning: "धुलाई", delivering: "वितरण", completed: "पूर्ण" },
-    express: "एक्सप्रेस (24h)",
-    member: "सदस्य हूँ",
-    discountMsg: "छूट!",
-    successMsg: "अंतिम चरण!",
-    successSub: "व्हाट्सएप या एसएमएस के माध्यम से विवरण भेजें।",
-    orderNumberIs: "ऑर्डर #",
-    back: "वापस",
-    adminTitle: "एडमिन",
-    adminOrders: "ऑर्डर",
-    adminServices: "सेवाएँ",
-    adminSettings: "सेटिंग्स",
-    statsTitle: "आँकड़े",
-    totalOrders: "कुल ऑर्डर",
-    totalRevenue: "राजस्व",
-    deleteOrder: "हटाएँ",
-    editServices: "संपादित करें",
-    genSettings: "सेटिंग्स",
-    save: "सहेजें",
-    zelleConf: "ज़ेल",
-    busPhone: "व्हाट्सएप",
-    disc: "छूट",
-    nameEs: "नाम (ES)",
-    nameEn: "नाम (EN)",
-    price: "कीमत",
-    addNew: "जोड़ें",
-    login: "लॉगिन",
-    enter: "प्रवेश",
-    wrongPin: "गलत क्रेडेंशियल",
-    sendWhastapp: "व्हाट्सएप पर पुष्टि करें",
-    sendSMS: "एसएमएस द्वारा पुष्टि करें",
-    payCash: "नकद / कार्ड",
-    payOnline: "ज़ेल / ट्रांसफर",
-    pickupDate: "पिकअप तिथि",
-    pickupTime: "समय",
-    deliveryDate: "वितरण तिथि",
-    deliveryTime: "समय",
-    payCashLabel: "डिलीवरी पर",
-    payOnlineLabel: "ऑनलाइन",
-    zelleNote: "स्क्रीनशॉट भेजें",
-    forgotPass: "पासवर्ड भूल गए?",
-    recoverTitle: "पासवर्ड पुनर्प्राप्त करें",
-    recoverDesc: "पिन दर्ज करें।",
-    enterPin: "पिन दर्ज करें",
-    reset: "प्रकट करें",
-    wrongRecPin: "गलत पिन",
-    securitySettings: "सुरक्षा",
-    changeUser: "उपयोगकर्ता नाम बदलें",
-    changePass: "पासवर्ड बदलें",
-    changePin: "पिन बदलें",
-    currentPass: "वर्तमान",
-    newPass: "नया",
-    whatsappLabel: "व्हाट्सएप नंबर",
-    fee: "शुल्क",
-    off: "छूट",
-    nameLabel: "नाम",
-    phoneLabel: "फ़ोन",
-    addressLabel: "पता",
-    sending: "भेज रहा है...",
-    orderSent: "सफलता!",
-    emptyCart: "खाली",
-    usernameLabel: "उपयोगकर्ता नाम",
-    passwordLabel: "पासवर्ड",
-    credsTitle: "आपके क्रेडेंशियल:",
-    user: "User:",
-    pass: "Pass:"
   }
 };
 
@@ -493,7 +335,7 @@ const ServiceEditor = ({ services, setServices, t }) => {
       <div className="mt-6 flex gap-3">
         <button onClick={addNew} className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-bold flex items-center"><Plus className="w-4 h-4 mr-2"/> {t.addNew}</button>
         <button onClick={saveServices} disabled={saveStatus !== 'idle'} className={`flex-1 px-4 py-3 text-white rounded-lg font-bold flex justify-center items-center shadow-lg transition-all duration-300 ${saveStatus === 'saved' ? 'bg-green-500' : saveStatus === 'saving' ? 'bg-cyan-400' : 'bg-cyan-600'}`}>
-            {saveStatus === 'saved' ? "Saved!" : saveStatus === 'saving' ? 'Saving...' : t.save}
+            {saveStatus === 'saved' ? "Saved!" : saveStatus === 'saving' ? <Loader2 className="animate-spin w-5 h-5"/> : t.save}
         </button>
       </div>
     </div>
@@ -558,7 +400,9 @@ const SettingsPanel = ({ config, setConfig, t }) => {
                   </div>
               </div>
             </div>
-            <button onClick={saveSettings} disabled={saveStatus !== 'idle'} className={`w-full py-4 rounded-xl font-bold mt-8 flex items-center justify-center shadow-lg transition-all duration-300 text-white ${saveStatus === 'saved' ? 'bg-green-600' : saveStatus === 'saving' ? 'bg-cyan-500' : 'bg-cyan-600'}`}>{saveStatus === 'saved' ? "Saved!" : saveStatus === 'saving' ? 'Saving...' : t.save}</button>
+            <button onClick={saveSettings} disabled={saveStatus !== 'idle'} className={`w-full py-4 rounded-xl font-bold mt-8 flex items-center justify-center shadow-lg transition-all duration-300 text-white ${saveStatus === 'saved' ? 'bg-green-600' : saveStatus === 'saving' ? 'bg-cyan-500' : 'bg-cyan-600'}`}>
+                {saveStatus === 'saved' ? "Saved!" : saveStatus === 'saving' ? <Loader2 className="animate-spin w-5 h-5"/> : t.save}
+            </button>
         </div>
     );
 };
@@ -579,6 +423,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView }) => 
         let unsub = () => {};
         if (db) {
             try {
+                // Consulta para traer TODAS las ordenes de la colección
                 unsub = onSnapshot(collection(db, 'orders'), (snap) => {
                     setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)));
                 });
@@ -607,8 +452,6 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView }) => 
                 user: config.adminUsername || 'admin',
                 pass: config.adminPassword || '1234'
             });
-            // setIsAuth(true); // Don't auto login, show credentials instead
-            // setIsRecoveryMode(false);
         } else {
             alert(t.wrongRecPin);
         }
@@ -765,6 +608,8 @@ export default function App() {
   const [cart, setCart] = useState({});
   const [lang, setLang] = useState('en');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Estado para el botón de enviar
+  const [itemAddedMsg, setItemAddedMsg] = useState(null); // Feedback visual al añadir
   
   // Logic States
   const [allergies, setAllergies] = useState([]);
@@ -773,13 +618,14 @@ export default function App() {
   const [isMember, setIsMember] = useState(false);
   const [lastOrder, setLastOrder] = useState(null);
 
-  // Form State
-  const [form, setForm] = useState({
+  // Form State Inicial
+  const initialFormState = {
     name: '', phone: '', address: '',
     pickupDate: '', pickupTime: TIME_SLOTS[0],
     deliveryDate: '', deliveryTime: TIME_SLOTS[0],
     paymentMethod: 'cash',
-  });
+  };
+  const [form, setForm] = useState(initialFormState);
   
   // Global Data
   const [services, setServices] = useState(INITIAL_SERVICES);
@@ -814,7 +660,18 @@ export default function App() {
     fetchData();
   }, []);
 
-  const updateCart = (id, delta) => setCart((prev) => { const val = (prev[id] || 0) + delta; if (val <= 0) { const copy = { ...prev }; delete copy[id]; return copy; } return { ...prev, [id]: val }; });
+  const updateCart = (id, delta) => {
+      setCart((prev) => { 
+          const val = (prev[id] || 0) + delta; 
+          if (val <= 0) { const copy = { ...prev }; delete copy[id]; return copy; } 
+          return { ...prev, [id]: val }; 
+      });
+      // Mostrar feedback visual si se añade
+      if (delta > 0) {
+          setItemAddedMsg(id);
+          setTimeout(() => setItemAddedMsg(null), 1000);
+      }
+  };
   
   const getTotal = () => { 
       let sum = Object.entries(cart).reduce((acc, [id, qty]) => { 
@@ -830,7 +687,9 @@ export default function App() {
 
   const submitOrder = async (e) => {
     e.preventDefault();
-    if(cartCount === 0) return;
+    if(cartCount === 0 || isSubmitting) return; // Evitar doble clic
+    
+    setIsSubmitting(true);
     
     const orderData = { 
         customer: { name: form.name, phone: form.phone, address: form.address }, 
@@ -848,13 +707,28 @@ export default function App() {
     try {
         let refId = "DEMO-" + Math.floor(Math.random()*1000);
         if(db) {
+            // AQUÍ ES DONDE SE GUARDA EN LA NUBE (FIRESTORE)
+            // Una vez guardado, el admin lo verá automáticamente.
             const ref = await addDoc(collection(db, 'orders'), orderData);
             refId = ref.id;
         }
         setLastOrder({...orderData, id: refId}); 
-        setCart({});
+        
+        // --- LIMPIEZA DE DATOS (IMPORTANTE) ---
+        setCart({}); // Vaciar carrito
+        setForm(initialFormState); // Reiniciar formulario para evitar duplicados
+        setAllergies([]);
+        setIsExpress(false);
+        setIsMember(false);
+        // -------------------------------------
+
         setView('success');
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        alert("Error sending order. Please try again.");
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const getOwnerWhatsApp = () => { 
@@ -978,7 +852,13 @@ export default function App() {
             <div className="text-center mb-12"><h2 className="text-3xl font-black text-gray-900">{t.services}</h2><div className="w-24 h-1.5 bg-cyan-500 mx-auto mt-4 rounded-full"></div></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-16">
               {services.map((s) => (
-                <div key={s.id} className="bg-white rounded-2xl shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 flex flex-col overflow-hidden group">
+                <div key={s.id} className="bg-white rounded-2xl shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 flex flex-col overflow-hidden group relative">
+                  {/* Feedback visual al agregar */}
+                  {itemAddedMsg === s.id && (
+                      <div className="absolute inset-0 bg-cyan-600/80 z-20 flex items-center justify-center animate-fade-in">
+                          <CheckCircle className="text-white w-12 h-12"/>
+                      </div>
+                  )}
                   <div className="h-40 overflow-hidden relative bg-white flex items-center justify-center">
                       {s.type === 'component' && s.componentName === 'IronIcon' ? (
                         <div className="w-20 h-20"><IronIcon /></div>
@@ -1003,7 +883,7 @@ export default function App() {
                 <label className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${isMember ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200' : 'border-gray-200 bg-white'}`}><input type="checkbox" checked={isMember} onChange={() => setIsMember(!isMember)} className="w-6 h-6 accent-yellow-500 mr-4" /><div><span className="font-bold text-lg block text-gray-800">{t.member}</span><span className="text-sm text-yellow-600 font-bold">{config.discountPercent}% {t.off}</span></div><Star className="w-8 h-8 text-yellow-400 ml-4 fill-current" /></label>
             </div>
           </div>
-          {cartCount > 0 && (<div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 animate-bounce-slow"><button onClick={() => setView('cart')} className="bg-gray-900 text-white w-full max-w-md py-4 px-8 rounded-full shadow-2xl flex justify-between items-center hover:scale-105 transition transform border-4 border-white/20 backdrop-blur-lg"><div className="flex items-center"><span className="bg-cyan-500 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg">{cartCount}</span><span className="font-bold text-lg">{t.orderNow}</span></div><span className="font-mono text-2xl font-black tracking-tight">${getTotal().toFixed(2)}</span></button></div>)}
+          {cartCount > 0 && (<div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 animate-bounce-slow"><button onClick={() => setView('cart')} className="bg-gray-900 text-white w-full max-w-md py-4 px-8 rounded-full shadow-2xl flex justify-between items-center hover:scale-105 transition transform border-4 border-white/20 backdrop-blur-lg"><div className="flex items-center"><span className="bg-cyan-500 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg">{cartCount}</span><span className="font-bold text-lg">{t.sendOrder}</span></div><span className="font-mono text-2xl font-black tracking-tight">${getTotal().toFixed(2)}</span></button></div>)}
         </div>
       )}
 
@@ -1055,8 +935,12 @@ export default function App() {
                 {form.paymentMethod === 'online' && (<div className="bg-purple-50 p-4 rounded-xl border border-purple-200 space-y-2 text-sm text-purple-900"><p><strong>Zelle:</strong> {config.zelleNumber || config.phone}</p><p>{config.zelleMessage || t.zelleNote}</p></div>)}
               </div>
 
-              <button className="w-full bg-gray-900 text-white py-5 rounded-xl font-bold text-xl shadow-xl hover:bg-black transition transform hover:scale-[1.02] flex items-center justify-center">
-                {t.submit} <Send className="w-5 h-5 ml-2" />
+              <button className="w-full bg-gray-900 text-white py-5 rounded-xl font-bold text-xl shadow-xl hover:bg-black transition transform hover:scale-[1.02] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled={isSubmitting}>
+                {isSubmitting ? (
+                    <><Loader2 className="animate-spin w-5 h-5 mr-2"/> {t.sending}</>
+                ) : (
+                    <>{t.submit} <Send className="w-5 h-5 ml-2" /></>
+                )}
               </button>
             </form>
           )}
