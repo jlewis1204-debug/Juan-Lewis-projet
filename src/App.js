@@ -31,7 +31,7 @@ let db, auth;
 try {
   const app = initializeApp(firebaseConfig);
   if (typeof window !== 'undefined') {
-    try { getAnalytics(app); } catch(e) {}
+    getAnalytics(app);
   }
   db = getFirestore(app);
   auth = getAuth(app);
@@ -460,24 +460,12 @@ const ServiceEditor = ({ services, setServices, t }) => {
     setSaveStatus('saving'); 
     try {
       const finalServices = localServices.map(s => ({...s, price: parseFloat(s.price) || 0})); 
-      // Verificar auth antes de guardar
-      if (auth && !auth.currentUser) {
-          try { await signInAnonymously(auth); } catch(e) { console.error(e); }
-      }
-      
       if(db) await setDoc(doc(db, 'settings', 'services'), { list: finalServices }); 
       setServices(finalServices); 
       setSaveStatus('saved'); 
     } catch(e) {
       console.error(e);
       setSaveStatus('error');
-      if (e.code === 'auth/configuration-not-found') {
-          alert("ERROR DE CONFIGURACIÓN FIREBASE:\n\nDebes activar el 'Sign-in method' Anónimo en tu consola de Firebase.\n\n1. Ve a Authentication\n2. Sign-in method\n3. Habilita Anonymous");
-      } else if (e.code === 'permission-denied') {
-          alert("ERROR DE PERMISOS FIREBASE:\n\nDebes permitir escritura en tu base de datos.\n\n1. Ve a Firestore Database\n2. Rules\n3. Cambia 'allow write: if false' a 'if true'");
-      } else {
-          alert("Error: " + e.message);
-      }
     }
     setTimeout(() => setSaveStatus('idle'), 2000); 
   };
@@ -526,35 +514,36 @@ const SettingsPanel = ({ config, setConfig, t }) => {
     const saveSettings = async () => {
         setSaveStatus('saving');
         
-        // 1. Preparar datos limpios (sin undefined)
         const finalConfig = { 
             ...editConfig, 
             discountPercent: parseFloat(editConfig.discountPercent) || 0, 
             adminUsername: newUser ? newUser : (editConfig.adminUsername || 'admin'),
             adminPassword: newPass ? newPass : (editConfig.adminPassword || '1234'), 
             recoveryPin: newPin ? newPin : (editConfig.recoveryPin || '0000'),
-            // Asegurar campos opcionales
             phone: editConfig.phone || '',
             zelleNumber: editConfig.zelleNumber || '',
             zelleMessage: editConfig.zelleMessage || ''
         };
 
+        // Timeout promise (10 seconds)
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Timeout")), 10000)
+        );
+
         try {
-            // Asegurar conexión antes de guardar
+            // Check auth again
             if (auth && !auth.currentUser) {
-                await signInAnonymously(auth);
+               await signInAnonymously(auth);
             }
 
             if(db) {
-                // Usamos un timeout por si se queda pegado (5 segundos)
-                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000));
+                // Race to avoid infinite hang
                 await Promise.race([
                     setDoc(doc(db, 'settings', 'general'), finalConfig),
-                    timeout
+                    timeoutPromise
                 ]);
             }
             
-            // Éxito
             setConfig(finalConfig);
             setNewUser('');
             setNewPass('');
@@ -563,20 +552,13 @@ const SettingsPanel = ({ config, setConfig, t }) => {
         } catch(e) { 
             console.error("Error saving:", e); 
             setSaveStatus('error');
-            
-            // MENSAJE DE ERROR AMIGABLE
             if (e.message === "Timeout") {
-                alert("La conexión está lenta. Intenta de nuevo.");
-            } else if (e.code === 'auth/configuration-not-found') {
-                alert("ERROR DE CONFIGURACIÓN FIREBASE:\n\nDebes activar el 'Sign-in method' Anónimo en tu consola de Firebase.\n\n1. Ve a Authentication\n2. Sign-in method\n3. Habilita Anonymous");
+                alert("Connection slow. Please try again.");
             } else if (e.code === 'permission-denied') {
-                alert("ERROR DE PERMISOS FIREBASE:\n\nNo tienes permiso para guardar.\n1. Ve a la Consola de Firebase.\n2. Entra a 'Firestore Database' -> 'Reglas'.\n3. Cambia 'allow read, write: if false;' a 'if true;'.");
-            } else {
-                alert("Error al guardar: " + e.message);
+                alert("PERMISSION ERROR: Check Firestore rules.");
             }
         }
         
-        // 4. Resetear botón siempre
         setTimeout(() => setSaveStatus('idle'), 2000);
     };
 
@@ -681,8 +663,42 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView }) => 
     };
     
     const getWhatsApp = (order) => { 
-        const phone = (order.customer.phone || '').replace(/\D/g, ''); 
-        return `https://wa.me/${phone}`; 
+        const cleanPhone = (config.phone || '').replace(/\D/g,''); 
+        
+        // 1. Formatear Items (Lista Vertical con Puntos)
+        const itemsList = Object.entries(order.items)
+            .map(([id, qty]) => {
+                const s = services.find(x => x.id === id);
+                // Get name in current lang if possible or default to English/ID
+                const name = s ? (s.name_es || s.name_en) : id; 
+                return `• ${qty}x ${name}`; 
+            }).join('%0a'); // %0a es un salto de línea en WhatsApp Web
+
+        // 2. Extras (Solo si existen)
+        const aromaTxt = order.aroma ? `%0a🌸 Aroma: ${order.aroma}` : '';
+        const allergiesTxt = order.allergies?.length ? `%0a⚠️ Alergias: ${order.allergies.join(', ')}` : '';
+        const expressTxt = order.express ? '%0a⚡ SERVICIO EXPRESS' : '';
+        const memberTxt = order.isMember ? '%0a⭐ MIEMBRO' : '';
+        const paymentTxt = `%0a💳 Pago: ${order.details.paymentMethod === 'online' ? 'Zelle/Online' : 'Efectivo'}`;
+
+        // 3. Mensaje Estructurado (Recibo)
+        const msg = `🧾 *NUEVO PEDIDO #${order.id.slice(0,6)}*
+--------------------------------
+👤 *Cliente:* ${order.customer.name}
+📞 *Tel:* ${order.customer.phone}
+📍 *Dir:* ${order.customer.address}
+--------------------------------
+📅 *Recogida:* ${order.details.pickupDate} - ${order.details.pickupTime}
+
+🚚 *Entrega:* ${order.details.deliveryDate} - ${order.details.deliveryTime}
+--------------------------------
+🧺 *Artículos:*
+${itemsList}
+${aromaTxt}${allergiesTxt}${expressTxt}${memberTxt}
+--------------------------------${paymentTxt}
+💰 *TOTAL: $${order.total?.toFixed(2)}*`;
+
+        return `https://wa.me/${cleanPhone}?text=${msg}`; 
     };
     
     const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -945,16 +961,51 @@ export default function App() {
   const getOwnerWhatsApp = () => { 
       if (!lastOrder) return "#"; 
       const cleanPhone = (config.phone || '').replace(/\D/g,''); 
-      const itemsList = Object.entries(lastOrder.items).map(([k,v]) => `${v}x ${k}`).join(', '); 
-      const msg = `👋 *NEW ORDER ${lastOrder.id.slice(0,6)}* \n\n👤 ${lastOrder.customer.name}\n📍 ${lastOrder.customer.address}\n\n🧺 *Items:* ${itemsList}\n💰 *Total:* $${lastOrder.total?.toFixed(2)}\n\n📅 *PICKUP:* ${lastOrder.details.pickupDate} @ ${lastOrder.details.pickupTime}\n📅 *DELIVERY:* ${lastOrder.details.deliveryDate} @ ${lastOrder.details.deliveryTime}`; 
-      return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`; 
+      
+      // Formatear items (Lista Vertical)
+      const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => {
+          const s = services.find(x => x.id === id);
+          const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id;
+          return `• ${qty}x ${name}`; 
+      }).join('%0a');
+
+      // Extras
+      const aromaTxt = lastOrder.aroma ? `%0a🌸 Aroma: ${lastOrder.aroma}` : '';
+      const allergiesTxt = lastOrder.allergies?.length ? `%0a⚠️ Alergias: ${lastOrder.allergies.join(', ')}` : '';
+      const expressTxt = lastOrder.express ? '%0a⚡ SERVICIO EXPRESS' : '';
+      const memberTxt = lastOrder.isMember ? '%0a⭐ MIEMBRO' : '';
+      const paymentTxt = `%0a💳 Pago: ${lastOrder.details.paymentMethod === 'online' ? 'Zelle/Online' : 'Efectivo'}`;
+
+      const msg = `🧾 *PEDIDO #${lastOrder.id.slice(0,6)}*
+--------------------------------
+👤 *${lastOrder.customer.name}*
+📞 ${lastOrder.customer.phone}
+📍 ${lastOrder.customer.address}
+--------------------------------
+📅 *Recogida:*
+${lastOrder.details.pickupDate} - ${lastOrder.details.pickupTime}
+
+🚚 *Entrega:*
+${lastOrder.details.deliveryDate} - ${lastOrder.details.deliveryTime}
+--------------------------------
+🧺 *Artículos:*
+${itemsList}
+${aromaTxt}${allergiesTxt}${expressTxt}${memberTxt}
+--------------------------------${paymentTxt}
+💰 *TOTAL: $${lastOrder.total?.toFixed(2)}*`;
+
+      return `https://wa.me/${cleanPhone}?text=${msg}`; 
   };
 
   const getOwnerSMS = () => { 
       if (!lastOrder) return "#"; 
       const cleanPhone = (config.phone || '').replace(/\D/g,''); 
-      const itemsList = Object.entries(lastOrder.items).map(([k,v]) => `${v}x ${k}`).join(', '); 
-      const msg = `NEW ORDER ${lastOrder.id.slice(0,6)}: ${lastOrder.customer.name}, Items: ${itemsList}, Total: $${lastOrder.total?.toFixed(2)}`; 
+      const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => {
+          const s = services.find(x => x.id === id);
+          const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id;
+          return `${qty}x ${name}`;
+      }).join(', '); 
+      const msg = `PEDIDO #${lastOrder.id.slice(0,6)}: ${lastOrder.customer.name} (${lastOrder.customer.phone}). Items: ${itemsList}. Total: $${lastOrder.total?.toFixed(2)}`; 
       return `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`; 
   };
 
