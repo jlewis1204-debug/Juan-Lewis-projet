@@ -113,7 +113,7 @@ const LANGUAGES = {
     total: "Total",
     submit: "Review Order",
     status: { pending: "Pending", confirmed: "Confirmed", picked_up: "Picked Up", cleaning: "Washing", delivering: "Delivering", completed: "Completed" },
-    express: "Express Wash (24h)",
+    express: "Express Wash",
     member: "I am a Member",
     discountMsg: "Discount Applied!",
     successMsg: "Order Received!",
@@ -179,7 +179,8 @@ const LANGUAGES = {
     passwordLabel: "Password",
     credsTitle: "Your Credentials:",
     user: "User:",
-    pass: "Pass:"
+    pass: "Pass:",
+    expressLabel: "Express Time (e.g. 6h)"
   },
   es: {
     title: "Fast Wave Lavandería",
@@ -196,7 +197,7 @@ const LANGUAGES = {
     total: "Total Estimado",
     submit: "Confirmar Pedido",
     status: { pending: "Pendiente", confirmed: "Confirmado", picked_up: "Recogido", cleaning: "Lavando", delivering: "En Reparto", completed: "Completado" },
-    express: "Lavado Express (24h)",
+    express: "Lavado Express",
     member: "Soy Miembro",
     discountMsg: "¡Descuento Aplicado!",
     successMsg: "¡Orden Recibida!",
@@ -260,7 +261,8 @@ const LANGUAGES = {
     passwordLabel: "Contraseña",
     credsTitle: "Tus Credenciales:",
     user: "Usuario:",
-    pass: "Clave:"
+    pass: "Clave:",
+    expressLabel: "Tiempo Express (ej: 6h)"
   },
   fr: {
     title: "Fast Wave Blanchisserie",
@@ -277,7 +279,7 @@ const LANGUAGES = {
     total: "Total Estimé",
     submit: "Vérifier Commande",
     status: { pending: "En Attente", confirmed: "Confirmé", picked_up: "Ramassé", cleaning: "Lavage", delivering: "Livraison", completed: "Terminé" },
-    express: "Express (24h)",
+    express: "Express",
     member: "Je suis Membre",
     discountMsg: "Remise!",
     successMsg: "Dernière Étape!",
@@ -341,7 +343,8 @@ const LANGUAGES = {
     passwordLabel: "Mot de passe",
     credsTitle: "Vos Identifiants:",
     user: "User:",
-    pass: "Pass:"
+    pass: "Pass:",
+    expressLabel: "Temps Express"
   },
   hi: {
     title: "फास्ट वेव लॉन्ड्री",
@@ -358,7 +361,7 @@ const LANGUAGES = {
     total: "कुल",
     submit: "ऑर्डर की समीक्षा करें",
     status: { pending: "लंबित", confirmed: "पुष्टि", picked_up: "पिकअप", cleaning: "धुलाई", delivering: "वितरण", completed: "पूर्ण" },
-    express: "एक्सप्रेस (24h)",
+    express: "एक्सप्रेस",
     member: "सदस्य हूँ",
     discountMsg: "छूट!",
     successMsg: "अंतिम चरण!",
@@ -422,7 +425,8 @@ const LANGUAGES = {
     passwordLabel: "पासवर्ड",
     credsTitle: "आपके क्रेडेंशियल:",
     user: "User:",
-    pass: "Pass:"
+    pass: "Pass:",
+    expressLabel: "एक्सप्रेस समय"
   }
 };
 
@@ -518,7 +522,8 @@ const SettingsPanel = ({ config, setConfig, t }) => {
             recoveryPin: newPin ? newPin : (editConfig.recoveryPin || '0000'),
             phone: editConfig.phone || '',
             zelleNumber: editConfig.zelleNumber || '',
-            zelleMessage: editConfig.zelleMessage || ''
+            zelleMessage: editConfig.zelleMessage || '',
+            expressText: editConfig.expressText || '24h' // Nuevo campo
         };
 
         const timeoutPromise = new Promise((_, reject) => 
@@ -563,7 +568,16 @@ const SettingsPanel = ({ config, setConfig, t }) => {
                  <input value={editConfig.phone || ''} onChange={(e) => setEditConfig({ ...editConfig, phone: e.target.value })} className="w-full p-3 border border-green-300 rounded-lg bg-white font-bold text-lg" placeholder="Ej: 16098287989" />
             </div>
             <div className="space-y-6">
-              <div><label className="block text-sm font-bold text-gray-700 mb-1">{t.disc} (%)</label><input type="number" value={editConfig.discountPercent} onChange={(e) => setEditConfig({ ...editConfig, discountPercent: e.target.value })} className="w-full p-3 border rounded-lg bg-gray-50" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">{t.disc} (%)</label>
+                      <input type="number" value={editConfig.discountPercent} onChange={(e) => setEditConfig({ ...editConfig, discountPercent: e.target.value })} className="w-full p-3 border rounded-lg bg-gray-50" />
+                  </div>
+                  <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">{t.expressLabel}</label>
+                      <input type="text" value={editConfig.expressText || '24h'} onChange={(e) => setEditConfig({ ...editConfig, expressText: e.target.value })} className="w-full p-3 border rounded-lg bg-gray-50" placeholder="e.g. 6h" />
+                  </div>
+              </div>
               <div className="p-5 bg-purple-50 rounded-xl border-2 border-purple-100"><h4 className="font-bold text-purple-900 mb-4 flex items-center"><CreditCard className="w-5 h-5 mr-2"/> {t.zelleConf}</h4><input value={editConfig.zelleNumber || ''} onChange={(e) => setEditConfig({ ...editConfig, zelleNumber: e.target.value })} className="w-full p-3 border border-purple-200 rounded-lg bg-white" placeholder="Zelle Email/Phone" /><textarea value={editConfig.zelleMessage || ''} onChange={(e) => setEditConfig({ ...editConfig, zelleMessage: e.target.value })} className="w-full p-3 border border-purple-200 rounded-lg bg-white mt-2" placeholder="Zelle Instructions" /></div>
               <div className="p-5 bg-red-50 rounded-xl border-2 border-red-100">
                   <h4 className="font-bold text-red-900 mb-4 flex items-center"><ShieldCheck className="w-5 h-5 mr-2"/> {t.securitySettings}</h4>
@@ -657,35 +671,68 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
     const getWhatsApp = (order) => { 
         const cleanPhone = (config.phone || '').replace(/\D/g, ''); 
         
-        // 1. Cabecera y Cliente
-        const header = `🧾 *NUEVO PEDIDO #${order.id.slice(0,6)}*\n\n👤 *${order.customer.name}*\n📞 ${order.customer.phone}\n📍 ${order.customer.address}\n\n`;
+        // --- CONSTRUCTOR DE RECIBO WHATSAPP MEJORADO ---
         
-        // 2. Fechas
-        const dates = `📅 *Recogida:* ${order.details.pickupDate} - ${order.details.pickupTime}\n🚚 *Entrega:* ${order.details.deliveryDate} - ${order.details.deliveryTime}\n\n`;
-        
-        // 3. Items
-        const itemsHeader = `🧺 *ARTÍCULOS:*\n`;
+        // 1. Items
         const itemsList = Object.entries(order.items).map(([id, qty]) => {
             const s = services.find(x => x.id === id);
             const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id; 
             return `• ${qty}x ${name}`; 
         }).join('\n');
 
-        // 4. Extras (Alergias, Aroma, etc)
-        let extras = `\n\n✨ *DETALLES:*`;
-        if (order.aroma) extras += `\n🌸 Aroma: ${order.aroma}`;
-        if (order.allergies && order.allergies.length > 0) extras += `\n⚠️ Alergias: ${order.allergies.join(', ')}`;
-        if (order.express) extras += `\n⚡ SERVICIO EXPRESS`;
-        if (order.isMember) extras += `\n⭐ MIEMBRO`;
-        if (order.details.paymentMethod) extras += `\n💳 Pago: ${order.details.paymentMethod === 'online' ? 'Zelle/Online' : 'Efectivo'}`;
+        // 2. Detalles Extra
+        let detailsBlock = "";
+        
+        // Aroma
+        if(order.aroma) {
+            const aromaObj = AROMAS.find(a => a.id === order.aroma);
+            const aromaName = aromaObj ? (lang === 'es' ? aromaObj.es : aromaObj.en) : order.aroma;
+            detailsBlock += `\n🌸 Aroma: ${aromaName}`;
+        }
+        
+        // Alergias
+        if(order.allergies && order.allergies.length > 0) {
+            const allergyNames = order.allergies.map(aid => {
+                const a = AVOID_PRODUCTS.find(p => p.id === aid);
+                return a ? (lang === 'es' ? a.label_es : a.label_en) : aid;
+            }).join(', ');
+            detailsBlock += `\n⚠️ Alergias: ${allergyNames}`;
+        }
 
-        // 5. Total
-        const footer = `\n\n💰 *TOTAL: $${order.total?.toFixed(2)}*`;
+        // Express
+        if(order.express) {
+            detailsBlock += `\n⚡ EXPRESS (${config.expressText || '24h'})`;
+        }
 
-        // Unir todo
-        const fullMessage = header + dates + itemsHeader + itemsList + extras + footer;
+        // Miembro
+        if(order.isMember) {
+            detailsBlock += `\n⭐ MIEMBRO (-${config.discountPercent}%)`;
+        }
 
-        return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`; 
+        // Pago
+        const payMethod = order.details.paymentMethod === 'online' ? 'Zelle/Online' : 'Efectivo/Cash';
+        
+        // 3. Mensaje Final
+        const msg = `🧾 *ORDEN #${order.id.slice(0,5)}*
+--------------------------------
+👤 *${order.customer.name}*
+📞 ${order.customer.phone}
+📍 ${order.customer.address}
+--------------------------------
+📅 *Recogida:*
+${order.details.pickupDate} [${order.details.pickupTime}]
+
+🚚 *Entrega:*
+${order.details.deliveryDate} [${order.details.deliveryTime}]
+--------------------------------
+🧺 *ARTÍCULOS:*
+${itemsList}
+${detailsBlock}
+--------------------------------
+💳 Pago: ${payMethod}
+💰 *TOTAL: $${order.total?.toFixed(2)}*`;
+
+        return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`; 
     };
     
     const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -805,6 +852,17 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                             </div>
                           </div>
                           <div className="bg-gray-50 p-3 rounded mb-4 text-sm border">{Object.entries(o.items || {}).map(([k, v]) => (<span key={k} className="mr-3 bg-white border px-2 py-1 rounded inline-block mb-1 font-bold">{v}x {k}</span>))}</div>
+                          
+                          {/* VISUALIZACIÓN DE EXTRAS EN EL PANEL ADMIN */}
+                          {(o.aroma || (o.allergies && o.allergies.length > 0) || o.express || o.isMember) && (
+                              <div className="bg-yellow-50 p-2 rounded text-xs border border-yellow-100 mb-4">
+                                  {o.aroma && <span className="mr-2 px-2 py-1 bg-white rounded border border-yellow-200">🌸 {o.aroma}</span>}
+                                  {o.allergies && o.allergies.map(a => <span key={a} className="mr-2 px-2 py-1 bg-red-50 text-red-600 rounded border border-red-200">⚠️ {a}</span>)}
+                                  {o.express && <span className="mr-2 px-2 py-1 bg-cyan-100 text-cyan-700 rounded border border-cyan-200">⚡ EXPRESS</span>}
+                                  {o.isMember && <span className="mr-2 px-2 py-1 bg-blue-100 text-blue-700 rounded border border-blue-200">⭐ MEMBER</span>}
+                              </div>
+                          )}
+
                           <div className="flex gap-2 overflow-x-auto pb-2">{['confirmed', 'cleaning', 'delivering', 'completed'].map((st) => (<button key={st} onClick={() => updateOrderStatus(o.id, st)} disabled={o.status === st} className={`px-4 py-2 rounded text-sm font-bold border transition ${o.status === st ? 'bg-cyan-600 text-white' : 'bg-white hover:bg-gray-50'}`}>{t.status[st] || st}</button>))}</div>
                         </div>
                     ))}
@@ -849,7 +907,8 @@ export default function App() {
     adminPassword: '1234', 
     recoveryPin: '0000',
     zelleNumber: '',
-    zelleMessage: '' 
+    zelleMessage: '',
+    expressText: '24h'
   });
 
   const t = LANGUAGES[lang] || LANGUAGES.en;
@@ -937,6 +996,7 @@ export default function App() {
     }
   };
 
+  // --- GENERADOR DE RECIBOS LIMPIOS ---
   const getOwnerWhatsApp = () => { 
       if (!lastOrder) return "#"; 
       const cleanPhone = (config.phone || '').replace(/\D/g,''); 
@@ -950,7 +1010,7 @@ export default function App() {
       let extras = `\n\n✨ *DETALLES:*`;
       if (lastOrder.aroma) extras += `\n🌸 Aroma: ${lastOrder.aroma}`;
       if (lastOrder.allergies && lastOrder.allergies.length > 0) extras += `\n⚠️ Alergias: ${lastOrder.allergies.join(', ')}`;
-      if (lastOrder.express) extras += `\n⚡ SERVICIO EXPRESS`;
+      if (lastOrder.express) extras += `\n⚡ SERVICIO EXPRESS (${config.expressText || '24h'})`;
       if (lastOrder.isMember) extras += `\n⭐ MIEMBRO`;
       if (lastOrder.details.paymentMethod) extras += `\n💳 Pago: ${lastOrder.details.paymentMethod === 'online' ? 'Zelle/Online' : 'Efectivo'}`;
 
@@ -966,7 +1026,7 @@ ${lastOrder.details.pickupDate} - ${lastOrder.details.pickupTime}
 🚚 *Entrega:*
 ${lastOrder.details.deliveryDate} - ${lastOrder.details.deliveryTime}
 --------------------------------
-🧺 *Artículos:*
+🧺 *ARTÍCULOS:*
 ${itemsList}
 ${extras}
 --------------------------------
@@ -983,7 +1043,12 @@ ${extras}
           const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id;
           return `${qty}x ${name}`;
       }).join(', '); 
-      const msg = `PEDIDO #${lastOrder.id.slice(0,6)}: ${lastOrder.customer.name} (${lastOrder.customer.phone}). Items: ${itemsList}. Total: $${lastOrder.total?.toFixed(2)}`; 
+      
+      let extrasStr = "";
+      if (lastOrder.express) extrasStr += " [EXPRESS]";
+      if (lastOrder.isMember) extrasStr += " [MEMBER]";
+
+      const msg = `PEDIDO #${lastOrder.id.slice(0,6)}: ${lastOrder.customer.name}. Items: ${itemsList}${extrasStr}. Total: $${lastOrder.total?.toFixed(2)}`; 
       return `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`; 
   };
 
@@ -1119,7 +1184,7 @@ ${extras}
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100"><h3 className="font-bold text-xl text-gray-800 mb-6 flex items-center"><AlertCircle className="w-6 h-6 text-red-500 mr-2" /> {t.productsToAvoid}</h3><div className="grid grid-cols-2 gap-3">{AVOID_PRODUCTS.map((p) => (<label key={p.id} className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${allergies.includes(p.id) ? 'border-red-400 bg-red-50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}><input type="checkbox" checked={allergies.includes(p.id)} onChange={() => setAllergies((x) => x.includes(p.id) ? x.filter((y) => y !== p.id) : [...x, p.id])} className="w-5 h-5 accent-red-500 mr-3" /><span className="text-sm font-medium text-gray-700">{lang === 'es' ? p.label_es : lang === 'fr' ? p.label_fr : lang === 'hi' ? p.label_hi : p.label_en}</span></label>))}</div></div>
             </div>
             <div className="flex flex-col md:flex-row justify-center gap-6 mb-32">
-                <label className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${isExpress ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-200' : 'border-gray-200 bg-white'}`}><input type="checkbox" checked={isExpress} onChange={() => setIsExpress(!isExpress)} className="w-6 h-6 accent-cyan-600 mr-4" /><div><span className="font-bold text-lg block text-gray-800">{t.express}</span><span className="text-sm text-cyan-700 font-bold">+20% {t.fee}</span></div></label>
+                <label className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${isExpress ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-200' : 'border-gray-200 bg-white'}`}><input type="checkbox" checked={isExpress} onChange={() => setIsExpress(!isExpress)} className="w-6 h-6 accent-cyan-600 mr-4" /><div><span className="font-bold text-lg block text-gray-800">{t.express} ({config.expressText || '24h'})</span><span className="text-sm text-cyan-700 font-bold">+20% {t.fee}</span></div></label>
                 <label className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${isMember ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200' : 'border-gray-200 bg-white'}`}><input type="checkbox" checked={isMember} onChange={() => setIsMember(!isMember)} className="w-6 h-6 accent-yellow-500 mr-4" /><div><span className="font-bold text-lg block text-gray-800">{t.member}</span><span className="text-sm text-yellow-600 font-bold">{config.discountPercent}% {t.off}</span></div><Star className="w-8 h-8 text-yellow-400 ml-4 fill-current" /></label>
             </div>
           </div>
@@ -1136,8 +1201,8 @@ ${extras}
             {Object.keys(cart).length === 0 ? <p className="text-gray-400 text-center py-4">{t.emptyCart}</p> : (
               <div className="space-y-3">
                 {Object.entries(cart).map(([id, q]) => { const s = services.find((x) => x.id === id); return (<div key={id} className="flex justify-between text-gray-700 border-b border-gray-50 pb-2"><span><span className="font-bold text-gray-900">{q}x</span> {lang === 'es' ? s.name_es : lang === 'fr' ? s.name_fr : lang === 'hi' ? s.name_hi : s.name_en}</span><span className="font-bold">${(s.price * q).toFixed(2)}</span></div>); })}
-                {isExpress && <div className="flex justify-between text-cyan-600 font-bold pt-2"><span>Express (+20%)</span><span>+${(getTotal() - getTotal() / 1.2).toFixed(2)}</span></div>}
-                {isMember && <div className="flex justify-between text-yellow-600 font-bold pt-2"><span>Member Discount (-{config.discountPercent}%)</span><span>-${(getTotal() * (config.discountPercent / 100)).toFixed(2)}</span></div>}
+                {isExpress && <div className="flex justify-between text-cyan-600 font-bold pt-2"><span>{t.express} ({config.expressText || '24h'}) (+20%)</span><span>+${(getTotal() - getTotal() / 1.2).toFixed(2)}</span></div>}
+                {isMember && <div className="flex justify-between text-yellow-600 font-bold pt-2"><span>{t.member} (-{config.discountPercent}%)</span><span>-${(getTotal() * (config.discountPercent / 100)).toFixed(2)}</span></div>}
                 <div className="flex justify-between items-center pt-6 mt-4 border-t-2 border-dashed border-gray-200"><span className="text-gray-500 font-bold">Total to Pay</span><span className="text-4xl font-black text-cyan-600">${getTotal().toFixed(2)}</span></div>
               </div>
             )}
