@@ -3,7 +3,7 @@ import {
   ShoppingBag, Lock, Phone, Star, Droplet,
   Calendar, Truck, MessageCircle, Settings, 
   Edit2, ArrowLeft, Trash2, Plus, User, CheckCircle, CreditCard, AlertCircle,
-  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, Loader2, Receipt
+  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, Loader2, Receipt, Package
 } from 'lucide-react';
 
 // --- IMPORTACIONES DE FIREBASE ---
@@ -1138,7 +1138,10 @@ export default function App() {
             
             <div className="hidden md:flex items-center space-x-4">
                {/* Botón nuevo para cliente ver sus pedidos */}
-              <button onClick={() => setView('track')} className="text-gray-500 hover:text-cyan-600 font-bold text-sm mr-2">{t.trackOrder || "My Orders"}</button>
+              <button onClick={() => setView('track')} className="flex items-center text-gray-600 hover:text-cyan-600 font-bold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition mr-2">
+                 <Package className="w-4 h-4 mr-2" />
+                 {t.trackOrder || "My Orders"}
+              </button>
               
               <div className="flex items-center bg-cyan-50 px-4 py-2 rounded-full text-cyan-800 font-mono text-sm border border-cyan-100">
                 <Phone className="h-4 w-4 mr-2" /> {config.phone}
