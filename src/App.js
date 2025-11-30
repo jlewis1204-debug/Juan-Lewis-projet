@@ -50,8 +50,8 @@ const useTailwind = () => {
 // --- CONFIGURACIÓN "MODO APP" (PWA) MEJORADA ---
 const useAppMode = () => {
   useEffect(() => {
-    // URL de un icono más bonito (Fondo Cyan, Icono blanco limpio)
-    const iconUrl = "https://cdn-icons-png.flaticon.com/512/2954/2954887.png"; // Ejemplo de lavadora estilizada o similar
+    // ICONO NUEVO: Color Cyan/Azul (Lavadora estilizada)
+    const iconUrl = "https://cdn-icons-png.flaticon.com/512/3003/3003984.png"; 
 
     const manifest = {
       name: "Fast Wave Laundry",
@@ -121,7 +121,7 @@ const CustomInfoIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
 );
 const CustomReceiptIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>
 );
 const CustomLoaderIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
@@ -133,15 +133,11 @@ const CustomCameraIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
 );
 
-// --- COMPONENTE LOGO ---
+// --- COMPONENTE LOGO ACTUALIZADO ---
 const BrandLogo = () => (
   <div className="relative flex items-center justify-center px-5 py-2 overflow-hidden rounded-full border-2 border-cyan-100 shadow-sm group hover:shadow-md transition-all cursor-pointer">
-    <img
-      src="https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=300&q=80" 
-      alt="Fast Wave Laundry Logo Background"
-      className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:scale-110 transition-transform duration-700"
-    />
-    <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-white/95 backdrop-blur-[1px]"></div>
+    {/* Fondo Azul/Cyan en lugar de gris */}
+    <div className="absolute inset-0 bg-gradient-to-r from-cyan-100 via-white to-cyan-50"></div>
     <div className="relative z-10 flex flex-col items-center">
         <span className="font-black text-xl text-cyan-900 leading-none tracking-tight drop-shadow-sm">Fast Wave</span>
         <span className="text-[9px] font-bold text-cyan-700 uppercase tracking-widest">Laundry Service</span>
@@ -173,7 +169,6 @@ const AROMAS = [
 
 const LANGUAGES = {
   en: {
-    // ... existing translations ...
     title: "Fast Wave Laundry",
     heroSubtitle: "Fresh Clothes, Delivered Right to Your Door!",
     orderNow: "Start Washing",
@@ -279,7 +274,6 @@ const LANGUAGES = {
     orderCompleted: "Order Completed"
   },
   es: {
-    // ... existing translations ...
     title: "Fast Wave Lavandería",
     heroSubtitle: "¡Ropa fresca, entregada en tu puerta!",
     orderNow: "Empezar Lavado",
@@ -383,7 +377,6 @@ const LANGUAGES = {
     orderCompleted: "Orden Completada"
   },
   fr: {
-    // ... existing translations ...
     title: "Fast Wave Pressing",
     heroSubtitle: "Vêtements frais, livrés à votre porte !",
     orderNow: "Commencer",
@@ -489,7 +482,6 @@ const LANGUAGES = {
     orderCompleted: "Commande Terminée"
   },
   hi: {
-    // ... existing translations ...
     title: "Fast Wave Laundry",
     heroSubtitle: "साफ़ कपड़े, आपके दरवाजे पर!",
     orderNow: "धुलाई शुरू करें",
@@ -596,7 +588,7 @@ const LANGUAGES = {
   },
 };
 
-// ... (ServiceEditor, SettingsPanel, AdminView se mantienen IGUAL, con la adición de customerResponse en AdminView para ver la respuesta del cliente si quieres)
+// --- COMPONENTES DE ADMIN ---
 
 const ServiceEditor = ({ services, setServices, t }) => {
   const [localServices, setLocalServices] = useState(services);
@@ -889,6 +881,20 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
         });
     };
 
+    const shareOrder = (order) => {
+        const text = `Fast Wave Receipt #${order.orderNumber || order.id.slice(0,6)}\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}\nLink: ${window.location.origin}`;
+        if (navigator.share) {
+            navigator.share({
+                title: 'Fast Wave Receipt',
+                text: text,
+                url: window.location.href
+            }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(text);
+            alert("Receipt info copied to clipboard!");
+        }
+    };
+
     const saveOrderChanges = async (order) => {
         let subtotal = Object.entries(order.items).reduce((acc, [id, qty]) => {
             const s = services.find(x => x.id === id);
@@ -1154,6 +1160,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                                                 <select value={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)} className="bg-gray-50 border border-gray-200 text-xs rounded p-2 font-bold outline-none cursor-pointer hover:border-cyan-500 transition">
                                                     {Object.keys(t.status).map(s => <option key={s} value={s}>{t.status[s]}</option>)}
                                                 </select>
+                                                <button onClick={() => shareOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Share"><Share2 className="w-4 h-4"/></button>
                                                 <button onClick={() => startEditing(o)} className="p-2 text-blue-500 hover:bg-blue-50 rounded" title="Edit"><Edit2 className="w-4 h-4"/></button>
                                                 <button onClick={() => printOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Print"><Printer className="w-4 h-4"/></button>
                                                 <button onClick={() => deleteOrder(o.id)} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-4 h-4"/></button>
@@ -1416,7 +1423,20 @@ ${extras ? extras + '%0a--------------------------------' : ''}
       if (!lastOrder) return "#"; 
       const cleanPhone = (config.phone || '').replace(/\D/g,''); 
       const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6);
-      const msg = `Fast Wave Order #${displayId} - Total: $${lastOrder.total?.toFixed(2)}. Pickup: ${lastOrder.details.pickupDate}. Check app for details.`; 
+      
+      // Construct a detailed text message for SMS
+      let msg = `Fast Wave Order #${displayId}\n`;
+      msg += `Customer: ${lastOrder.customer.name}\n`;
+      msg += `Items:\n`;
+      Object.entries(lastOrder.items).forEach(([id, qty]) => {
+         const s = services.find(x => x.id === id);
+         const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id;
+         msg += `- ${qty}x ${name}\n`;
+      });
+      msg += `Total: $${lastOrder.total?.toFixed(2)}\n`;
+      msg += `Pickup: ${lastOrder.details.pickupDate}\n`;
+      msg += `Address: ${lastOrder.customer.address}`;
+
       return `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`; 
   };
 
@@ -1439,13 +1459,13 @@ ${extras ? extras + '%0a--------------------------------' : ''}
   };
 
   const shareOrder = (order) => {
-      const text = `Fast Wave Receipt #${order.orderNumber || order.id.slice(0,6)}\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}`;
+      const text = `Fast Wave Receipt #${order.orderNumber || order.id.slice(0,6)}\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}\nLink: ${window.location.origin}`;
       if (navigator.share) {
           navigator.share({
               title: 'Fast Wave Receipt',
               text: text,
               url: window.location.href
-          });
+          }).catch(console.error);
       } else {
           navigator.clipboard.writeText(text);
           alert("Receipt info copied to clipboard!");
