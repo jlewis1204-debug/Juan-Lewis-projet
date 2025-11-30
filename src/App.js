@@ -50,8 +50,8 @@ const useTailwind = () => {
 // --- CONFIGURACIÓN "MODO APP" (PWA) MEJORADA ---
 const useAppMode = () => {
   useEffect(() => {
-    // ICONO NUEVO: Icono de 'Ola Rápida' con degradado azul moderno y profesional
-    const iconUrl = "https://cdn-icons-png.flaticon.com/512/3976/3976625.png"; 
+    // ICONO NUEVO: Generado dinámicamente con las iniciales FW y fondo Cyan
+    const iconUrl = "https://ui-avatars.com/api/?name=Fast+Wave&background=06b6d4&color=fff&size=512&bold=true&length=2"; 
 
     const manifest = {
       name: "Fast Wave Laundry",
@@ -128,7 +128,7 @@ const CustomInfoIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
 );
 const CustomReceiptIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>
 );
 const CustomLoaderIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
