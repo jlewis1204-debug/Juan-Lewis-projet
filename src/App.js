@@ -50,8 +50,8 @@ const useTailwind = () => {
 // --- CONFIGURACIÓN "MODO APP" (PWA) MEJORADA ---
 const useAppMode = () => {
   useEffect(() => {
-    // ICONO NUEVO: Color Cyan/Azul (Lavadora estilizada)
-    const iconUrl = "https://cdn-icons-png.flaticon.com/512/3003/3003984.png"; 
+    // ICONO NUEVO: Icono de 'Ola Rápida' con degradado azul moderno y profesional
+    const iconUrl = "https://cdn-icons-png.flaticon.com/512/3976/3976625.png"; 
 
     const manifest = {
       name: "Fast Wave Laundry",
@@ -75,9 +75,16 @@ const useAppMode = () => {
     const metaTags = [{ name: 'apple-mobile-web-app-capable', content: 'yes' }, { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }, { name: 'theme-color', content: '#06b6d4' }];
     metaTags.forEach(tagInfo => { let meta = document.querySelector(`meta[name="${tagInfo.name}"]`); if (!meta) { meta = document.createElement('meta'); meta.name = tagInfo.name; document.head.appendChild(meta); } meta.content = tagInfo.content; });
     
+    // Icono para iPhone
     let appleIcon = document.querySelector('link[rel="apple-touch-icon"]'); 
     if (!appleIcon) { appleIcon = document.createElement('link'); appleIcon.rel = 'apple-touch-icon'; document.head.appendChild(appleIcon); } 
     appleIcon.href = iconUrl;
+
+    // Icono para la Pestaña del Navegador (Favicon)
+    let favicon = document.querySelector('link[rel="icon"]');
+    if (!favicon) { favicon = document.createElement('link'); favicon.rel = 'icon'; document.head.appendChild(favicon); }
+    favicon.href = iconUrl;
+
   }, []);
 };
 
