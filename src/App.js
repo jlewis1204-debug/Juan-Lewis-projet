@@ -3,7 +3,7 @@ import {
   ShoppingBag, Lock, Phone, Star, Droplet,
   Calendar, Truck, MessageCircle, Settings, 
   Edit2, ArrowLeft, Trash2, Plus, User, CheckCircle, CreditCard, AlertCircle,
-  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, ExternalLink, ChevronDown, ChevronUp, Share2, MessageSquare, Camera, Users, DollarSign, RotateCcw
+  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, ExternalLink, ChevronDown, ChevronUp, Share2, MessageSquare, Camera, Users, DollarSign, RotateCcw, Percent
 } from 'lucide-react';
 
 // --- IMPORTACIONES DE FIREBASE ---
@@ -204,14 +204,15 @@ const LANGUAGES = {
     wrongPin: "Wrong Credentials",
     sendWhastapp: "Confirm via WhatsApp",
     sendSMS: "Confirm via SMS",
-    payCash: "Cash / Card on Delivery",
+    payCash: "Cash on Delivery",
+    payCard: "Card on Delivery",
     payOnline: "Zelle / Transfer",
     pickupDate: "Pickup Date",
     pickupTime: "Pickup Time",
     deliveryDate: "Delivery Date",
     deliveryTime: "Delivery Time",
-    payCashLabel: "Pay on Delivery",
-    payCashSub: "Cash or Card",
+    payCashLabel: "Pay Cash",
+    payCardLabel: "Credit/Debit Card",
     payOnlineLabel: "Pay Online",
     payOnlineSub: "Zelle Transfer",
     zelleNote: "Please send screenshot",
@@ -281,7 +282,8 @@ const LANGUAGES = {
     rulesText3: "To rejoin, it will cost",
     rulesText4: "for",
     saveAmount: "You will save",
-    rejoinDesc: "Your membership expired. To get the discount again, there is a rejoining fee."
+    rejoinDesc: "Your membership expired. To get the discount again, there is a rejoining fee.",
+    taxLabel: "Tax (%)"
   },
   es: {
     title: "Fast Wave Lavandería",
@@ -330,13 +332,15 @@ const LANGUAGES = {
     wrongPin: "Credenciales Incorrectas",
     sendWhastapp: "Confirmar por WhatsApp",
     sendSMS: "Confirmar por SMS",
-    payCash: "Efectivo / Tarjeta al recibir",
+    payCash: "Efectivo al recibir",
+    payCard: "Tarjeta al recibir",
     payOnline: "Zelle / Transferencia",
     pickupDate: "Fecha de Recogida",
     pickupTime: "Hora de Recogida",
     deliveryDate: "Fecha de Entrega",
     deliveryTime: "Hora de Entrega",
-    payCashLabel: "Pagar al Recibir",
+    payCashLabel: "Pagar Efectivo",
+    payCardLabel: "Tarjeta Crédito/Débito",
     payOnlineLabel: "Pagar Online",
     zelleNote: "Enviar captura",
     forgotPass: "¿Olvidaste tus datos?",
@@ -386,6 +390,7 @@ const LANGUAGES = {
     replySent: "¡Enviado!",
     orderCompleted: "Orden Completada",
     joinMemberTitle: "¿Unirte a la Membresía?",
+    joinMemberDesc: "¡Hazte miembro y obtén un descuento instantáneo en esta orden!",
     joinYes: "Sí, Unirme y Ahorrar",
     joinNo: "No, Continuar",
     rejoinTitle: "Reactivar Membresía",
@@ -405,9 +410,9 @@ const LANGUAGES = {
     rulesText3: "Si quieres volverte a hacer miembro, te costará",
     rulesText4: "por",
     saveAmount: "Ahorrarás",
-    rejoinDesc: "Tu membresía expiró. Para volver a obtener el descuento, hay un cargo de reingreso."
+    rejoinDesc: "Tu membresía expiró. Para volver a obtener el descuento, hay un cargo de reingreso.",
+    taxLabel: "Impuesto (%)"
   },
-  // ... (FR and HI translations omitted for brevity, English/Spanish fully updated)
   fr: {
      // ... previous fr keys ...
      joinMemberTitle: "Devenir membre ?",
@@ -423,7 +428,9 @@ const LANGUAGES = {
      rulesText4: "pour",
      manageMembers: "Membres Actifs",
      pastMembers: "Anciens Membres",
-     restoreMember: "Restaurer Gratuit"
+     restoreMember: "Restaurer Gratuit",
+     payCardLabel: "Carte de Crédit",
+     taxLabel: "Taxe (%)"
   },
   hi: {
      // ... previous hi keys ...
@@ -440,7 +447,9 @@ const LANGUAGES = {
      rulesText4: "के लिए",
      manageMembers: "सक्रिय सदस्य",
      pastMembers: "पूर्व सदस्य",
-     restoreMember: "निःशुल्क बहाल करें"
+     restoreMember: "निःशुल्क बहाल करें",
+     payCardLabel: "क्रेडिट कार्ड",
+     taxLabel: "कर (%)"
   }
 };
 
@@ -504,6 +513,7 @@ const SettingsPanel = ({ config, setConfig, t }) => {
             ...editConfig, 
             discountPercent: parseFloat(editConfig.discountPercent) || 0, 
             expressPercent: parseFloat(editConfig.expressPercent) || 20,
+            taxPercent: parseFloat(editConfig.taxPercent) || 0, // IMPUESTOS
             minVisits: parseFloat(editConfig.minVisits) || 2,
             rejoinFee: parseFloat(editConfig.rejoinFee) || 10,
             rejoinDuration: editConfig.rejoinDuration || '2 months',
@@ -549,7 +559,7 @@ const SettingsPanel = ({ config, setConfig, t }) => {
     const addMember = async () => {
         if (!newMemberPhone.trim()) return;
         if(db) {
-            // Add to Active, Remove from History if exists (just in case)
+            // Add to Active, Remove from History if exists
             await setDoc(doc(db, 'settings', 'members'), {
                 list: arrayUnion(newMemberPhone.trim()),
                 history: arrayRemove(newMemberPhone.trim())
@@ -590,6 +600,7 @@ const SettingsPanel = ({ config, setConfig, t }) => {
                  <input value={editConfig.phone || ''} onChange={(e) => setEditConfig({ ...editConfig, phone: e.target.value })} className="w-full p-3 border border-green-300 rounded-lg bg-white font-bold text-lg" placeholder="Ej: 16098287989" />
             </div>
             
+            {/* CUSTOM ICON UPLOAD */}
             <div className="mb-6 p-4 bg-cyan-50 rounded-lg border border-cyan-200">
                  <label className="block text-sm font-bold text-cyan-800 mb-2 flex items-center"><Camera className="w-4 h-4 mr-2"/> {t.customIcon}</label>
                  <div className="flex items-center gap-4">
@@ -599,7 +610,7 @@ const SettingsPanel = ({ config, setConfig, t }) => {
             </div>
 
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                       <label className="block text-sm font-bold text-gray-700 mb-1">{t.disc} (Member %)</label>
                       <input type="number" value={editConfig.discountPercent} onChange={(e) => setEditConfig({ ...editConfig, discountPercent: e.target.value })} className="w-full p-3 border rounded-lg bg-gray-50" />
@@ -607,6 +618,11 @@ const SettingsPanel = ({ config, setConfig, t }) => {
                   <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">{t.expressPercentLabel}</label>
                       <input type="number" value={editConfig.expressPercent || 20} onChange={(e) => setEditConfig({ ...editConfig, expressPercent: e.target.value })} className="w-full p-3 border rounded-lg bg-gray-50" />
+                  </div>
+                  <div>
+                      {/* CAMPO IMPUESTOS */}
+                      <label className="block text-sm font-bold text-gray-700 mb-1">{t.taxLabel}</label>
+                      <input type="number" value={editConfig.taxPercent || 0} onChange={(e) => setEditConfig({ ...editConfig, taxPercent: e.target.value })} className="w-full p-3 border rounded-lg bg-gray-50" />
                   </div>
               </div>
               
@@ -628,7 +644,7 @@ const SettingsPanel = ({ config, setConfig, t }) => {
                       </div>
                   </div>
                   
-                  {/* ACTIVE MEMBERS LIST */}
+                  {/* MEMBER LIST EDITOR */}
                   <div className="mt-4 pt-4 border-t border-yellow-200">
                       <label className="block text-sm font-bold text-yellow-900 mb-2">{t.manageMembers} ({membersList.length})</label>
                       <div className="flex gap-2 mb-3">
@@ -663,7 +679,10 @@ const SettingsPanel = ({ config, setConfig, t }) => {
                   </div>
               </div>
 
-              {/* ... (rest of settings) */}
+              <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t.expressLabel}</label>
+                  <input type="text" value={editConfig.expressText || '24h'} onChange={(e) => setEditConfig({ ...editConfig, expressText: e.target.value })} className="w-full p-3 border rounded-lg bg-gray-50" placeholder="e.g. 6h" />
+              </div>
               <div className="p-5 bg-purple-50 rounded-xl border-2 border-purple-100"><h4 className="font-bold text-purple-900 mb-4 flex items-center"><CreditCard className="w-5 h-5 mr-2"/> {t.zelleConf}</h4><input value={editConfig.zelleNumber || ''} onChange={(e) => setEditConfig({ ...editConfig, zelleNumber: e.target.value })} className="w-full p-3 border border-purple-200 rounded-lg bg-white" placeholder="Zelle Email/Phone" /><textarea value={editConfig.zelleMessage || ''} onChange={(e) => setEditConfig({ ...editConfig, zelleMessage: e.target.value })} className="w-full p-3 border border-purple-200 rounded-lg bg-white mt-2" placeholder="Zelle Instructions" /></div>
               <div className="p-5 bg-red-50 rounded-xl border-2 border-red-100">
                   <h4 className="font-bold text-red-900 mb-4 flex items-center"><ShieldCheck className="w-5 h-5 mr-2"/> {t.securitySettings}</h4>
@@ -681,7 +700,7 @@ const SettingsPanel = ({ config, setConfig, t }) => {
     );
 };
 
-// --- VISTAS PRINCIPALES (AdminView, etc. se mantienen igual) ---
+// --- VISTAS PRINCIPALES ---
 const AdminView = ({ t, config, setConfig, services, setServices, setView, lang }) => {
     const [authInput, setAuthInput] = useState({ user: '', pass: '' });
     const [recoveryInput, setRecoveryInput] = useState('');
@@ -708,33 +727,54 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
         return () => unsub();
     }, [isAuth]);
 
-    const handleLogin = (e) => {
-        e.preventDefault();
-        const validUser = config.adminUsername || 'admin';
-        const validPass = config.adminPassword || '1234';
-        if (authInput.user.toLowerCase() === validUser.toLowerCase() && authInput.pass === validPass) {
-            setIsAuth(true);
-            setLoginStatus('idle');
-        } else {
-            setLoginStatus('error');
-            setTimeout(() => setLoginStatus('idle'), 2000);
-        }
-    };
+    const handleLogin = (e) => { e.preventDefault(); const validUser = config.adminUsername || 'admin'; const validPass = config.adminPassword || '1234'; if (authInput.user.toLowerCase() === validUser.toLowerCase() && authInput.pass === validPass) { setIsAuth(true); setLoginStatus('idle'); } else { setLoginStatus('error'); setTimeout(() => setLoginStatus('idle'), 2000); } };
     const handleRecovery = (e) => { e.preventDefault(); const validPin = config.recoveryPin || '0000'; if (recoveryInput === validPin) { setRecoveredCreds({ user: config.adminUsername || 'admin', pass: config.adminPassword || '1234' }); } else { alert(t.wrongRecPin); } };
     const updateOrderStatus = async (id, status) => { if(db) await updateDoc(doc(db, 'orders', id), { status }); setOrders(prev => prev.map(o => o.id === id ? {...o, status} : o)); };
     const deleteOrder = async (id) => { if(window.confirm(t.deleteOrder + "?")) { if(db) await deleteDoc(doc(db, 'orders', id)); setOrders(prev => prev.filter(o => o.id !== id)); } };
     const startEditing = (order) => { setEditingOrder(order.id); setEditForm({ name: order.customer.name, phone: order.customer.phone, address: order.customer.address, express: order.express || false, isMember: order.isMember || false, notes: order.notes || '', pickupDate: order.details?.pickupDate || '', pickupTime: order.details?.pickupTime || TIME_SLOTS[0], deliveryDate: order.details?.deliveryDate || '', deliveryTime: order.details?.deliveryTime || TIME_SLOTS[0], adminNote: order.adminNote || '' }); };
     const shareOrder = (order) => { const text = `Fast Wave Receipt #${order.orderNumber || order.id.slice(0,6)}\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}\nLink: ${window.location.origin}`; if (navigator.share) { navigator.share({ title: 'Fast Wave Receipt', text: text, url: window.location.href }).catch(console.error); } else { navigator.clipboard.writeText(text); alert("Receipt info copied to clipboard!"); } };
-    const saveOrderChanges = async (order) => { let subtotal = Object.entries(order.items).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0); let total = subtotal; const expressPct = config.expressPercent || 20; const discountPct = config.discountPercent || 10; if (editForm.express) total += subtotal * (expressPct / 100); if (editForm.isMember) total -= total * (discountPct / 100); const updatedData = { 'customer.name': editForm.name, 'customer.phone': editForm.phone, 'customer.address': editForm.address, express: editForm.express, isMember: editForm.isMember, notes: editForm.notes, total: total, 'details.pickupDate': editForm.pickupDate, 'details.pickupTime': editForm.pickupTime, 'details.deliveryDate': editForm.deliveryDate, 'details.deliveryTime': editForm.deliveryTime, adminNote: editForm.adminNote }; if(db) await updateDoc(doc(db, 'orders', order.id), updatedData); setEditingOrder(null); };
-    
+    const saveOrderChanges = async (order) => { 
+        // RECALCULO SIMPLE PARA EDICION
+        // Nota: Para edicion avanzada en admin, se asume que el admin sabe lo que hace. Se recalcula base.
+        let subtotal = Object.entries(order.items).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0); 
+        
+        let total = subtotal;
+        const expressPct = config.expressPercent || 20; 
+        const discountPct = config.discountPercent || 10; 
+        const taxPct = config.taxPercent || 0;
+
+        let expressFee = 0;
+        let discount = 0;
+
+        if (editForm.express) expressFee = subtotal * (expressPct / 100);
+        if (editForm.isMember) discount = (subtotal + expressFee) * (discountPct / 100);
+        
+        let taxableAmount = (subtotal + expressFee) - discount;
+        let tax = taxableAmount * (taxPct / 100);
+        
+        total = taxableAmount + tax;
+
+        const updatedData = { 'customer.name': editForm.name, 'customer.phone': editForm.phone, 'customer.address': editForm.address, express: editForm.express, isMember: editForm.isMember, notes: editForm.notes, total: total, 'details.pickupDate': editForm.pickupDate, 'details.pickupTime': editForm.pickupTime, 'details.deliveryDate': editForm.deliveryDate, 'details.deliveryTime': editForm.deliveryTime, adminNote: editForm.adminNote }; if(db) await updateDoc(doc(db, 'orders', order.id), updatedData); setEditingOrder(null); 
+    };
+
     const printOrder = (order) => {
         const printWindow = window.open('', '_blank');
         const itemsList = Object.entries(order.items).map(([id, qty]) => { const s = services.find(x => x.id === id); return `<li>${qty}x ${s ? s.name_en : id}</li>`; }).join('');
+        
+        // RECALCULO PARA MOSTRAR EN RECIBO
         let subtotal = Object.entries(order.items).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0);
-        const expressPct = config.expressPercent || 20; const discountPct = config.discountPercent || 10; const expressFee = order.express ? subtotal * (expressPct / 100) : 0; const preDiscountTotal = subtotal + expressFee; const discount = order.isMember ? preDiscountTotal * (discountPct / 100) : 0; const finalTotal = order.total || (preDiscountTotal - discount);
+        const expressPct = config.expressPercent || 20; 
+        const discountPct = config.discountPercent || 10; 
+        const taxPct = config.taxPercent || 0;
+        
+        const expressFee = order.express ? subtotal * (expressPct / 100) : 0;
+        const discount = order.isMember ? (subtotal + expressFee) * (discountPct / 100) : 0;
+        const taxableAmount = (subtotal + expressFee) - discount;
+        const tax = taxableAmount * (taxPct / 100);
+        const finalTotal = taxableAmount + tax;
 
         printWindow.document.write(`
-            <html><head><title>Order #${order.orderNumber || order.id.slice(0,6)}</title><style>body { font-family: monospace; padding: 20px; max-width: 400px; margin: 0 auto; } h1 { border-bottom: 2px solid black; padding-bottom: 10px; text-align: center; } .section { margin-bottom: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; } .item-row { display: flex; justify-content: space-between; } .total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2em; border-top: 2px solid black; padding-top: 10px; margin-top: 10px; } .detail-row { display: flex; justify-content: space-between; color: #555; font-size: 0.9em; } .admin-note { background: #f0f9ff; padding: 10px; border: 1px solid #bae6fd; margin-top: 10px; font-style: italic; }</style></head><body><h1>Fast Wave Laundry</h1><div class="section"><strong>Order:</strong> #${order.orderNumber || order.id.slice(0,6)}<br><strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}<br><strong>Status:</strong> ${order.status.toUpperCase()}</div><div class="section"><strong>Customer:</strong><br>${order.customer.name}<br>${order.customer.phone}<br>${order.customer.address}</div><div class="section"><strong>Schedule:</strong><br>Pickup: ${order.details.pickupDate} ${order.details.pickupTime}<br>Delivery: ${order.details.deliveryDate} ${order.details.deliveryTime}</div><div class="section"><strong>Items:</strong><br>${Object.entries(order.items).map(([id, qty]) => { const s = services.find(x => x.id === id); const price = s ? s.price : 0; return `<div class="item-row"><span>${qty}x ${s ? s.name_en : id}</span><span>$${(price * qty).toFixed(2)}</span></div>`; }).join('')}</div><div class="section"><div class="detail-row"><span>Subtotal:</span><span>$${subtotal.toFixed(2)}</span></div>${order.express ? `<div class="detail-row"><span>Express Fee (${expressPct}%):</span><span>+$${expressFee.toFixed(2)}</span></div>` : ''}${order.isMember ? `<div class="detail-row"><span>Member Discount (${discountPct}%):</span><span>-$${discount.toFixed(2)}</span></div>` : ''}</div><div class="total-row"><span>TOTAL:</span><span>$${finalTotal.toFixed(2)}</span></div><div class="section" style="margin-top: 20px; border: none;">${order.aroma ? `<strong>Aroma:</strong> ${order.aroma}<br>` : ''}${order.allergies?.length ? `<strong>Allergies:</strong> ${order.allergies.join(', ')}<br>` : ''}<br><strong>Payment:</strong> ${order.details.paymentMethod.toUpperCase()}${order.adminNote ? `<div class="admin-note"><strong>Admin Note:</strong> ${order.adminNote}</div>` : ''}${order.customerResponse ? `<div class="admin-note" style="background: #f0fdf4; border-color: #bbf7d0;"><strong>Customer Reply:</strong> ${order.customerResponse}</div>` : ''}</div><script>window.onload = function() { window.print(); }; window.onafterprint = function() { window.close(); };</script></body></html>
+            <html><head><title>Order #${order.orderNumber || order.id.slice(0,6)}</title><style>body { font-family: monospace; padding: 20px; max-width: 400px; margin: 0 auto; } h1 { border-bottom: 2px solid black; padding-bottom: 10px; text-align: center; } .section { margin-bottom: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; } .item-row { display: flex; justify-content: space-between; } .total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2em; border-top: 2px solid black; padding-top: 10px; margin-top: 10px; } .detail-row { display: flex; justify-content: space-between; color: #555; font-size: 0.9em; } .admin-note { background: #f0f9ff; padding: 10px; border: 1px solid #bae6fd; margin-top: 10px; font-style: italic; }</style></head><body><h1>Fast Wave Laundry</h1><div class="section"><strong>Order:</strong> #${order.orderNumber || order.id.slice(0,6)}<br><strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}<br><strong>Status:</strong> ${order.status.toUpperCase()}</div><div class="section"><strong>Customer:</strong><br>${order.customer.name}<br>${order.customer.phone}<br>${order.customer.address}</div><div class="section"><strong>Schedule:</strong><br>Pickup: ${order.details.pickupDate} ${order.details.pickupTime}<br>Delivery: ${order.details.deliveryDate} ${order.details.deliveryTime}</div><div class="section"><strong>Items:</strong><br>${Object.entries(order.items).map(([id, qty]) => { const s = services.find(x => x.id === id); const price = s ? s.price : 0; return `<div class="item-row"><span>${qty}x ${s ? s.name_en : id}</span><span>$${(price * qty).toFixed(2)}</span></div>`; }).join('')}</div><div class="section"><div class="detail-row"><span>Subtotal:</span><span>$${subtotal.toFixed(2)}</span></div>${order.express ? `<div class="detail-row"><span>Express Fee (${expressPct}%):</span><span>+$${expressFee.toFixed(2)}</span></div>` : ''}${order.isMember ? `<div class="detail-row"><span>Member Discount (${discountPct}%):</span><span>-$${discount.toFixed(2)}</span></div>` : ''}<div class="detail-row"><span>Tax (${taxPct}%):</span><span>+$${tax.toFixed(2)}</span></div></div><div class="total-row"><span>TOTAL:</span><span>$${finalTotal.toFixed(2)}</span></div><div class="section" style="margin-top: 20px; border: none;">${order.aroma ? `<strong>Aroma:</strong> ${order.aroma}<br>` : ''}${order.allergies?.length ? `<strong>Allergies:</strong> ${order.allergies.join(', ')}<br>` : ''}<br><strong>Payment:</strong> ${order.details.paymentMethod.toUpperCase()}${order.adminNote ? `<div class="admin-note"><strong>Admin Note:</strong> ${order.adminNote}</div>` : ''}${order.customerResponse ? `<div class="admin-note" style="background: #f0fdf4; border-color: #bbf7d0;"><strong>Customer Reply:</strong> ${order.customerResponse}</div>` : ''}</div><script>window.onload = function() { window.print(); }; window.onafterprint = function() { window.close(); };</script></body></html>
         `);
         printWindow.document.close();
     };
@@ -758,9 +798,32 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                     <div className="mb-4"><label className="block text-xs font-bold text-red-500 mb-1">{t.adminNoteLabel}</label><textarea className="w-full p-2 border-2 border-red-100 rounded text-sm focus:border-red-300 outline-none" rows="2" placeholder={t.adminNotePlaceholder} value={editForm.adminNote} onChange={e=>setEditForm({...editForm, adminNote: e.target.value})} /></div>
                     <div className="flex justify-end gap-2"><button onClick={()=>setEditingOrder(null)} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded">Cancel</button><button onClick={()=>saveOrderChanges(o)} className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">Save Changes</button></div></div>
                  ) : (
-                     /* ... Regular Card ... */
+                     /* ... Regular Card Expanded Logic for Totals ... */
                      <div className="flex flex-col gap-4"><div className="flex flex-col md:flex-row justify-between items-start md:items-center"><div><div className="flex items-center gap-2 mb-1"><span className="font-mono font-bold text-cyan-600 bg-cyan-50 px-2 py-1 rounded">#{o.orderNumber || o.id.slice(0,6)}</span><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : o.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status]}</span></div><h3 className="font-bold text-gray-800 flex items-center">{o.customer.name} {expandedOrder === o.id ? <ChevronUp className="w-4 h-4 ml-2 text-gray-400"/> : <ChevronDown className="w-4 h-4 ml-2 text-gray-400"/>}</h3><p className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()} • {o.items ? Object.values(o.items).reduce((a,b)=>a+b,0) : 0} items</p>{o.adminNote && <p className="text-xs text-red-500 mt-1 font-bold">Note: {o.adminNote}</p>}{o.customerResponse && <p className="text-xs text-green-600 mt-1 font-bold">Reply: {o.customerResponse}</p>}</div><div className="flex items-center gap-2 mt-2 md:mt-0" onClick={e => e.stopPropagation()}><select value={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)} className="bg-gray-50 border border-gray-200 text-xs rounded p-2 font-bold outline-none cursor-pointer hover:border-cyan-500 transition">{Object.keys(t.status).map(s => <option key={s} value={s}>{t.status[s]}</option>)}</select><button onClick={() => shareOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Share"><Share2 className="w-4 h-4"/></button><button onClick={() => startEditing(o)} className="p-2 text-blue-500 hover:bg-blue-50 rounded" title="Edit"><Edit2 className="w-4 h-4"/></button><button onClick={() => printOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Print"><Printer className="w-4 h-4"/></button><button onClick={() => deleteOrder(o.id)} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-4 h-4"/></button></div></div>
-                     {expandedOrder === o.id && (<div className="mt-4 pt-4 border-t border-gray-100 animate-fade-in"><div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"><div className="bg-gray-50 p-3 rounded"><h5 className="font-bold text-gray-700 mb-2">Customer Details</h5><p><span className="font-bold">Phone:</span> {o.customer.phone}</p><p><span className="font-bold">Address:</span> {o.customer.address}</p><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.customer.address)}`} target="_blank" rel="noreferrer" className="text-cyan-600 font-bold text-xs mt-1 inline-flex items-center hover:underline"><MapPin className="w-3 h-3 mr-1"/> View Map</a></div><div className="bg-gray-50 p-3 rounded"><h5 className="font-bold text-gray-700 mb-2">Schedule</h5><p><span className="font-bold">Pickup:</span> {o.details.pickupDate} ({o.details.pickupTime})</p><p><span className="font-bold">Delivery:</span> {o.details.deliveryDate} ({o.details.deliveryTime})</p></div></div><div className="mt-4"><h5 className="font-bold text-gray-700 mb-2 text-sm">Items & Costs</h5><div className="space-y-1">{Object.entries(o.items).map(([id, qty]) => { const s = services.find(x => x.id === id); return (<div key={id} className="flex justify-between text-sm border-b border-gray-100 pb-1"><span>{qty}x {s ? s.name_en : id}</span><span className="font-bold text-gray-600">${((s?.price || 0) * qty).toFixed(2)}</span></div>) })}</div><div className="flex justify-between items-center mt-3 pt-2 border-t border-dashed"><span className="font-bold text-cyan-800">TOTAL</span><span className="font-black text-xl text-cyan-600">${o.total?.toFixed(2)}</span></div><div className="mt-2 text-xs text-gray-500 flex gap-2">{o.aroma && <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded">Aroma: {o.aroma}</span>}{o.express && <span className="bg-cyan-100 text-cyan-700 px-2 py-1 rounded">Express</span>}{o.isMember && <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded">Member</span>}</div></div></div>)}</div>
+                     {expandedOrder === o.id && (<div className="mt-4 pt-4 border-t border-gray-100 animate-fade-in"><div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"><div className="bg-gray-50 p-3 rounded"><h5 className="font-bold text-gray-700 mb-2">Customer Details</h5><p><span className="font-bold">Phone:</span> {o.customer.phone}</p><p><span className="font-bold">Address:</span> {o.customer.address}</p><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.customer.address)}`} target="_blank" rel="noreferrer" className="text-cyan-600 font-bold text-xs mt-1 inline-flex items-center hover:underline"><MapPin className="w-3 h-3 mr-1"/> View Map</a></div><div className="bg-gray-50 p-3 rounded"><h5 className="font-bold text-gray-700 mb-2">Schedule</h5><p><span className="font-bold">Pickup:</span> {o.details.pickupDate} ({o.details.pickupTime})</p><p><span className="font-bold">Delivery:</span> {o.details.deliveryDate} ({o.details.deliveryTime})</p></div></div><div className="mt-4"><h5 className="font-bold text-gray-700 mb-2 text-sm">Items & Costs</h5><div className="space-y-1">{Object.entries(o.items).map(([id, qty]) => { const s = services.find(x => x.id === id); return (<div key={id} className="flex justify-between text-sm border-b border-gray-100 pb-1"><span>{qty}x {s ? s.name_en : id}</span><span className="font-bold text-gray-600">${((s?.price || 0) * qty).toFixed(2)}</span></div>) })}
+                     
+                     {/* TOTAL BREAKDOWN IN ADMIN PANEL */}
+                     {(() => {
+                         let subtotal = Object.entries(o.items).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0);
+                         const expressPct = config.expressPercent || 20;
+                         const discountPct = config.discountPercent || 10;
+                         const taxPct = config.taxPercent || 0;
+                         const expressFee = o.express ? subtotal * (expressPct / 100) : 0;
+                         const discount = o.isMember ? (subtotal + expressFee) * (discountPct / 100) : 0;
+                         const taxableAmount = (subtotal + expressFee) - discount;
+                         const tax = taxableAmount * (taxPct / 100);
+                         const finalTotal = taxableAmount + tax;
+                         return (
+                            <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
+                                <div className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+                                {o.express && <div className="flex justify-between text-cyan-600"><span>Express Fee</span><span>+${expressFee.toFixed(2)}</span></div>}
+                                {o.isMember && <div className="flex justify-between text-yellow-600"><span>Member Discount</span><span>-${discount.toFixed(2)}</span></div>}
+                                {tax > 0 && <div className="flex justify-between"><span>Tax ({taxPct}%)</span><span>+${tax.toFixed(2)}</span></div>}
+                                <div className="flex justify-between items-center pt-2 border-t border-gray-300 mt-2"><span className="font-bold text-gray-800 text-base">TOTAL</span><span className="font-black text-xl text-cyan-700">${finalTotal.toFixed(2)}</span></div>
+                            </div>
+                         );
+                     })()}
+                     </div><div className="mt-2 text-xs text-gray-500 flex gap-2">{o.aroma && <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded">Aroma: {o.aroma}</span>}</div></div></div>)}</div>
                  )}</div>))}
                  {orders.length === 0 && <p className="text-center text-gray-400 py-10">No orders yet.</p>}</div>
                  )}
@@ -794,9 +857,9 @@ export default function FastWaveApp() {
   const [myOrders, setMyOrders] = useState([]); 
   const [customerReply, setCustomerReply] = useState({}); 
   const [showMemberModal, setShowMemberModal] = useState(false);
-  const [showRejoinModal, setShowRejoinModal] = useState(false); // NUEVO: Modal para reingreso
+  const [showRejoinModal, setShowRejoinModal] = useState(false);
   const [members, setMembers] = useState([]); 
-  const [pastMembers, setPastMembers] = useState([]); // NUEVO: Lista ex-miembros
+  const [pastMembers, setPastMembers] = useState([]); 
   const [savingsAmount, setSavingsAmount] = useState(0);
 
   useTailwind();
@@ -811,7 +874,6 @@ export default function FastWaveApp() {
      }
   }, []);
 
-  // DETECTAR MEMBRESIA AUTOMATICA
   useEffect(() => {
       if (form.phone.trim().length > 7 && members.includes(form.phone.trim())) {
           setIsMember(true);
@@ -820,7 +882,6 @@ export default function FastWaveApp() {
       }
   }, [form.phone, members]);
 
-  // ... (useEffect for tracking remains same) ...
   useEffect(() => {
       if (view === 'track' && config.phone) {
           const savedOrders = JSON.parse(localStorage.getItem('myOrders') || '[]');
@@ -835,7 +896,6 @@ export default function FastWaveApp() {
   }, [view]);
 
   const t = LANGUAGES[lang];
-  // ... (updateCart remains same) ...
   const updateCart = (id, qty) => { setCart((prev) => { const newQty = (prev[id] || 0) + qty; if (newQty <= 0) { const { [id]: _, ...rest } = prev; return rest; } return { ...prev, [id]: newQty }; }); if (qty > 0) { setItemAddedMsg(id); setTimeout(() => setItemAddedMsg(null), 800); } };
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
   
@@ -843,9 +903,16 @@ export default function FastWaveApp() {
       const subtotal = Object.entries(cart).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0);
       const expressPct = config.expressPercent || 20;
       const discountPct = config.discountPercent || 10;
+      const taxPct = config.taxPercent || 0;
+      
       const expressFee = isExpress ? subtotal * (expressPct / 100) : 0;
       const discount = isMember ? (subtotal + expressFee) * (discountPct / 100) : 0;
-      return { subtotal, expressFee, discount, finalTotal: (subtotal + expressFee) - discount };
+      
+      const taxableAmount = (subtotal + expressFee) - discount;
+      const tax = taxableAmount * (taxPct / 100);
+      const finalTotal = taxableAmount + tax;
+      
+      return { subtotal, expressFee, discount, tax, finalTotal };
   };
 
   const cartTotals = calculateTotals();
@@ -864,70 +931,47 @@ export default function FastWaveApp() {
   const handleCheckoutClick = (e) => {
       e.preventDefault();
       if (!validateForm()) return;
-
-      // Logica Completa de Membresía
       const phone = form.phone.trim();
-      
       if (!isMember) {
-          if (pastMembers.includes(phone)) {
-              // Es Ex-Miembro -> Mostrar Modal de Penalidad
-              setShowRejoinModal(true);
-          } else {
-              // Es Nuevo -> Mostrar Modal de Bienvenida/Ahorro
+          if (pastMembers.includes(phone)) { setShowRejoinModal(true); } else {
               const totals = calculateTotals();
               const potentialDiscount = (totals.subtotal + totals.expressFee) * ((config.discountPercent || 10) / 100);
               setSavingsAmount(potentialDiscount);
               setShowMemberModal(true);
           }
-      } else {
-          submitOrder(); // Ya es miembro activo
-      }
+      } else { submitOrder(); }
   };
 
   const joinMembership = async () => {
-      if (db && form.phone.trim()) {
-          await setDoc(doc(db, 'settings', 'members'), { list: arrayUnion(form.phone.trim()) }, { merge: true });
-          setIsMember(true);
-      }
+      if (db && form.phone.trim()) { await setDoc(doc(db, 'settings', 'members'), { list: arrayUnion(form.phone.trim()) }, { merge: true }); setIsMember(true); }
       setShowMemberModal(false);
       setTimeout(() => submitOrder(true), 100); 
   };
 
   const rejoinMembership = async () => {
-      if (db && form.phone.trim()) {
-          // Mover de historial a activo
-          await updateDoc(doc(db, 'settings', 'members'), {
-              history: arrayRemove(form.phone.trim()),
-              list: arrayUnion(form.phone.trim())
-          });
-          setIsMember(true);
-      }
+      if (db && form.phone.trim()) { await updateDoc(doc(db, 'settings', 'members'), { history: arrayRemove(form.phone.trim()), list: arrayUnion(form.phone.trim()) }); setIsMember(true); }
       setShowRejoinModal(false);
-      setTimeout(() => submitOrder(true, true), 100); // forceMember=true, isRejoin=true
+      setTimeout(() => submitOrder(true, true), 100); 
   };
 
   const submitOrder = async (forceMember = false, isRejoin = false) => {
     setIsSubmitting(true);
     const orderNum = generateShortId();
-    
     const currentIsMember = forceMember || isMember;
     const totals = calculateTotals(); 
     let finalTotal = totals.finalTotal;
     
-    // Recalcular si forzamos miembro o es reingreso
     if (forceMember) {
         const subtotal = totals.subtotal;
         const expressFee = totals.expressFee;
         const discountPct = config.discountPercent || 10;
         const discount = (subtotal + expressFee) * (discountPct / 100);
-        finalTotal = (subtotal + expressFee) - discount;
+        const taxPct = config.taxPercent || 0;
+        const taxableAmount = (subtotal + expressFee) - discount;
+        const tax = taxableAmount * (taxPct / 100);
+        finalTotal = taxableAmount + tax;
     }
-
-    // Si es reingreso, sumar penalidad
-    if (isRejoin) {
-        const rejoinFee = parseFloat(config.rejoinFee) || 10;
-        finalTotal += rejoinFee;
-    }
+    if (isRejoin) { const rejoinFee = parseFloat(config.rejoinFee) || 10; finalTotal += rejoinFee; }
 
     const orderData = {
       customer: { name: form.name, phone: form.phone, address: form.address },
@@ -935,7 +979,7 @@ export default function FastWaveApp() {
       details: { pickupDate: form.pickupDate, pickupTime: form.pickupTime, deliveryDate: form.deliveryDate, deliveryTime: form.deliveryTime, paymentMethod: form.paymentMethod },
       express: isExpress,
       isMember: currentIsMember,
-      wasRejoin: isRejoin, // Marcador para saber si pagó reingreso
+      wasRejoin: isRejoin,
       allergies,
       aroma,
       total: finalTotal,
@@ -953,32 +997,16 @@ export default function FastWaveApp() {
           setLastOrder(finalOrder);
           const currentSaved = JSON.parse(localStorage.getItem('myOrders') || '[]');
           localStorage.setItem('myOrders', JSON.stringify([...currentSaved, docRef.id]));
-      } else {
-          setLastOrder({ id: "DEMO-123", ...orderData, orderNumber: orderNum });
-      }
+      } else { setLastOrder({ id: "DEMO-123", ...orderData, orderNumber: orderNum }); }
       setCart({});
       setForm({ name: '', phone: '', address: '', pickupDate: '', pickupTime: TIME_SLOTS[0], deliveryDate: '', deliveryTime: TIME_SLOTS[0], paymentMethod: 'cash' });
       setAllergies([]);
       setView('success');
-    } catch (e) {
-      console.error(e);
-      alert("Error sending order. Please try again.");
-    }
+    } catch (e) { console.error(e); alert("Error sending order. Please try again."); }
     setIsSubmitting(false);
   };
 
-  // ... (WhatsApp, SMS, etc. functions same as before) ...
-  const getOwnerWhatsApp = () => {
-      if (!lastOrder) return "#";
-      const cleanPhone = (config.phone || '').replace(/\D/g, ''); 
-      const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6);
-      const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => { const s = services.find(x => x.id === id); const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id; const lineTotal = s ? (s.price * qty).toFixed(2) : '0.00'; return `• ${qty} x ${name}..... $${lineTotal}`; }).join('%0a');
-      let extras = "";
-      if(lastOrder.express) extras += `%0a⚡ Express Service: Yes`;
-      if(lastOrder.isMember) extras += `%0a⭐ Member Discount: Yes`;
-      if(lastOrder.wasRejoin) extras += `%0a⚠️ Rejoin Fee Applied`; // Mostrar en WA si pagó penalidad
-      
-      const msg = `🧾 *RECEIPT #${displayId}*
+  const getOwnerWhatsApp = () => { if (!lastOrder) return "#"; const cleanPhone = (config.phone || '').replace(/\D/g, ''); const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6); const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => { const s = services.find(x => x.id === id); const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id; const lineTotal = s ? (s.price * qty).toFixed(2) : '0.00'; return `• ${qty} x ${name}..... $${lineTotal}`; }).join('%0a'); let extras = ""; if(lastOrder.express) extras += `%0a⚡ Express Service: Yes`; if(lastOrder.isMember) extras += `%0a⭐ Member Discount: Yes`; if(lastOrder.wasRejoin) extras += `%0a⚠️ Rejoin Fee Applied`; const msg = `🧾 *RECEIPT #${displayId}*
 --------------------------------
 👤 *Customer:* ${lastOrder.customer.name}
 📞 *Phone:* ${lastOrder.customer.phone}
@@ -997,10 +1025,7 @@ ${extras ? extras + '%0a--------------------------------' : ''}
 💰 *TOTAL: $${lastOrder.total?.toFixed(2)}*
 💳 *Payment:* ${lastOrder.details.paymentMethod.toUpperCase()}
 --------------------------------
-📝 *Notes:* ${lastOrder.aroma ? lastOrder.aroma : 'None'}
-`;
-      return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg.trim())}`; 
-  };
+📝 *Notes:* ${lastOrder.aroma ? lastOrder.aroma : 'None'}`; return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg.trim())}`; };
 
   const getOwnerSMS = () => { if (!lastOrder) return "#"; const cleanPhone = (config.phone || '').replace(/\D/g,''); const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6); const msg = `Fast Wave Order #${displayId} - Total: $${lastOrder.total?.toFixed(2)}. Pickup: ${lastOrder.details.pickupDate}. Check app for details.`; return `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`; };
   const sendCustomerReply = async (orderId, replyText) => { if (!replyText.trim()) return; if (db) { await updateDoc(doc(db, 'orders', orderId), { customerResponse: replyText }); alert(t.replySent); setCustomerReply({ ...customerReply, [orderId]: '' }); } };
@@ -1008,162 +1033,71 @@ ${extras ? extras + '%0a--------------------------------' : ''}
   const shareOrder = (order) => { const text = `Fast Wave Receipt #${order.orderNumber || order.id.slice(0,6)}\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}\nLink: ${window.location.origin}`; if (navigator.share) { navigator.share({ title: 'Fast Wave Receipt', text: text, url: window.location.href }).catch(console.error); } else { navigator.clipboard.writeText(text); alert("Receipt info copied to clipboard!"); } };
 
   if (view === 'success') {
-      // ... (Success View same as before) ...
       return (<div className="min-h-screen flex flex-col items-center justify-center text-center p-6 bg-cyan-50 font-sans"><div className="bg-white p-10 rounded-3xl shadow-2xl max-w-md w-full animate-fade-in"><CheckCircle className="w-24 h-24 text-green-500 mx-auto mb-6 animate-bounce" /><h1 className="text-3xl font-black text-gray-800 mb-2">{t.successMsg}</h1><p className="text-gray-500 mb-6">{t.successSub}</p><div className="bg-gray-100 p-4 rounded-xl mb-8 border-2 border-dashed border-gray-300"><p className="text-sm text-gray-500 uppercase font-bold">{t.orderNumberIs}</p><p className="text-xl font-mono font-black text-cyan-600 break-all">{lastOrder?.orderNumber || lastOrder?.id.slice(0,6)}</p></div><a href={getOwnerWhatsApp()} target="_blank" rel="noreferrer" className="w-full bg-green-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-green-600 transition flex items-center justify-center mb-4 transform hover:scale-105 animate-pulse border-4 border-green-200"><MessageCircle className="w-6 h-6 mr-3"/> {t.sendWhastapp}</a><a href={getOwnerSMS()} className="w-full bg-blue-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-blue-600 transition flex items-center justify-center mb-4 transform hover:scale-105 border-4 border-blue-200"><Smartphone className="w-6 h-6 mr-3"/> {t.sendSMS}</a><button onClick={() => setView('track')} className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-gray-900 transition flex items-center justify-center mt-4"><CustomReceiptIcon className="w-5 h-5 mr-2"/> {t.trackOrder}</button><button onClick={() => setView('home')} className="w-full bg-gray-100 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-200 transition flex items-center justify-center mt-2"><ArrowLeft className="w-5 h-5 mr-2"/> {t.back}</button></div></div>);
   }
 
-  // ... (Track View same as before) ...
   if (view === 'track') {
       return (
-          <div className="min-h-screen bg-slate-50 p-4 font-sans pb-24">
-             <button onClick={() => setView('home')} className="mb-6 flex items-center text-gray-600 font-bold"><ArrowLeft className="mr-2"/> {t.back}</button>
-             <h2 className="text-2xl font-black mb-6">{t.yourOrders}</h2>
-             {myOrders.length === 0 ? (<p className="text-center text-gray-400 mt-10">No orders found.</p>) : (<div className="space-y-6">{myOrders.map(o => (<div key={o.id} className={`p-6 rounded-2xl shadow-lg border-2 relative overflow-hidden transition-all ${o.status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>{o.status === 'completed' && <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">{t.orderCompleted}</div>}<div className="flex justify-between items-start mb-4 border-b border-dashed pb-4"><div><span className="font-mono text-xl font-black text-cyan-700">#{o.orderNumber || o.id.slice(0,6)}</span><p className="text-xs text-gray-400 mt-1">{new Date(o.createdAt).toLocaleString()}</p><span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${o.status === 'completed' ? 'bg-green-200 text-green-800' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status] || o.status}</span></div><div className="text-right"><button onClick={() => shareOrder(o)} className="text-gray-400 hover:text-cyan-600 mb-2 block ml-auto"><Share2 className="w-5 h-5"/></button></div></div><div className="space-y-2 text-sm text-gray-600 mb-4"><div className="flex items-start"><MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-cyan-500"/> <span>{o.customer.address}</span></div><div className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-cyan-500"/> <span>Pickup: {o.details.pickupDate} ({o.details.pickupTime})</span></div><div className="flex items-center"><Truck className="w-4 h-4 mr-2 text-cyan-500"/> <span>Delivery: {o.details.deliveryDate} ({o.details.deliveryTime})</span></div></div><div className="bg-gray-50 p-4 rounded-xl mb-4">{Object.entries(o.items).map(([k,v]) => { const s = services.find(x=>x.id===k); const totalLine = (s?.price || 0) * v; return (<div key={k} className="flex justify-between py-1 text-sm border-b border-gray-200 last:border-0"><span>{v} x {s ? ((lang === 'es' && s.name_es) ? s.name_es : (lang === 'fr' && s.name_fr) ? s.name_fr : (lang === 'hi' && s.name_hi) ? s.name_hi : s.name_en) : k}</span><span className="font-bold">${totalLine.toFixed(2)}</span></div>) })}<div className="flex justify-between items-center pt-3 mt-2 border-t border-gray-300"><span className="font-bold text-gray-800">TOTAL</span><span className="font-black text-xl text-cyan-700">${o.total?.toFixed(2)}</span></div></div>{o.adminNote && (<div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 text-sm text-blue-800 rounded-r"><p className="font-bold text-xs uppercase mb-1 flex items-center"><CustomInfoIcon className="w-3 h-3 mr-1"/> {t.updateFromLaundry}</p><p>{o.adminNote}</p></div>)}<div className="mt-4 pt-4 border-t border-gray-100">{o.customerResponse ? (<div className="text-sm text-green-700 bg-green-50 p-3 rounded border border-green-100"><span className="font-bold block text-xs uppercase">Your Reply:</span>{o.customerResponse}</div>) : (<div className="flex gap-2"><input className="flex-1 border rounded px-3 py-2 text-sm" placeholder="Reply to admin..." value={customerReply[o.id] || ''} onChange={(e) => setCustomerReply({...customerReply, [o.id]: e.target.value})}/><button onClick={() => sendCustomerReply(o.id, customerReply[o.id])} className="bg-cyan-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-cyan-700"><Send className="w-4 h-4"/></button></div>)}</div>{o.status === 'completed' && (<button onClick={() => deleteLocalOrder(o.id)} className="w-full mt-4 bg-gray-200 text-gray-600 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition"><Trash2 className="w-4 h-4 mr-2"/> {t.deleteReceipt}</button>)}</div>))}</div>)}</div>
+          <div className="min-h-screen bg-slate-50 p-4 font-sans pb-24"><button onClick={() => setView('home')} className="mb-6 flex items-center text-gray-600 font-bold"><ArrowLeft className="mr-2"/> {t.back}</button><h2 className="text-2xl font-black mb-6">{t.yourOrders}</h2>{myOrders.length === 0 ? (<p className="text-center text-gray-400 mt-10">No orders found.</p>) : (<div className="space-y-6">{myOrders.map(o => (<div key={o.id} className={`p-6 rounded-2xl shadow-lg border-2 relative overflow-hidden transition-all ${o.status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>{o.status === 'completed' && <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">{t.orderCompleted}</div>}<div className="flex justify-between items-start mb-4 border-b border-dashed pb-4"><div><span className="font-mono text-xl font-black text-cyan-700">#{o.orderNumber || o.id.slice(0,6)}</span><p className="text-xs text-gray-400 mt-1">{new Date(o.createdAt).toLocaleString()}</p><span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${o.status === 'completed' ? 'bg-green-200 text-green-800' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status] || o.status}</span></div><div className="text-right"><button onClick={() => shareOrder(o)} className="text-gray-400 hover:text-cyan-600 mb-2 block ml-auto"><Share2 className="w-5 h-5"/></button></div></div><div className="space-y-2 text-sm text-gray-600 mb-4"><div className="flex items-start"><MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-cyan-500"/> <span>{o.customer.address}</span></div><div className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-cyan-500"/> <span>Pickup: {o.details.pickupDate} ({o.details.pickupTime})</span></div><div className="flex items-center"><Truck className="w-4 h-4 mr-2 text-cyan-500"/> <span>Delivery: {o.details.deliveryDate} ({o.details.deliveryTime})</span></div></div><div className="bg-gray-50 p-4 rounded-xl mb-4">{Object.entries(o.items).map(([k,v]) => { const s = services.find(x=>x.id===k); const totalLine = (s?.price || 0) * v; return (<div key={k} className="flex justify-between py-1 text-sm border-b border-gray-200 last:border-0"><span>{v} x {s ? ((lang === 'es' && s.name_es) ? s.name_es : (lang === 'fr' && s.name_fr) ? s.name_fr : (lang === 'hi' && s.name_hi) ? s.name_hi : s.name_en) : k}</span><span className="font-bold">${totalLine.toFixed(2)}</span></div>) })}
+                 
+                 {/* FULL TOTAL BREAKDOWN FOR CLIENT */}
+                 {(() => {
+                     let subtotal = Object.entries(o.items).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0);
+                     const expressPct = config.expressPercent || 20;
+                     const discountPct = config.discountPercent || 10;
+                     const taxPct = config.taxPercent || 0;
+                     const expressFee = o.express ? subtotal * (expressPct / 100) : 0;
+                     const discount = o.isMember ? (subtotal + expressFee) * (discountPct / 100) : 0;
+                     const taxableAmount = (subtotal + expressFee) - discount;
+                     const tax = taxableAmount * (taxPct / 100);
+                     const finalTotal = taxableAmount + tax;
+                     return (
+                        <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
+                            <div className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+                            {o.express && <div className="flex justify-between text-cyan-600"><span>Express Fee</span><span>+${expressFee.toFixed(2)}</span></div>}
+                            {o.isMember && <div className="flex justify-between text-yellow-600"><span>Member Discount</span><span>-${discount.toFixed(2)}</span></div>}
+                            {tax > 0 && <div className="flex justify-between"><span>Tax ({taxPct}%)</span><span>+${tax.toFixed(2)}</span></div>}
+                            <div className="flex justify-between items-center pt-2 border-t border-gray-300 mt-2"><span className="font-bold text-gray-800 text-base">TOTAL</span><span className="font-black text-xl text-cyan-700">${finalTotal.toFixed(2)}</span></div>
+                        </div>
+                     );
+                 })()}
+                 </div>{o.adminNote && (<div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 text-sm text-blue-800 rounded-r"><p className="font-bold text-xs uppercase mb-1 flex items-center"><CustomInfoIcon className="w-3 h-3 mr-1"/> {t.updateFromLaundry}</p><p>{o.adminNote}</p></div>)}<div className="mt-4 pt-4 border-t border-gray-100">{o.customerResponse ? (<div className="text-sm text-green-700 bg-green-50 p-3 rounded border border-green-100"><span className="font-bold block text-xs uppercase">Your Reply:</span>{o.customerResponse}</div>) : (<div className="flex gap-2"><input className="flex-1 border rounded px-3 py-2 text-sm" placeholder="Reply to admin..." value={customerReply[o.id] || ''} onChange={(e) => setCustomerReply({...customerReply, [o.id]: e.target.value})}/><button onClick={() => sendCustomerReply(o.id, customerReply[o.id])} className="bg-cyan-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-cyan-700"><Send className="w-4 h-4"/></button></div>)}</div>{o.status === 'completed' && (<button onClick={() => deleteLocalOrder(o.id)} className="w-full mt-4 bg-gray-200 text-gray-600 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition"><Trash2 className="w-4 h-4 mr-2"/> {t.deleteReceipt}</button>)}</div>))}</div>)}</div>
       )
   }
 
   if (view === 'admin') return <AdminView t={t} config={config} setConfig={setConfig} services={services} setServices={setServices} setView={setView} lang={lang} />;
 
-  // ... (Vistas HOME y CART con validacion visual) ...
+  // ... (Vistas HOME y CART) ...
    
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-gray-800">
-      {/* ... Navbar igual ... */}
+      {/* ... Navbar ... */}
       <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-cyan-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center cursor-pointer transform hover:scale-105 transition" onClick={() => setView('home')}>
               <BrandLogo customIcon={config.customIcon} />
             </div>
-            
-            <div className="hidden md:flex items-center space-x-4">
-              <button onClick={() => setView('track')} className="flex items-center text-gray-600 hover:text-cyan-600 font-bold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition mr-2">
-                 <CustomPackageIcon className="w-4 h-4 mr-2" />
-                 {t.trackOrder || "My Orders"}
-              </button>
-              
-              <div className="flex items-center bg-cyan-50 px-4 py-2 rounded-full text-cyan-800 font-mono text-sm border border-cyan-100">
-                <Phone className="h-4 w-4 mr-2" /> {config.phone}
-              </div>
-              <div className="relative group">
-                <select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-gray-100 text-sm rounded-lg pl-3 pr-8 py-2 border-none outline-none cursor-pointer font-bold text-gray-700 appearance-none hover:bg-gray-200 transition">
-                    <option value="en">🇺🇸 EN</option>
-                    <option value="es">🇪🇸 ES</option>
-                    <option value="fr">🇫🇷 FR</option>
-                    <option value="hi">🇮🇳 HI</option>
-                </select>
-              </div>
-              <button onClick={() => setView('cart')} className="relative p-3 text-gray-500 hover:text-cyan-600 transition bg-gray-50 rounded-full hover:bg-cyan-50">
-                <ShoppingBag className="h-6 w-6" />
-                {cartCount > 0 && (<span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-red-500 rounded-full shadow-sm animate-bounce">{cartCount}</span>)}
-              </button>
-              <button onClick={() => setView('admin')} className="text-gray-400 hover:text-cyan-800 p-2"><Lock className="h-4 w-4" /></button>
-            </div>
-
-            <div className="md:hidden flex items-center gap-3">
-                 <button onClick={() => setView('cart')} className="relative p-2 text-gray-600">
-                    <ShoppingBag className="h-6 w-6" />
-                    {cartCount > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>}
-                 </button>
-                 <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-cyan-800">
-                    {mobileMenuOpen ? <X className="w-7 h-7"/> : <Menu className="w-7 h-7"/>}
-                 </button>
-            </div>
+            <div className="hidden md:flex items-center space-x-4"><button onClick={() => setView('track')} className="flex items-center text-gray-600 hover:text-cyan-600 font-bold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition mr-2"><CustomPackageIcon className="w-4 h-4 mr-2" /> {t.trackOrder || "My Orders"}</button><div className="flex items-center bg-cyan-50 px-4 py-2 rounded-full text-cyan-800 font-mono text-sm border border-cyan-100"><Phone className="h-4 w-4 mr-2" /> {config.phone}</div><div className="relative group"><select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-gray-100 text-sm rounded-lg pl-3 pr-8 py-2 border-none outline-none cursor-pointer font-bold text-gray-700 appearance-none hover:bg-gray-200 transition"><option value="en">🇺🇸 EN</option><option value="es">🇪🇸 ES</option><option value="fr">🇫🇷 FR</option><option value="hi">🇮🇳 HI</option></select></div><button onClick={() => setView('cart')} className="relative p-3 text-gray-500 hover:text-cyan-600 transition bg-gray-50 rounded-full hover:bg-cyan-50"><ShoppingBag className="h-6 w-6" />{cartCount > 0 && (<span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-red-500 rounded-full shadow-sm animate-bounce">{cartCount}</span>)}</button><button onClick={() => setView('admin')} className="text-gray-400 hover:text-cyan-800 p-2"><Lock className="h-4 w-4" /></button></div>
+            <div className="md:hidden flex items-center gap-3"><button onClick={() => setView('cart')} className="relative p-2 text-gray-600"><ShoppingBag className="h-6 w-6" />{cartCount > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>}</button><button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-cyan-800">{mobileMenuOpen ? <X className="w-7 h-7"/> : <Menu className="w-7 h-7"/>}</button></div>
           </div>
         </div>
-        {mobileMenuOpen && (
-            <div className="md:hidden bg-white border-t border-gray-100 p-4 shadow-xl absolute w-full z-40 animate-fade-in-down">
-                <div className="space-y-4">
-                    <button onClick={()=>{setView('home'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">Home</button>
-                    <button onClick={()=>{setView('track'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">My Orders</button>
-                    <button onClick={()=>{setView('cart'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">Cart ({cartCount})</button>
-                    <button onClick={()=>{setView('admin'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">Admin Login</button>
-                    <div className="flex justify-between items-center pt-4 border-t">
-                        <span className="font-mono text-cyan-700 flex items-center"><Phone className="w-4 h-4 mr-2"/> {config.phone}</span>
-                        <select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-gray-100 rounded px-2 py-1 text-sm"><option value="en">EN</option><option value="es">ES</option><option value="fr">FR</option><option value="hi">HI</option></select>
-                    </div>
-                </div>
-            </div>
-        )}
+        {mobileMenuOpen && (<div className="md:hidden bg-white border-t border-gray-100 p-4 shadow-xl absolute w-full z-40 animate-fade-in-down"><div className="space-y-4"><button onClick={()=>{setView('home'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">Home</button><button onClick={()=>{setView('track'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">My Orders</button><button onClick={()=>{setView('cart'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">Cart ({cartCount})</button><button onClick={()=>{setView('admin'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">Admin Login</button><div className="flex justify-between items-center pt-4 border-t"><span className="font-mono text-cyan-700 flex items-center"><Phone className="w-4 h-4 mr-2"/> {config.phone}</span><select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-gray-100 rounded px-2 py-1 text-sm"><option value="en">EN</option><option value="es">ES</option><option value="fr">FR</option><option value="hi">HI</option></select></div></div></div>)}
       </nav>
 
       {view === 'home' && (
         <div className="animate-fade-in">
-          {/* ... Hero and Services sections remain same ... */}
           <div className="relative h-[550px] flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center">
-                <div className="absolute inset-0 bg-cyan-900/50 mix-blend-multiply"></div>
-            </div>
-            <div className="relative z-20 text-center px-4 max-w-4xl mx-auto">
-              <h1 className="text-5xl md:text-7xl font-black text-white drop-shadow-lg mb-4 tracking-tight leading-tight">{t.title}</h1>
-              <p className="text-xl md:text-2xl text-cyan-50 font-light mb-10 italic max-w-3xl mx-auto leading-relaxed">"{t.heroSubtitle}"</p>
-              <div className="flex flex-col md:flex-row gap-4 justify-center">
-                <button onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })} className="group bg-white text-cyan-700 text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center">
-                    <span className="mr-2">{t.orderNow}</span>
-                </button>
-                <button onClick={() => setView('cart')} className="group bg-cyan-500 text-white text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 hover:bg-cyan-400 transition-all duration-300 flex items-center justify-center border-2 border-white/30">
-                    <ShoppingBag className="w-6 h-6 mr-2" /> {t.sendOrder}
-                </button>
-              </div>
-            </div>
+            <div className="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center"><div className="absolute inset-0 bg-cyan-900/50 mix-blend-multiply"></div></div>
+            <div className="relative z-20 text-center px-4 max-w-4xl mx-auto"><h1 className="text-5xl md:text-7xl font-black text-white drop-shadow-lg mb-4 tracking-tight leading-tight">{t.title}</h1><p className="text-xl md:text-2xl text-cyan-50 font-light mb-10 italic max-w-3xl mx-auto leading-relaxed">"{t.heroSubtitle}"</p><div className="flex flex-col md:flex-row gap-4 justify-center"><button onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })} className="group bg-white text-cyan-700 text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center"><span className="mr-2">{t.orderNow}</span></button><button onClick={() => setView('cart')} className="group bg-cyan-500 text-white text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 hover:bg-cyan-400 transition-all duration-300 flex items-center justify-center border-2 border-white/30"><ShoppingBag className="w-6 h-6 mr-2" /> {t.sendOrder}</button></div></div>
             <div className="absolute top-10 right-10 bg-yellow-400 text-cyan-900 w-24 h-24 rounded-full flex items-center justify-center text-center font-bold text-xs shadow-xl border-4 border-white rotate-12 z-30 animate-pulse">{config.discountPercent}% OFF<br/>Member</div>
           </div>
 
           <div id="services" className="max-w-7xl mx-auto px-4 py-16">
             <div className="text-center mb-12"><h2 className="text-3xl font-black text-gray-900">{t.services}</h2><div className="w-24 h-1.5 bg-cyan-500 mx-auto mt-4 rounded-full"></div></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-16">
-              {services.map((s) => (
-                <div key={s.id} className="bg-white rounded-2xl shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 flex flex-col overflow-hidden group relative">
-                  {/* Feedback visual */}
-                  {itemAddedMsg === s.id && (
-                      <div className="absolute inset-0 bg-cyan-600/80 z-20 flex items-center justify-center animate-fade-in">
-                          <CheckCircle className="text-white w-12 h-12"/>
-                      </div>
-                  )}
-                  <div className="h-40 overflow-hidden relative bg-white flex items-center justify-center">
-                      {(s.image && s.image !== '') ? (
-                          <img src={s.image} alt={s.name_en} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" onError={(e) => {e.target.src='https://placehold.co/400?text=' + s.name_en}} />
-                      ) : s.type === 'component' && s.componentName === 'CustomIronIcon' ? (
-                        <div className="w-20 h-20"><CustomIronIcon /></div>
-                      ) : (
-                          <img src={s.image} alt={s.name_en} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" onError={(e) => {e.target.src='https://placehold.co/400?text=' + s.name_en}} />
-                      )}
-                  </div>
-                  <div className="p-6 flex flex-col justify-between flex-grow bg-white">
-                    <div><h3 className="font-bold text-lg mb-1 leading-tight">{ (lang === 'es' && s.name_es) ? s.name_es : (lang === 'fr' && s.name_fr) ? s.name_fr : (lang === 'hi' && s.name_hi) ? s.name_hi : s.name_en }</h3><p className="text-2xl font-bold text-cyan-600">${s.price?.toFixed(2)}</p></div>
-                    <div className="flex items-center justify-between bg-gray-50 p-2 rounded-xl mt-4"><button onClick={() => updateCart(s.id, -1)} className="w-10 h-10 rounded-full bg-white shadow text-gray-400 hover:text-red-500 font-bold text-xl transition">-</button><span className="font-bold text-xl">{cart[s.id] || 0}</span><button onClick={() => updateCart(s.id, 1)} className="w-10 h-10 rounded-full bg-cyan-600 shadow text-white hover:bg-cyan-700 font-bold text-xl transition">+</button></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-8 mb-12">
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100"><h3 className="font-bold text-xl text-gray-800 mb-6 flex items-center"><Droplet className="w-6 h-6 text-purple-500 mr-2" /> {t.preferredAroma}</h3><div className="flex flex-wrap gap-3">{AROMAS.map((a) => (<button key={a.id} onClick={() => setAroma(a.id)} className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${aroma === a.id ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{lang === 'es' ? a.es : lang === 'fr' ? a.fr : lang === 'hi' ? a.hi : a.en}</button>))}</div></div>
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100"><h3 className="font-bold text-xl text-gray-800 mb-6 flex items-center"><AlertCircle className="w-6 h-6 text-red-500 mr-2" /> {t.productsToAvoid}</h3><div className="grid grid-cols-2 gap-3">{AVOID_PRODUCTS.map((p) => (<label key={p.id} className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${allergies.includes(p.id) ? 'border-red-400 bg-red-50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}><input type="checkbox" checked={allergies.includes(p.id)} onChange={() => setAllergies((x) => x.includes(p.id) ? x.filter((y) => y !== p.id) : [...x, p.id])} className="w-5 h-5 accent-red-500 mr-3" /><span className="text-sm font-medium text-gray-700">{lang === 'es' ? p.label_es : lang === 'fr' ? p.label_fr : lang === 'hi' ? p.label_hi : p.label_en}</span></label>))}</div></div>
-            </div>
-            
-            {/* ZONA DE PRECIOS CLAROS */}
-            <div className="flex flex-col md:flex-row justify-center gap-6 mb-32">
-                <label className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${isExpress ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-200' : 'border-gray-200 bg-white'}`}>
-                    <input type="checkbox" checked={isExpress} onChange={() => setIsExpress(!isExpress)} className="w-6 h-6 accent-cyan-600 mr-4" />
-                    <div>
-                        <span className="font-bold text-lg block text-gray-800">{t.express} ({config.expressText || '24h'})</span>
-                        <span className="text-sm text-cyan-700 font-bold">
-                            {cartCount > 0 ? `+ $${cartTotals.expressFee.toFixed(2)}` : `+${config.expressPercent || 20}%`} {t.fee}
-                        </span>
-                    </div>
-                </label>
-                <label className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${isMember ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200' : 'border-gray-200 bg-white'}`}>
-                    <input type="checkbox" checked={isMember} onChange={() => setIsMember(!isMember)} className="w-6 h-6 accent-yellow-500 mr-4" />
-                    <div>
-                        <span className="font-bold text-lg block text-gray-800">{t.member}</span>
-                        <span className="text-sm text-yellow-600 font-bold">
-                             {cartCount > 0 ? `- $${cartTotals.discount.toFixed(2)}` : `${config.discountPercent}% ${t.off}`}
-                        </span>
-                    </div>
-                    <Star className="w-8 h-8 text-yellow-400 ml-4 fill-current" />
-                </label>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-16">{services.map((s) => (<div key={s.id} className="bg-white rounded-2xl shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 flex flex-col overflow-hidden group relative">{itemAddedMsg === s.id && (<div className="absolute inset-0 bg-cyan-600/80 z-20 flex items-center justify-center animate-fade-in"><CheckCircle className="text-white w-12 h-12"/></div>)}<div className="h-40 overflow-hidden relative bg-white flex items-center justify-center">{(s.image && s.image !== '') ? (<img src={s.image} alt={s.name_en} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" onError={(e) => {e.target.src='https://placehold.co/400?text=' + s.name_en}} />) : s.type === 'component' && s.componentName === 'CustomIronIcon' ? (<div className="w-20 h-20"><CustomIronIcon /></div>) : (<img src={s.image} alt={s.name_en} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" onError={(e) => {e.target.src='https://placehold.co/400?text=' + s.name_en}} />)}</div><div className="p-6 flex flex-col justify-between flex-grow bg-white"><div><h3 className="font-bold text-lg mb-1 leading-tight">{ (lang === 'es' && s.name_es) ? s.name_es : (lang === 'fr' && s.name_fr) ? s.name_fr : (lang === 'hi' && s.name_hi) ? s.name_hi : s.name_en }</h3><p className="text-2xl font-bold text-cyan-600">${s.price?.toFixed(2)}</p></div><div className="flex items-center justify-between bg-gray-50 p-2 rounded-xl mt-4"><button onClick={() => updateCart(s.id, -1)} className="w-10 h-10 rounded-full bg-white shadow text-gray-400 hover:text-red-500 font-bold text-xl transition">-</button><span className="font-bold text-xl">{cart[s.id] || 0}</span><button onClick={() => updateCart(s.id, 1)} className="w-10 h-10 rounded-full bg-cyan-600 shadow text-white hover:bg-cyan-700 font-bold text-xl transition">+</button></div></div></div>))}</div>
+            <div className="grid md:grid-cols-2 gap-8 mb-12"><div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100"><h3 className="font-bold text-xl text-gray-800 mb-6 flex items-center"><Droplet className="w-6 h-6 text-purple-500 mr-2" /> {t.preferredAroma}</h3><div className="flex flex-wrap gap-3">{AROMAS.map((a) => (<button key={a.id} onClick={() => setAroma(a.id)} className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${aroma === a.id ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{lang === 'es' ? a.es : lang === 'fr' ? a.fr : lang === 'hi' ? a.hi : a.en}</button>))}</div></div><div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100"><h3 className="font-bold text-xl text-gray-800 mb-6 flex items-center"><AlertCircle className="w-6 h-6 text-red-500 mr-2" /> {t.productsToAvoid}</h3><div className="grid grid-cols-2 gap-3">{AVOID_PRODUCTS.map((p) => (<label key={p.id} className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${allergies.includes(p.id) ? 'border-red-400 bg-red-50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}><input type="checkbox" checked={allergies.includes(p.id)} onChange={() => setAllergies((x) => x.includes(p.id) ? x.filter((y) => y !== p.id) : [...x, p.id])} className="w-5 h-5 accent-red-500 mr-3" /><span className="text-sm font-medium text-gray-700">{lang === 'es' ? p.label_es : lang === 'fr' ? p.label_fr : lang === 'hi' ? p.label_hi : p.label_en}</span></label>))}</div></div></div>
+            <div className="flex flex-col md:flex-row justify-center gap-6 mb-32"><label className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${isExpress ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-200' : 'border-gray-200 bg-white'}`}><input type="checkbox" checked={isExpress} onChange={() => setIsExpress(!isExpress)} className="w-6 h-6 accent-cyan-600 mr-4" /><div><span className="font-bold text-lg block text-gray-800">{t.express} ({config.expressText || '24h'})</span><span className="text-sm text-cyan-700 font-bold">{cartCount > 0 ? `+ $${cartTotals.expressFee.toFixed(2)}` : `+${config.expressPercent || 20}%`} {t.fee}</span></div></label><label className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${isMember ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200' : 'border-gray-200 bg-white'}`}><input type="checkbox" checked={isMember} onChange={() => setIsMember(!isMember)} className="w-6 h-6 accent-yellow-500 mr-4" /><div><span className="font-bold text-lg block text-gray-800">{t.member}</span><span className="text-sm text-yellow-600 font-bold">{cartCount > 0 ? `- $${cartTotals.discount.toFixed(2)}` : `${config.discountPercent}% ${t.off}`}</span></div><Star className="w-8 h-8 text-yellow-400 ml-4 fill-current" /></label></div>
           </div>
           {cartCount > 0 && (<div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 animate-bounce-slow"><button onClick={() => setView('cart')} className="bg-gray-900 text-white w-full max-w-md py-4 px-8 rounded-full shadow-2xl flex justify-between items-center hover:scale-105 transition transform border-4 border-white/20 backdrop-blur-lg"><div className="flex items-center"><span className="bg-cyan-500 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg">{cartCount}</span><span className="font-bold text-lg">{t.sendOrder}</span></div><span className="font-mono text-2xl font-black tracking-tight">${cartTotals.finalTotal.toFixed(2)}</span></button></div>)}
         </div>
@@ -1179,20 +1113,15 @@ ${extras ? extras + '%0a--------------------------------' : ''}
               <div className="space-y-3">
                 {Object.entries(cart).map(([id, q]) => { const s = services.find((x) => x.id === id); return (<div key={id} className="flex justify-between text-gray-700 border-b border-gray-50 pb-2"><span><span className="font-bold text-gray-900">{q}x</span> {lang === 'es' ? s.name_es : lang === 'fr' ? s.name_fr : lang === 'hi' ? s.name_hi : s.name_en}</span><span className="font-bold">${(s.price * q).toFixed(2)}</span></div>); })}
                 
-                {isExpress && (
-                    <div className="flex justify-between text-cyan-600 font-bold pt-2 border-t border-dashed border-gray-200">
-                        <span>{t.express} ({config.expressText})</span>
-                        <span>+${cartTotals.expressFee.toFixed(2)}</span>
-                    </div>
-                )}
-                {isMember && (
-                    <div className="flex justify-between text-yellow-600 font-bold pt-2">
-                        <span>{t.member}</span>
-                        <span>-${cartTotals.discount.toFixed(2)}</span>
-                    </div>
-                )}
-                
-                <div className="flex justify-between items-center pt-6 mt-4 border-t-2 border-dashed border-gray-200"><span className="text-gray-500 font-bold">Total to Pay</span><span className="text-4xl font-black text-cyan-600">${cartTotals.finalTotal.toFixed(2)}</span></div>
+                {/* CART BREAKDOWN */}
+                <div className="border-t border-dashed pt-2 mt-2 text-sm space-y-1 text-gray-500">
+                    <div className="flex justify-between"><span>Subtotal</span><span>${cartTotals.subtotal.toFixed(2)}</span></div>
+                    {isExpress && <div className="flex justify-between text-cyan-600"><span>Express ({config.expressText})</span><span>+${cartTotals.expressFee.toFixed(2)}</span></div>}
+                    {isMember && <div className="flex justify-between text-yellow-600"><span>Member ({config.discountPercent}%)</span><span>-${cartTotals.discount.toFixed(2)}</span></div>}
+                    {cartTotals.tax > 0 && <div className="flex justify-between text-gray-600"><span>Tax ({config.taxPercent || 0}%)</span><span>+${cartTotals.tax.toFixed(2)}</span></div>}
+                </div>
+
+                <div className="flex justify-between items-center pt-4 mt-2 border-t-2 border-gray-200"><span className="text-gray-800 font-bold">Total to Pay</span><span className="text-4xl font-black text-cyan-600">${cartTotals.finalTotal.toFixed(2)}</span></div>
               </div>
             )}
           </div>
@@ -1205,7 +1134,7 @@ ${extras ? extras + '%0a--------------------------------' : ''}
               <div className="grid gap-4">
                 <input required placeholder={t.nameLabel} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={`w-full p-4 bg-gray-50 rounded-xl border focus:bg-white focus:border-cyan-500 outline-none transition ${formErrors.name ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} />
                 <div>
-                   <label className="text-xs font-bold text-green-600 ml-1 mb-1 block">{t.whatsappLabel}</label>
+                   {/* REMOVED WHATSAPP LABEL HERE AS REQUESTED */}
                    <input required placeholder="Number (e.g. 5551234567)" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={`w-full p-4 bg-gray-50 rounded-xl border-2 border-green-100 focus:bg-white focus:border-green-500 outline-none transition ${formErrors.phone ? '!border-red-500 bg-red-50' : ''}`} />
                    {isMember && <p className="text-xs text-yellow-600 font-bold mt-1">🌟 Member Found! Discount Applied.</p>}
                 </div>
@@ -1225,8 +1154,12 @@ ${extras ? extras + '%0a--------------------------------' : ''}
 
               <div className="pt-4">
                 <h3 className="font-bold text-xl text-gray-800 mb-4 flex items-center"><CreditCard className="mr-2" /> {t.payment}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <label className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition ${form.paymentMethod === 'cash' ? 'border-cyan-500 bg-cyan-50' : 'border-gray-200'}`}><input type="radio" name="payment" value="cash" checked={form.paymentMethod === 'cash'} onChange={() => setForm({ ...form, paymentMethod: 'cash' })} className="w-5 h-5 accent-cyan-600 mr-3" /><div className="flex flex-col"><span className="font-bold text-gray-800">{t.payCashLabel}</span><span className="text-xs text-gray-500">{t.payCashSub}</span></div></label>
+                <div className="grid grid-cols-1 gap-3 mb-4">
+                  <label className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition ${form.paymentMethod === 'cash' ? 'border-cyan-500 bg-cyan-50' : 'border-gray-200'}`}><input type="radio" name="payment" value="cash" checked={form.paymentMethod === 'cash'} onChange={() => setForm({ ...form, paymentMethod: 'cash' })} className="w-5 h-5 accent-cyan-600 mr-3" /><div className="flex flex-col"><span className="font-bold text-gray-800">{t.payCashLabel}</span></div></label>
+                  
+                  {/* ADDED CARD PAYMENT OPTION */}
+                  <label className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition ${form.paymentMethod === 'card' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}><input type="radio" name="payment" value="card" checked={form.paymentMethod === 'card'} onChange={() => setForm({ ...form, paymentMethod: 'card' })} className="w-5 h-5 accent-blue-600 mr-3" /><div className="flex flex-col"><span className="font-bold text-blue-900">{t.payCardLabel}</span></div></label>
+                  
                   <label className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition ${form.paymentMethod === 'online' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'}`}><input type="radio" name="payment" value="online" checked={form.paymentMethod === 'online'} onChange={() => setForm({ ...form, paymentMethod: 'online' })} className="w-5 h-5 accent-purple-600 mr-3" /><div className="flex flex-col"><span className="font-bold text-purple-900">{t.payOnlineLabel}</span><span className="text-xs text-purple-600">{t.payOnlineSub}</span></div></label>
                 </div>
                 {form.paymentMethod === 'online' && (<div className="bg-purple-50 p-4 rounded-xl border border-purple-200 space-y-2 text-sm text-purple-900"><p><strong>Zelle:</strong> {config.zelleNumber || config.phone}</p><p>{config.zelleMessage || t.zelleNote}</p></div>)}
