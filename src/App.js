@@ -3,7 +3,7 @@ import {
   ShoppingBag, Lock, Phone, Star, Droplet,
   Calendar, Truck, MessageCircle, Settings, 
   Edit2, ArrowLeft, Trash2, Plus, User, CheckCircle, CreditCard, AlertCircle,
-  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, ExternalLink, ChevronDown, ChevronUp
+  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, ExternalLink, ChevronDown, ChevronUp, Share2, MessageSquare
 } from 'lucide-react';
 
 // --- IMPORTACIONES DE FIREBASE ---
@@ -47,19 +47,22 @@ const useTailwind = () => {
   }, []);
 };
 
-// --- CONFIGURACIÓN "MODO APP" (PWA) ---
+// --- CONFIGURACIÓN "MODO APP" (PWA) MEJORADA ---
 const useAppMode = () => {
   useEffect(() => {
+    // URL de un icono más bonito (Fondo Cyan, Icono blanco limpio)
+    const iconUrl = "https://cdn-icons-png.flaticon.com/512/2954/2954887.png"; // Ejemplo de lavadora estilizada o similar
+
     const manifest = {
       name: "Fast Wave Laundry",
       short_name: "Fast Wave",
       start_url: ".",
       display: "standalone",
       background_color: "#ffffff",
-      theme_color: "#06b6d4",
+      theme_color: "#06b6d4", // Cyan de la marca
       icons: [
-        { src: "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=192&q=80", sizes: "192x192", type: "image/jpeg" },
-        { src: "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=512&q=80", sizes: "512x512", type: "image/jpeg" }
+        { src: iconUrl, sizes: "192x192", type: "image/png" },
+        { src: iconUrl, sizes: "512x512", type: "image/png" }
       ]
     };
     const stringManifest = JSON.stringify(manifest);
@@ -71,7 +74,10 @@ const useAppMode = () => {
 
     const metaTags = [{ name: 'apple-mobile-web-app-capable', content: 'yes' }, { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }, { name: 'theme-color', content: '#06b6d4' }];
     metaTags.forEach(tagInfo => { let meta = document.querySelector(`meta[name="${tagInfo.name}"]`); if (!meta) { meta = document.createElement('meta'); meta.name = tagInfo.name; document.head.appendChild(meta); } meta.content = tagInfo.content; });
-    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]'); if (!appleIcon) { appleIcon = document.createElement('link'); appleIcon.rel = 'apple-touch-icon'; document.head.appendChild(appleIcon); } appleIcon.href = "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=180&q=80";
+    
+    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]'); 
+    if (!appleIcon) { appleIcon = document.createElement('link'); appleIcon.rel = 'apple-touch-icon'; document.head.appendChild(appleIcon); } 
+    appleIcon.href = iconUrl;
   }, []);
 };
 
@@ -263,7 +269,14 @@ const LANGUAGES = {
     adminNotePlaceholder: "Explain why you changed the schedule or options (visible to client)...",
     updateFromLaundry: "Update from Laundry:",
     uploadImage: "Upload Image",
-    uploadTip: "Click to upload"
+    uploadTip: "Click to upload",
+    fillRequired: "Please fill in all required fields (highlighted in red).",
+    share: "Share Receipt",
+    deleteReceipt: "Delete Receipt",
+    replyToAdmin: "Reply to Admin",
+    sendReply: "Send",
+    replySent: "Reply Sent!",
+    orderCompleted: "Order Completed"
   },
   es: {
     // ... existing translations ...
@@ -360,7 +373,14 @@ const LANGUAGES = {
     adminNotePlaceholder: "Explica por qué cambiaste el horario u opciones (visible para el cliente)...",
     updateFromLaundry: "Actualización de Lavandería:",
     uploadImage: "Subir Imagen",
-    uploadTip: "Clic para subir"
+    uploadTip: "Clic para subir",
+    fillRequired: "Por favor llena los campos requeridos (marcados en rojo).",
+    share: "Compartir Recibo",
+    deleteReceipt: "Borrar Recibo",
+    replyToAdmin: "Responder al Admin",
+    sendReply: "Enviar",
+    replySent: "¡Enviado!",
+    orderCompleted: "Orden Completada"
   },
   fr: {
     // ... existing translations ...
@@ -459,7 +479,14 @@ const LANGUAGES = {
     adminNotePlaceholder: "Expliquez le changement...",
     updateFromLaundry: "Mise à jour :",
     uploadImage: "Télécharger image",
-    uploadTip: "Cliquer pour télécharger"
+    uploadTip: "Cliquer pour télécharger",
+    fillRequired: "Remplissez les champs requis (en rouge).",
+    share: "Partager",
+    deleteReceipt: "Supprimer",
+    replyToAdmin: "Répondre",
+    sendReply: "Envoyer",
+    replySent: "Envoyé!",
+    orderCompleted: "Commande Terminée"
   },
   hi: {
     // ... existing translations ...
@@ -558,11 +585,18 @@ const LANGUAGES = {
     adminNotePlaceholder: "समझाएं कि आपने अनुसूची या विकल्प क्यों बदले...",
     updateFromLaundry: "लॉन्ड्री से अपडेट:",
     uploadImage: "छवि अपलोड करें",
-    uploadTip: "अपलोड करने के लिए क्लिक करें"
+    uploadTip: "अपलोड करने के लिए क्लिक करें",
+    fillRequired: "आवश्यक फ़ील्ड भरें।",
+    share: "साझा करें",
+    deleteReceipt: "हटाएं",
+    replyToAdmin: "जवाब दें",
+    sendReply: "भेजें",
+    replySent: "भेजा गया",
+    orderCompleted: "आदेश पूरा हुआ"
   },
 };
 
-// --- COMPONENTES DE ADMIN ---
+// ... (ServiceEditor, SettingsPanel, AdminView se mantienen IGUAL, con la adición de customerResponse en AdminView para ver la respuesta del cliente si quieres)
 
 const ServiceEditor = ({ services, setServices, t }) => {
   const [localServices, setLocalServices] = useState(services);
@@ -607,7 +641,6 @@ const ServiceEditor = ({ services, setServices, t }) => {
         {localServices.map((s) => (
           <div key={s.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center bg-gray-50 p-3 rounded border border-gray-200">
             <div className="md:col-span-1 flex flex-col items-center justify-center relative group">
-                {/* MODIFICACION: Permitir subir imagen incluso si es componente */}
                {s.image ? (
                   <>
                     <img src={s.image} alt="service" className="w-12 h-12 object-cover rounded-lg shadow-sm" onError={(e) => e.target.src='https://via.placeholder.com/40'} />
@@ -773,6 +806,7 @@ const SettingsPanel = ({ config, setConfig, t }) => {
 // --- VISTAS PRINCIPALES ---
 
 const AdminView = ({ t, config, setConfig, services, setServices, setView, lang }) => {
+    // ... (same as before) ...
     const [authInput, setAuthInput] = useState({ user: '', pass: '' });
     const [recoveryInput, setRecoveryInput] = useState('');
     const [isAuth, setIsAuth] = useState(false);
@@ -781,9 +815,8 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
     const [orders, setOrders] = useState([]);
     const [tab, setTab] = useState('orders');
     const [loginStatus, setLoginStatus] = useState('idle');
-    const [expandedOrder, setExpandedOrder] = useState(null); // Nuevo estado para expandir tarjeta
+    const [expandedOrder, setExpandedOrder] = useState(null); 
     
-    // Estado para edición
     const [editingOrder, setEditingOrder] = useState(null);
     const [editForm, setEditForm] = useState({});
 
@@ -848,7 +881,6 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
             express: order.express || false,
             isMember: order.isMember || false,
             notes: order.notes || '',
-            // Campos de horario y admin note
             pickupDate: order.details?.pickupDate || '',
             pickupTime: order.details?.pickupTime || TIME_SLOTS[0],
             deliveryDate: order.details?.deliveryDate || '',
@@ -858,7 +890,6 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
     };
 
     const saveOrderChanges = async (order) => {
-        // Recalcular total
         let subtotal = Object.entries(order.items).reduce((acc, [id, qty]) => {
             const s = services.find(x => x.id === id);
             return acc + ((s?.price || 0) * qty);
@@ -879,12 +910,10 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
             isMember: editForm.isMember,
             notes: editForm.notes,
             total: total,
-            // Guardar cambios de horario
             'details.pickupDate': editForm.pickupDate,
             'details.pickupTime': editForm.pickupTime,
             'details.deliveryDate': editForm.deliveryDate,
             'details.deliveryTime': editForm.deliveryTime,
-            // Guardar nota del admin
             adminNote: editForm.adminNote
         };
 
@@ -899,16 +928,13 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
              return `<li>${qty}x ${s ? s.name_en : id}</li>`;
         }).join('');
         
-        // Calculo detallado para el recibo
         let subtotal = Object.entries(order.items).reduce((acc, [id, qty]) => {
             const s = services.find(x => x.id === id);
             return acc + ((s?.price || 0) * qty);
         }, 0);
         
-        // Recuperar porcentajes del momento (o usar actuales si no se guardaron)
         const expressPct = config.expressPercent || 20;
         const discountPct = config.discountPercent || 10;
-        
         const expressFee = order.express ? subtotal * (expressPct / 100) : 0;
         const preDiscountTotal = subtotal + expressFee;
         const discount = order.isMember ? preDiscountTotal * (discountPct / 100) : 0;
@@ -970,7 +996,8 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                       ${order.allergies?.length ? `<strong>Allergies:</strong> ${order.allergies.join(', ')}<br>` : ''}
                       <br>
                       <strong>Payment:</strong> ${order.details.paymentMethod.toUpperCase()}
-                      ${order.adminNote ? `<div class="admin-note"><strong>Note:</strong> ${order.adminNote}</div>` : ''}
+                      ${order.adminNote ? `<div class="admin-note"><strong>Admin Note:</strong> ${order.adminNote}</div>` : ''}
+                      ${order.customerResponse ? `<div class="admin-note" style="background: #f0fdf4; border-color: #bbf7d0;"><strong>Customer Reply:</strong> ${order.customerResponse}</div>` : ''}
                 </div>
                 <script>window.print();</script>
             </body>
@@ -980,7 +1007,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
     };
 
     if (!isAuth) {
-        // ... (login code remains same) ...
+        // ... (same auth logic) ...
         return (
             <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
                <button onClick={() => setView('home')} className="absolute top-4 left-4 text-gray-500 font-bold flex items-center"><ArrowLeft className="mr-2"/> {t.back}</button>
@@ -1033,7 +1060,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
             </div>
             
             <div className="max-w-7xl mx-auto p-6">
-                 {/* STATS CARDS */}
+                 {/* ... stats ... */}
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
                          <div className="p-3 bg-blue-100 rounded-full mr-4"><ShoppingBag className="w-6 h-6 text-blue-600"/></div>
@@ -1068,7 +1095,6 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                                                 <input className="w-full p-2 border rounded mt-1 text-sm" value={editForm.name} onChange={e=>setEditForm({...editForm, name: e.target.value})} placeholder="Name" />
                                                 <input className="w-full p-2 border rounded mt-1 text-sm" value={editForm.phone} onChange={e=>setEditForm({...editForm, phone: e.target.value})} placeholder="Phone" />
                                                 
-                                                {/* MODIFICACION: BOTON DE NAVEGACION MAPS */}
                                                 <div className="flex gap-2 items-center mt-1">
                                                     <textarea className="w-full p-2 border rounded text-sm" rows="2" value={editForm.address} onChange={e=>setEditForm({...editForm, address: e.target.value})} placeholder="Address" />
                                                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(editForm.address)}`} target="_blank" rel="noopener noreferrer" className="bg-green-100 text-green-700 p-3 rounded-lg hover:bg-green-200 transition" title="Open in Maps">
@@ -1084,7 +1110,6 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                                             </div>
                                          </div>
                                          
-                                         {/* EDICION DE HORARIOS */}
                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-white p-3 rounded border border-blue-100">
                                              <div>
                                                  <label className="block text-xs font-bold text-blue-600 mb-1">{t.pickupSchedule}</label>
@@ -1123,6 +1148,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                                                 <h3 className="font-bold text-gray-800 flex items-center">{o.customer.name} {expandedOrder === o.id ? <ChevronUp className="w-4 h-4 ml-2 text-gray-400"/> : <ChevronDown className="w-4 h-4 ml-2 text-gray-400"/>}</h3>
                                                 <p className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()} • {o.items ? Object.values(o.items).reduce((a,b)=>a+b,0) : 0} items</p>
                                                 {o.adminNote && <p className="text-xs text-red-500 mt-1 font-bold">Note: {o.adminNote}</p>}
+                                                {o.customerResponse && <p className="text-xs text-green-600 mt-1 font-bold">Reply: {o.customerResponse}</p>}
                                             </div>
                                             <div className="flex items-center gap-2 mt-2 md:mt-0" onClick={e => e.stopPropagation()}>
                                                 <select value={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)} className="bg-gray-50 border border-gray-200 text-xs rounded p-2 font-bold outline-none cursor-pointer hover:border-cyan-500 transition">
@@ -1204,21 +1230,21 @@ export default function FastWaveApp() {
   const [allergies, setAllergies] = useState([]);
   const [aroma, setAroma] = useState('Fresh');
   const [form, setForm] = useState({ name: '', phone: '', address: '', pickupDate: '', pickupTime: TIME_SLOTS[0], deliveryDate: '', deliveryTime: TIME_SLOTS[0], paymentMethod: 'cash' });
+  const [formErrors, setFormErrors] = useState({}); // Nuevo estado para errores
   const [services, setServices] = useState(INITIAL_SERVICES);
   const [config, setConfig] = useState({});
   const [lastOrder, setLastOrder] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [itemAddedMsg, setItemAddedMsg] = useState(null);
-  const [myOrders, setMyOrders] = useState([]); // Para tracking del cliente
+  const [myOrders, setMyOrders] = useState([]); 
+  const [customerReply, setCustomerReply] = useState({}); // Estado para respuestas del cliente
 
   useTailwind();
-  useAppMode(); // ACTIVAR MODO APP (PWA)
+  useAppMode();
 
   useEffect(() => {
      if(db) {
-         // MODIFICADO: Usar onSnapshot en lugar de getDoc para los servicios
-         // Esto asegura que si el admin cambia una foto, la pantalla principal se actualice sola
          const unsubscribeServices = onSnapshot(doc(db, 'settings', 'services'), (snap) => {
              if(snap.exists()) {
                  setServices(snap.data().list);
@@ -1236,26 +1262,20 @@ export default function FastWaveApp() {
      }
   }, []);
 
-  // UseEffect para cargar pedidos del cliente basado en su telefono (simple tracking)
   useEffect(() => {
       if (view === 'track' && config.phone) {
-          // Nota: En una app real, esto debería requerir auth. Aquí simulamos usando localStorage o similar, 
-          // pero para este ejemplo simple, no tenemos login de cliente. 
-          // Vamos a asumir que si el usuario acaba de hacer un pedido, lo mostramos.
-          // O mejor, pedimos el teléfono. Por simplicidad, mostraré los pedidos guardados en local si existen.
           const savedOrders = JSON.parse(localStorage.getItem('myOrders') || '[]');
           if (savedOrders.length > 0 && db) {
-              // Buscar estos IDs en firebase para tener status actualizado
-              const q = query(collection(db, 'orders'), where('__name__', 'in', savedOrders.slice(0, 10))); // Limit 10 for safety
+              const q = query(collection(db, 'orders'), where('__name__', 'in', savedOrders.slice(0, 10))); 
               const unsub = onSnapshot(q, (snap) => {
                   setMyOrders(snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)));
               });
               return () => unsub();
+          } else {
+              setMyOrders([]); // Reset if no orders
           }
       }
   }, [view]);
-
-  // ELIMINADO EL REQUIRE QUE CAUSABA EL ERROR DE PANTALLA BLANCA 
 
   const t = LANGUAGES[lang];
 
@@ -1289,11 +1309,22 @@ export default function FastWaveApp() {
 
   const cartTotals = calculateTotals();
 
+  const validateForm = () => {
+      let errors = {};
+      if (!form.name.trim()) errors.name = true;
+      if (!form.phone.trim()) errors.phone = true;
+      if (!form.address.trim()) errors.address = true;
+      if (!form.pickupDate) errors.pickupDate = true;
+      if (!form.deliveryDate) errors.deliveryDate = true;
+      setFormErrors(errors);
+      return Object.keys(errors).length === 0;
+  };
+
   const submitOrder = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return; // Stop if invalid
+
     setIsSubmitting(true);
-    
-    // GENERAR ID CORTO PARA DISPLAY
     const orderNum = generateShortId();
 
     const orderData = {
@@ -1314,7 +1345,8 @@ export default function FastWaveApp() {
       status: 'pending',
       createdAt: new Date().toISOString(),
       adminNote: '',
-      orderNumber: orderNum // GUARDAR EL ID CORTO
+      customerResponse: '',
+      orderNumber: orderNum 
     };
 
     try {
@@ -1322,12 +1354,9 @@ export default function FastWaveApp() {
           const docRef = await addDoc(collection(db, 'orders'), orderData);
           const finalOrder = { id: docRef.id, ...orderData };
           setLastOrder(finalOrder);
-          
-          // Guardar ID en localStorage para tracking
           const currentSaved = JSON.parse(localStorage.getItem('myOrders') || '[]');
           localStorage.setItem('myOrders', JSON.stringify([...currentSaved, docRef.id]));
       } else {
-          // Fallback demo
           setLastOrder({ id: "DEMO-123", ...orderData, orderNumber: orderNum });
       }
       setCart({});
@@ -1344,65 +1373,83 @@ export default function FastWaveApp() {
   const getOwnerWhatsApp = () => {
       if (!lastOrder) return "#";
       const cleanPhone = (config.phone || '').replace(/\D/g, ''); 
-      const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6); // Usar ID Corto
+      const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6);
 
-      // Format Items List for WhatsApp (Qty x Name ($Cost))
+      // LISTA DETALLADA PARA WHATSAPP
       const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => {
             const s = services.find(x => x.id === id);
             const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id;
             const lineTotal = s ? (s.price * qty).toFixed(2) : '0.00';
-            return `• ${qty}x ${name} ($${lineTotal})`; 
+            return `• ${qty} x ${name}..... $${lineTotal}`; 
       }).join('%0a');
 
-      let detailsBlock = "";
-      if(lastOrder.aroma) {
-          const aromaObj = AROMAS.find(a => a.id === lastOrder.aroma);
-          const aromaName = aromaObj ? (lang === 'es' ? aromaObj.es : aromaObj.en) : lastOrder.aroma;
-          detailsBlock += `%0a🌸 Aroma: ${aromaName}`;
-      }
-      if(lastOrder.allergies && lastOrder.allergies.length > 0) {
-          const allergyNames = lastOrder.allergies.map(aid => {
-              const a = AVOID_PRODUCTS.find(p => p.id === aid);
-              return a ? (lang === 'es' ? a.label_es : a.label_en) : aid;
-          }).join(', ');
-          detailsBlock += `%0a⚠️ Alergias: ${allergyNames}`;
-      }
-      if(lastOrder.express) detailsBlock += `%0a⚡ SERVICIO EXPRESS (${config.expressText || '24h'})`;
-      if(lastOrder.isMember) detailsBlock += `%0a⭐ MIEMBRO`;
-      if(lastOrder.adminNote) detailsBlock += `%0a📝 NOTA: ${lastOrder.adminNote}`;
+      let extras = "";
+      if(lastOrder.express) extras += `%0a⚡ Express Service: Yes`;
+      if(lastOrder.isMember) extras += `%0a⭐ Member Discount: Yes`;
+      
+      const msg = `
+🧾 *RECEIPT #${displayId}*
+--------------------------------
+👤 *Customer:* ${lastOrder.customer.name}
+📞 *Phone:* ${lastOrder.customer.phone}
+📍 *Address:* ${lastOrder.customer.address}
+--------------------------------
+📅 *PICKUP:*
+${lastOrder.details.pickupDate} - ${lastOrder.details.pickupTime}
 
-      const msg = `🧾 *ORDEN #${displayId}*
+🚚 *DELIVERY:*
+${lastOrder.details.deliveryDate} - ${lastOrder.details.deliveryTime}
 --------------------------------
-👤 *${lastOrder.customer.name}*
-📞 ${lastOrder.customer.phone}
-📍 ${lastOrder.customer.address}
---------------------------------
-📅 *Recogida:*
-${lastOrder.details.pickupDate} [${lastOrder.details.pickupTime}]
-
-🚚 *Entrega:*
-${lastOrder.details.deliveryDate} [${lastOrder.details.deliveryTime}]
---------------------------------
-🧺 *ARTÍCULOS:*
+🧺 *ORDER DETAILS:*
 ${itemsList}
-${detailsBlock}
 --------------------------------
+${extras ? extras + '%0a--------------------------------' : ''}
 💰 *TOTAL: $${lastOrder.total?.toFixed(2)}*
-💳 Pago: ${lastOrder.details.paymentMethod.toUpperCase()}`;
-      return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`; 
+💳 *Payment:* ${lastOrder.details.paymentMethod.toUpperCase()}
+--------------------------------
+📝 *Notes:* ${lastOrder.aroma ? lastOrder.aroma : 'None'}
+`;
+      return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg.trim())}`; 
   };
 
   const getOwnerSMS = () => { 
       if (!lastOrder) return "#"; 
       const cleanPhone = (config.phone || '').replace(/\D/g,''); 
       const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6);
-      const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => {
-          const s = services.find(x => x.id === id);
-          const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id;
-          return `${qty}x ${name}`;
-      }).join(', '); 
-      const msg = `PEDIDO #${displayId}: ${lastOrder.customer.name}. Items: ${itemsList}. Total: $${lastOrder.total?.toFixed(2)}`; 
+      const msg = `Fast Wave Order #${displayId} - Total: $${lastOrder.total?.toFixed(2)}. Pickup: ${lastOrder.details.pickupDate}. Check app for details.`; 
       return `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`; 
+  };
+
+  const sendCustomerReply = async (orderId, replyText) => {
+      if (!replyText.trim()) return;
+      if (db) {
+          await updateDoc(doc(db, 'orders', orderId), { customerResponse: replyText });
+          alert(t.replySent);
+          setCustomerReply({ ...customerReply, [orderId]: '' });
+      }
+  };
+
+  const deleteLocalOrder = (orderId) => {
+      if(window.confirm("Delete this receipt from your history?")) {
+          const currentSaved = JSON.parse(localStorage.getItem('myOrders') || '[]');
+          const newSaved = currentSaved.filter(id => id !== orderId);
+          localStorage.setItem('myOrders', JSON.stringify(newSaved));
+          setMyOrders(prev => prev.filter(o => o.id !== orderId));
+      }
+  };
+
+  const shareOrder = (order) => {
+      const text = `Fast Wave Receipt #${order.orderNumber || order.id.slice(0,6)}\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}`;
+      if (navigator.share) {
+          navigator.share({
+              title: 'Fast Wave Receipt',
+              text: text,
+              url: window.location.href
+          });
+      } else {
+          navigator.clipboard.writeText(text);
+          alert("Receipt info copied to clipboard!");
+      }
   };
 
   if (view === 'success') {
@@ -1415,67 +1462,98 @@ ${detailsBlock}
             <div className="bg-gray-100 p-4 rounded-xl mb-8 border-2 border-dashed border-gray-300"><p className="text-sm text-gray-500 uppercase font-bold">{t.orderNumberIs}</p><p className="text-xl font-mono font-black text-cyan-600 break-all">{lastOrder?.orderNumber || lastOrder?.id.slice(0,6)}</p></div>
             <a href={getOwnerWhatsApp()} target="_blank" rel="noreferrer" className="w-full bg-green-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-green-600 transition flex items-center justify-center mb-4 transform hover:scale-105 animate-pulse border-4 border-green-200"><MessageCircle className="w-6 h-6 mr-3"/> {t.sendWhastapp}</a>
             <a href={getOwnerSMS()} className="w-full bg-blue-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-blue-600 transition flex items-center justify-center mb-4 transform hover:scale-105 border-4 border-blue-200"><Smartphone className="w-6 h-6 mr-3"/> {t.sendSMS}</a>
-            <button onClick={() => setView('track')} className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-gray-900 transition flex items-center justify-center mt-4"><CustomReceiptIcon className="w-5 h-5 mr-2"/> {t.trackOrder || "Track Order"}</button>
+            <button onClick={() => setView('track')} className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-gray-900 transition flex items-center justify-center mt-4"><CustomReceiptIcon className="w-5 h-5 mr-2"/> {t.trackOrder}</button>
             <button onClick={() => setView('home')} className="w-full bg-gray-100 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-200 transition flex items-center justify-center mt-2"><ArrowLeft className="w-5 h-5 mr-2"/> {t.back}</button>
           </div>
         </div>
       );
   }
 
-  // --- VISTA NUEVA: TRACKING DEL CLIENTE ---
+  // --- VISTA MEJORADA: TRACKING / RECIBO DEL CLIENTE ---
   if (view === 'track') {
       return (
           <div className="min-h-screen bg-slate-50 p-4 font-sans pb-24">
              <button onClick={() => setView('home')} className="mb-6 flex items-center text-gray-600 font-bold"><ArrowLeft className="mr-2"/> {t.back}</button>
-             <h2 className="text-2xl font-black mb-6">{t.yourOrders || "Your Orders"}</h2>
+             <h2 className="text-2xl font-black mb-6">{t.yourOrders}</h2>
              
              {myOrders.length === 0 ? (
                  <p className="text-center text-gray-400 mt-10">No orders found.</p>
              ) : (
-                 <div className="space-y-4">
+                 <div className="space-y-6">
                      {myOrders.map(o => (
-                         <div key={o.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                             <div className="flex justify-between items-start mb-3">
+                         // CAMBIO DE COLOR SI ESTA COMPLETADO
+                         <div key={o.id} className={`p-6 rounded-2xl shadow-lg border-2 relative overflow-hidden transition-all ${o.status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
+                             {o.status === 'completed' && <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">{t.orderCompleted}</div>}
+                             
+                             <div className="flex justify-between items-start mb-4 border-b border-dashed pb-4">
                                  <div>
-                                     <span className="font-mono text-xs font-bold bg-gray-100 px-2 py-1 rounded mr-2">#{o.orderNumber || o.id.slice(0,6)}</span>
-                                     <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${o.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status] || o.status}</span>
-                                     <p className="text-xs text-gray-400 mt-1">{new Date(o.createdAt).toLocaleDateString()}</p>
+                                     <span className="font-mono text-xl font-black text-cyan-700">#{o.orderNumber || o.id.slice(0,6)}</span>
+                                     <p className="text-xs text-gray-400 mt-1">{new Date(o.createdAt).toLocaleString()}</p>
+                                     <span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${o.status === 'completed' ? 'bg-green-200 text-green-800' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status] || o.status}</span>
                                  </div>
                                  <div className="text-right">
-                                     <p className="font-black text-lg text-cyan-600">${o.total?.toFixed(2)}</p>
-                                     {(o.express || o.isMember) && <div className="flex gap-1 justify-end mt-1">{o.express && <span className="text-[10px] bg-cyan-100 text-cyan-800 px-1 rounded">{t.express}</span>}{o.isMember && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded">{t.member}</span>}</div>}
+                                     <button onClick={() => shareOrder(o)} className="text-gray-400 hover:text-cyan-600 mb-2 block ml-auto"><Share2 className="w-5 h-5"/></button>
                                  </div>
                              </div>
-                             
-                             {/* MOSTRAR NOTA DEL ADMIN AL CLIENTE */}
-                             {o.adminNote && (
-                                 <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-3 text-sm text-blue-800 rounded-r flex items-start animate-fade-in">
-                                     <CustomInfoIcon className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
-                                     <div>
-                                         <span className="font-bold block text-xs uppercase mb-1">{t.updateFromLaundry}</span>
-                                         {o.adminNote}
-                                     </div>
-                                 </div>
-                             )}
 
-                             {/* MOSTRAR HORARIOS ACTUALIZADOS */}
-                             <div className="grid grid-cols-2 gap-2 mb-3 text-xs bg-gray-50 p-2 rounded border border-gray-100">
-                                 <div><span className="font-bold text-gray-500">Pickup:</span><br/>{o.details?.pickupDate}<br/>{o.details?.pickupTime}</div>
-                                 <div><span className="font-bold text-gray-500">Delivery:</span><br/>{o.details?.deliveryDate}<br/>{o.details?.deliveryTime}</div>
+                             {/* DETALLES TIPO RECIBO */}
+                             <div className="space-y-2 text-sm text-gray-600 mb-4">
+                                 <div className="flex items-start"><MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-cyan-500"/> <span>{o.customer.address}</span></div>
+                                 <div className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-cyan-500"/> <span>Pickup: {o.details.pickupDate} ({o.details.pickupTime})</span></div>
+                                 <div className="flex items-center"><Truck className="w-4 h-4 mr-2 text-cyan-500"/> <span>Delivery: {o.details.deliveryDate} ({o.details.deliveryTime})</span></div>
                              </div>
 
-                             <div className="text-sm text-gray-600 border-t pt-3">
+                             <div className="bg-gray-50 p-4 rounded-xl mb-4">
                                  {Object.entries(o.items).map(([k,v]) => {
                                      const s = services.find(x=>x.id===k);
                                      const totalLine = (s?.price || 0) * v;
                                      return (
-                                        <div key={k} className="flex justify-between py-1 border-b border-gray-50 last:border-0">
-                                            <span className="text-gray-700 font-medium">{v}x {s ? ((lang === 'es' && s.name_es) ? s.name_es : (lang === 'fr' && s.name_fr) ? s.name_fr : (lang === 'hi' && s.name_hi) ? s.name_hi : s.name_en) : k}</span>
-                                            <span className="font-bold text-gray-900">${totalLine.toFixed(2)}</span>
+                                        <div key={k} className="flex justify-between py-1 text-sm border-b border-gray-200 last:border-0">
+                                            <span>{v} x {s ? ((lang === 'es' && s.name_es) ? s.name_es : (lang === 'fr' && s.name_fr) ? s.name_fr : (lang === 'hi' && s.name_hi) ? s.name_hi : s.name_en) : k}</span>
+                                            <span className="font-bold">${totalLine.toFixed(2)}</span>
                                         </div>
                                      )
                                  })}
+                                 <div className="flex justify-between items-center pt-3 mt-2 border-t border-gray-300">
+                                     <span className="font-bold text-gray-800">TOTAL</span>
+                                     <span className="font-black text-xl text-cyan-700">${o.total?.toFixed(2)}</span>
+                                 </div>
                              </div>
+                             
+                             {/* NOTAS DEL ADMIN Y RESPUESTA DEL CLIENTE */}
+                             {o.adminNote && (
+                                 <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 text-sm text-blue-800 rounded-r">
+                                     <p className="font-bold text-xs uppercase mb-1 flex items-center"><CustomInfoIcon className="w-3 h-3 mr-1"/> {t.updateFromLaundry}</p>
+                                     <p>{o.adminNote}</p>
+                                 </div>
+                             )}
+
+                             {/* SECCION PARA RESPONDER AL ADMIN */}
+                             <div className="mt-4 pt-4 border-t border-gray-100">
+                                 {o.customerResponse ? (
+                                     <div className="text-sm text-green-700 bg-green-50 p-3 rounded border border-green-100">
+                                         <span className="font-bold block text-xs uppercase">Your Reply:</span>
+                                         {o.customerResponse}
+                                     </div>
+                                 ) : (
+                                     <div className="flex gap-2">
+                                         <input 
+                                            className="flex-1 border rounded px-3 py-2 text-sm" 
+                                            placeholder="Reply to admin..." 
+                                            value={customerReply[o.id] || ''} 
+                                            onChange={(e) => setCustomerReply({...customerReply, [o.id]: e.target.value})}
+                                         />
+                                         <button onClick={() => sendCustomerReply(o.id, customerReply[o.id])} className="bg-cyan-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-cyan-700"><Send className="w-4 h-4"/></button>
+                                     </div>
+                                 )}
+                             </div>
+
+                             {/* BOTON DE BORRAR SOLO SI ESTA COMPLETADO */}
+                             {o.status === 'completed' && (
+                                 <button onClick={() => deleteLocalOrder(o.id)} className="w-full mt-4 bg-gray-200 text-gray-600 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition">
+                                     <Trash2 className="w-4 h-4 mr-2"/> {t.deleteReceipt}
+                                 </button>
+                             )}
                          </div>
                      ))}
                  </div>
@@ -1486,12 +1564,12 @@ ${detailsBlock}
 
   if (view === 'admin') return <AdminView t={t} config={config} setConfig={setConfig} services={services} setServices={setServices} setView={setView} lang={lang} />;
 
-  // ... (Vistas HOME y CART se mantienen igual que en la versión anterior, solo asegúrate de que el botón de Track esté en el menú) ...
+  // ... (Vistas HOME y CART con validacion visual) ...
    
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-gray-800">
+      {/* ... Navbar igual ... */}
       <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-cyan-100">
-        {/* ... Navbar igual ... */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center cursor-pointer transform hover:scale-105 transition" onClick={() => setView('home')}>
@@ -1499,7 +1577,6 @@ ${detailsBlock}
             </div>
             
             <div className="hidden md:flex items-center space-x-4">
-               {/* Botón nuevo para cliente ver sus pedidos */}
               <button onClick={() => setView('track')} className="flex items-center text-gray-600 hover:text-cyan-600 font-bold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition mr-2">
                  <CustomPackageIcon className="w-4 h-4 mr-2" />
                  {t.trackOrder || "My Orders"}
@@ -1552,6 +1629,7 @@ ${detailsBlock}
 
       {view === 'home' && (
         <div className="animate-fade-in">
+          {/* ... Hero and Services sections remain same ... */}
           <div className="relative h-[550px] flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center">
                 <div className="absolute inset-0 bg-cyan-900/50 mix-blend-multiply"></div>
@@ -1661,22 +1739,23 @@ ${detailsBlock}
 
           {cartCount > 0 && (
             <form onSubmit={submitOrder} className="space-y-6 bg-white p-8 rounded-3xl shadow-lg border border-gray-100">
-              {/* ... Formulario Cliente (Sin Cambios) ... */}
+              {Object.keys(formErrors).length > 0 && <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 font-bold text-sm mb-4 animate-shake">{t.fillRequired}</div>}
+              
               <h3 className="font-bold text-xl text-gray-800 mb-4 flex items-center"><User className="mr-2" /> {t.details}</h3>
               <div className="grid gap-4">
-                <input required placeholder={t.nameLabel} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full p-4 bg-gray-50 rounded-xl border focus:bg-white focus:border-cyan-500 outline-none transition" />
+                <input required placeholder={t.nameLabel} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={`w-full p-4 bg-gray-50 rounded-xl border focus:bg-white focus:border-cyan-500 outline-none transition ${formErrors.name ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} />
                 <div>
                    <label className="text-xs font-bold text-green-600 ml-1 mb-1 block">{t.whatsappLabel}</label>
-                   <input required placeholder="Number (e.g. 5551234567)" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full p-4 bg-gray-50 rounded-xl border-2 border-green-100 focus:bg-white focus:border-green-500 outline-none transition" />
+                   <input required placeholder="Number (e.g. 5551234567)" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={`w-full p-4 bg-gray-50 rounded-xl border-2 border-green-100 focus:bg-white focus:border-green-500 outline-none transition ${formErrors.phone ? '!border-red-500 bg-red-50' : ''}`} />
                 </div>
-                <textarea required placeholder={t.addressLabel} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="w-full p-4 bg-gray-50 rounded-xl border focus:bg-white focus:border-cyan-500 outline-none transition" />
+                <textarea required placeholder={t.addressLabel} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className={`w-full p-4 bg-gray-50 rounded-xl border focus:bg-white focus:border-cyan-500 outline-none transition ${formErrors.address ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} />
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                  <div className={`bg-blue-50 p-4 rounded-xl border ${formErrors.pickupDate ? 'border-red-500' : 'border-blue-100'}`}>
                     <label className="block text-sm font-bold text-blue-800 mb-2 flex items-center uppercase tracking-wide"><Truck className="w-4 h-4 mr-2" /> {t.pickupInfo}</label>
                     <div className="space-y-2"><div><span className="text-xs text-blue-600 font-bold ml-1">{t.pickupDate}</span><input required type="date" value={form.pickupDate} onChange={(e) => setForm({ ...form, pickupDate: e.target.value })} className="w-full p-3 bg-white rounded-lg border border-blue-200 focus:border-blue-500" /></div><div><span className="text-xs text-blue-600 font-bold ml-1">{t.pickupTime}</span><select className="w-full p-3 bg-white rounded-lg border border-blue-200 focus:border-blue-500" value={form.pickupTime} onChange={(e) => setForm({...form, pickupTime: e.target.value})}>{TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}</select></div></div>
                   </div>
-                  <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                  <div className={`bg-green-50 p-4 rounded-xl border ${formErrors.deliveryDate ? 'border-red-500' : 'border-green-100'}`}>
                     <label className="block text-sm font-bold text-green-800 mb-2 flex items-center uppercase tracking-wide"><Calendar className="w-4 h-4 mr-2" /> {t.deliveryInfo}</label>
                     <div className="space-y-2"><div><span className="text-xs text-green-600 font-bold ml-1">{t.deliveryDate}</span><input required type="date" value={form.deliveryDate} onChange={(e) => setForm({ ...form, deliveryDate: e.target.value })} className="w-full p-3 bg-white rounded-lg border border-green-200 focus:border-green-500" /></div><div><span className="text-xs text-green-600 font-bold ml-1">{t.deliveryTime}</span><select className="w-full p-3 bg-white rounded-lg border border-green-200 focus:border-green-500" value={form.deliveryTime} onChange={(e) => setForm({...form, deliveryTime: e.target.value})}>{TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}</select></div></div>
                   </div>
