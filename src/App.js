@@ -3,7 +3,7 @@ import {
   ShoppingBag, Lock, Phone, Star, Droplet,
   Calendar, Truck, MessageCircle, Settings, 
   Edit2, ArrowLeft, Trash2, Plus, User, CheckCircle, CreditCard, AlertCircle,
-  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, ExternalLink, ChevronDown, ChevronUp, Share2, MessageSquare, Camera, Users, DollarSign, RotateCcw, Percent, Search
+  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, ExternalLink, ChevronDown, ChevronUp, Share2, MessageSquare, Camera, Users, DollarSign, RotateCcw, Percent, Search, QrCode
 } from 'lucide-react';
 
 // --- IMPORTACIONES DE FIREBASE ---
@@ -133,7 +133,7 @@ const CustomIronIcon = () => (
 
 const CustomPackageIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>);
 const CustomInfoIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>);
-const CustomReceiptIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>);
+const CustomReceiptIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>);
 const CustomLoaderIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>);
 const CustomUploadIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>);
 const CustomCameraIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>);
@@ -304,7 +304,10 @@ const LANGUAGES = {
     taxLabel: "Tax (%)",
     searchPlaceholder: "Search by name or phone...",
     gatewayConfig: "Payment Gateway (Stripe)",
-    apiKey: "Publishable API Key"
+    apiKey: "Publishable API Key",
+    qrCode: "App QR Code",
+    scent: "Scent",
+    allergies: "Allergies"
   },
   es: {
     title: "Fast Wave Lavandería",
@@ -435,7 +438,10 @@ const LANGUAGES = {
     taxLabel: "Impuesto (%)",
     searchPlaceholder: "Buscar por nombre o teléfono...",
     gatewayConfig: "Pasarela de Pagos (Stripe)",
-    apiKey: "API Key Pública"
+    apiKey: "API Key Pública",
+    qrCode: "Código QR de App",
+    scent: "Aroma",
+    allergies: "Alergias"
   },
   fr: {
      // ... previous fr keys ...
@@ -457,7 +463,10 @@ const LANGUAGES = {
      taxLabel: "Taxe (%)",
      searchPlaceholder: "Rechercher...",
      gatewayConfig: "Passerelle de Paiement",
-     apiKey: "Clé API"
+     apiKey: "Clé API",
+     qrCode: "Code QR",
+     scent: "Parfum",
+     allergies: "Allergies"
   },
   hi: {
      // ... previous hi keys ...
@@ -479,7 +488,10 @@ const LANGUAGES = {
      taxLabel: "कर (%)",
      searchPlaceholder: "खोजें...",
      gatewayConfig: "भुगतान गेटवे",
-     apiKey: "एपीआई कुंजी"
+     apiKey: "एपीआई कुंजी",
+     qrCode: "क्यूआर कोड",
+     scent: "सुगंध",
+     allergies: "एलर्जी"
   }
 };
 
@@ -783,7 +795,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                     <div className="flex justify-end gap-2"><button onClick={()=>setEditingOrder(null)} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded">Cancel</button><button onClick={()=>saveOrderChanges(o)} className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">Save Changes</button></div></div>
                  ) : (
                      /* ... Regular Card Expanded Logic for Totals ... */
-                     <div className="flex flex-col gap-4"><div className="flex flex-col md:flex-row justify-between items-start md:items-center"><div><div className="flex items-center gap-2 mb-1"><span className="font-mono font-bold text-cyan-600 bg-cyan-50 px-2 py-1 rounded">#{o.orderNumber || o.id.slice(0,6)}</span><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : o.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status]}</span></div><h3 className="font-bold text-gray-800 flex items-center">{o.customer.name} {expandedOrder === o.id ? <ChevronUp className="w-4 h-4 ml-2 text-gray-400"/> : <ChevronDown className="w-4 h-4 ml-2 text-gray-400"/>}</h3><p className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()} • {o.items ? Object.values(o.items).reduce((a,b)=>a+b,0) : 0} items</p>{o.adminNote && <p className="text-xs text-red-500 mt-1 font-bold">Note: {o.adminNote}</p>}{o.customerResponse && <p className="text-xs text-green-600 mt-1 font-bold">Reply: {o.customerResponse}</p>}</div><div className="flex items-center gap-2 mt-2 md:mt-0" onClick={e => e.stopPropagation()}><select value={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)} className="bg-gray-50 border border-gray-200 text-xs rounded p-2 font-bold outline-none cursor-pointer hover:border-cyan-500 transition">{Object.keys(t.status).map(s => <option key={s} value={s}>{t.status[s]}</option>)}</select><button onClick={() => shareOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Share"><Share2 className="w-4 h-4"/></button><button onClick={() => startEditing(o)} className="p-2 text-blue-500 hover:bg-blue-50 rounded" title="Edit"><Edit2 className="w-4 h-4"/></button><button onClick={() => printOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Print"><Printer className="w-4 h-4"/></button><button onClick={() => deleteOrder(o.id)} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-4 h-4"/></button></div></div>
+                     <div className="flex flex-col gap-4"><div className="flex flex-col md:flex-row justify-between items-start md:items-center"><div><div className="flex items-center gap-2 mb-1"><span className="font-mono font-bold text-cyan-600 bg-cyan-50 px-2 py-1 rounded">#{o.orderNumber || o.id.slice(0,6)}</span><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : o.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status]}</span></div><h3 className="font-bold text-gray-800 flex items-center">{o.customer.name} {expandedOrder === o.id ? <ChevronUp className="w-4 h-4 ml-2 text-gray-400"/> : <ChevronDown className="w-4 h-4 ml-2 text-gray-400"/>}</h3><p className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()} • {o.items ? Object.values(o.items).reduce((a,b)=>a+b,0) : 0} items</p>{o.adminNote && <p className="text-xs text-red-500 mt-1 font-bold">Note: {o.adminNote}</p>}{o.customerResponse && <p className="text-xs text-green-600 mt-1 font-bold">Reply: {o.customerResponse}</p>}</div><div className="flex items-center gap-2 mt-2 md:mt-0" onClick={e => e.stopPropagation()}><select value={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)} className="bg-gray-50 border border-gray-200 text-xs rounded p-2 font-bold outline-none cursor-pointer hover:border-cyan-500 transition">{Object.keys(t.status).map(s => <option key={s} value={s}>{t.status[s]}</option>)}</select><div className="relative group" title="QR Code"><button onClick={() => setQRModal({show: true, url: `${window.location.origin}?track=${o.id}`})} className="p-2 text-gray-500 hover:bg-gray-100 rounded"><QrCode className="w-4 h-4"/></button></div><button onClick={() => shareOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Share"><Share2 className="w-4 h-4"/></button><button onClick={() => startEditing(o)} className="p-2 text-blue-500 hover:bg-blue-50 rounded" title="Edit"><Edit2 className="w-4 h-4"/></button><button onClick={() => printOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Print"><Printer className="w-4 h-4"/></button><button onClick={() => deleteOrder(o.id)} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-4 h-4"/></button></div></div>
                      {expandedOrder === o.id && (<div className="mt-4 pt-4 border-t border-gray-100 animate-fade-in"><div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"><div className="bg-gray-50 p-3 rounded"><h5 className="font-bold text-gray-700 mb-2">Customer Details</h5><p><span className="font-bold">Phone:</span> {o.customer.phone}</p><p><span className="font-bold">Address:</span> {o.customer.address}</p><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.customer.address)}`} target="_blank" rel="noreferrer" className="text-cyan-600 font-bold text-xs mt-1 inline-flex items-center hover:underline"><MapPin className="w-3 h-3 mr-1"/> View Map</a></div><div className="bg-gray-50 p-3 rounded"><h5 className="font-bold text-gray-700 mb-2">Schedule</h5><p><span className="font-bold">Pickup:</span> {o.details.pickupDate} ({o.details.pickupTime})</p><p><span className="font-bold">Delivery:</span> {o.details.deliveryDate} ({o.details.deliveryTime})</p></div></div><div className="mt-4"><h5 className="font-bold text-gray-700 mb-2 text-sm">Items & Costs</h5><div className="space-y-1">{Object.entries(o.items).map(([id, qty]) => { const s = services.find(x => x.id === id); return (<div key={id} className="flex justify-between text-sm border-b border-gray-100 pb-1"><span>{qty}x {s ? getLabel(s.name_en,'', lang) : id}</span><span className="font-bold text-gray-600">${((s?.price || 0) * qty).toFixed(2)}</span></div>) })}
                      
                      {/* TOTAL BREAKDOWN IN ADMIN PANEL */}
@@ -851,6 +863,7 @@ export default function FastWaveApp() {
   const [members, setMembers] = useState([]); 
   const [pastMembers, setPastMembers] = useState([]); 
   const [savingsAmount, setSavingsAmount] = useState(0);
+  const [qrModal, setQRModal] = useState({show: false, url: ''});
   
   // NEW PAYMENT PROCESSING STATE
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -1070,7 +1083,7 @@ ${extras ? extras + '%0a--------------------------------' : ''}
 
   if (view === 'track') {
       return (
-          <div className="min-h-screen bg-slate-50 p-4 font-sans pb-24"><button onClick={() => setView('home')} className="mb-6 flex items-center text-gray-600 font-bold"><ArrowLeft className="mr-2"/> {t.back}</button><h2 className="text-2xl font-black mb-6">{t.yourOrders}</h2>{myOrders.length === 0 ? (<p className="text-center text-gray-400 mt-10">No orders found.</p>) : (<div className="space-y-6">{myOrders.map(o => (<div key={o.id} className={`p-6 rounded-2xl shadow-lg border-2 relative overflow-hidden transition-all ${o.status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>{o.status === 'completed' && <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">{t.orderCompleted}</div>}<div className="flex justify-between items-start mb-4 border-b border-dashed pb-4"><div><span className="font-mono text-xl font-black text-cyan-700">#{o.orderNumber || o.id.slice(0,6)}</span><p className="text-xs text-gray-400 mt-1">{new Date(o.createdAt).toLocaleString()}</p><span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${o.status === 'completed' ? 'bg-green-200 text-green-800' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status] || o.status}</span></div><div className="text-right"><button onClick={() => shareOrder(o)} className="text-gray-400 hover:text-cyan-600 mb-2 block ml-auto"><Share2 className="w-5 h-5"/></button></div></div><div className="space-y-2 text-sm text-gray-600 mb-4"><div className="flex items-start"><MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-cyan-500"/> <span>{o.customer.address}</span></div><div className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-cyan-500"/> <span>Pickup: {o.details.pickupDate} ({o.details.pickupTime})</span></div><div className="flex items-center"><Truck className="w-4 h-4 mr-2 text-cyan-500"/> <span>Delivery: {o.details.deliveryDate} ({o.details.deliveryTime})</span></div></div><div className="bg-gray-50 p-4 rounded-xl mb-4">{Object.entries(o.items).map(([k,v]) => { const s = services.find(x=>x.id===k); const totalLine = (s?.price || 0) * v; return (<div key={k} className="flex justify-between py-1 text-sm border-b border-gray-200 last:border-0"><span>{v} x {s ? ((lang === 'es' && s.name_es) ? s.name_es : (lang === 'fr' && s.name_fr) ? s.name_fr : (lang === 'hi' && s.name_hi) ? s.name_hi : s.name_en) : k}</span><span className="font-bold">${totalLine.toFixed(2)}</span></div>) })}
+          <div className="min-h-screen bg-slate-50 p-4 font-sans pb-24"><div className="flex justify-between items-center mb-6"><button onClick={() => setView('home')} className="flex items-center text-gray-600 font-bold"><ArrowLeft className="mr-2 w-5 h-5"/> {t.back}</button><button onClick={() => setQRModal({show: true, url: window.location.href})} className="p-2 bg-white rounded-full shadow text-cyan-600 hover:bg-cyan-50"><QrCode className="w-5 h-5"/></button></div><h2 className="text-2xl font-black mb-6">{t.yourOrders}</h2>{myOrders.length === 0 ? (<p className="text-center text-gray-400 mt-10">No orders found.</p>) : (<div className="space-y-6">{myOrders.map(o => (<div key={o.id} className={`p-6 rounded-2xl shadow-lg border-2 relative overflow-hidden transition-all ${o.status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>{o.status === 'completed' && <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">{t.orderCompleted}</div>}<div className="flex justify-between items-start mb-4 border-b border-dashed pb-4"><div><span className="font-mono text-xl font-black text-cyan-700">#{o.orderNumber || o.id.slice(0,6)}</span><p className="text-xs text-gray-400 mt-1">{new Date(o.createdAt).toLocaleString()}</p><span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${o.status === 'completed' ? 'bg-green-200 text-green-800' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status] || o.status}</span></div><div className="text-right"><button onClick={() => shareOrder(o)} className="text-gray-400 hover:text-cyan-600 mb-2 block ml-auto"><Share2 className="w-5 h-5"/></button></div></div><div className="space-y-2 text-sm text-gray-600 mb-4"><div className="flex items-start"><MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-cyan-500"/> <span>{o.customer.address}</span></div><div className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-cyan-500"/> <span>Pickup: {o.details.pickupDate} ({o.details.pickupTime})</span></div><div className="flex items-center"><Truck className="w-4 h-4 mr-2 text-cyan-500"/> <span>Delivery: {o.details.deliveryDate} ({o.details.deliveryTime})</span></div></div><div className="bg-gray-50 p-4 rounded-xl mb-4">{Object.entries(o.items).map(([k,v]) => { const s = services.find(x=>x.id===k); const totalLine = (s?.price || 0) * v; return (<div key={k} className="flex justify-between py-1 text-sm border-b border-gray-200 last:border-0"><span>{v} x {s ? ((lang === 'es' && s.name_es) ? s.name_es : (lang === 'fr' && s.name_fr) ? s.name_fr : (lang === 'hi' && s.name_hi) ? s.name_hi : s.name_en) : k}</span><span className="font-bold">${totalLine.toFixed(2)}</span></div>) })}
                  {/* CLIENT TRACKING BREAKDOWN */}
                  {(() => {
                      let subtotal = Object.entries(o.items).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0);
@@ -1088,7 +1101,14 @@ ${extras ? extras + '%0a--------------------------------' : ''}
                             {o.express && <div className="flex justify-between text-cyan-600"><span>Express Fee</span><span>+${expressFee.toFixed(2)}</span></div>}
                             {o.isMember && <div className="flex justify-between text-yellow-600"><span>Member Discount</span><span>-${discount.toFixed(2)}</span></div>}
                             {tax > 0 && <div className="flex justify-between"><span>Tax ({taxPct}%)</span><span>+${tax.toFixed(2)}</span></div>}
-                            <div className="flex justify-between items-center pt-2 border-t border-gray-300 mt-2">
+                            
+                            {/* AROMA AND ALLERGIES DISPLAY */}
+                            <div className="mt-3 pt-2 border-t border-dashed text-xs text-gray-500">
+                                {o.aroma && <div className="flex justify-between mb-1"><span className="text-purple-600 font-bold">Aroma:</span><span>{getLabel(o.aroma,'aroma',lang)}</span></div>}
+                                {o.allergies && o.allergies.length > 0 && <div className="flex justify-between"><span className="text-red-600 font-bold">Allergies:</span><span className="text-right max-w-[60%]">{o.allergies.map(a => getLabel(a,'allergy',lang)).join(', ')}</span></div>}
+                            </div>
+
+                            <div className="flex justify-between items-center pt-3 border-t border-gray-300 mt-2">
                                 <div>
                                     <span className="font-bold text-gray-800 text-base">TOTAL</span>
                                     <div className="text-xs font-bold text-green-600">{o.details.paymentMethod.toUpperCase()} {o.paymentStatus === 'paid' ? '(PAID)' : '(PENDING)'}</div>
@@ -1117,6 +1137,9 @@ ${extras ? extras + '%0a--------------------------------' : ''}
             </div>
             
             <div className="hidden md:flex items-center space-x-4">
+              <button onClick={() => setQRModal({show: true, url: window.location.href})} className="p-2 text-gray-600 hover:text-cyan-600 transition" title="Show QR Code">
+                  <QrCode className="w-6 h-6"/>
+              </button>
               <button onClick={() => setView('track')} className="flex items-center text-gray-600 hover:text-cyan-600 font-bold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition mr-2">
                  <CustomPackageIcon className="w-4 h-4 mr-2" />
                  {t.trackOrder || "My Orders"}
@@ -1377,6 +1400,20 @@ ${extras ? extras + '%0a--------------------------------' : ''}
                       <div className="space-y-3">
                           <button onClick={rejoinMembership} className="w-full bg-red-500 text-white py-3 rounded-xl font-bold text-lg hover:bg-red-600 transition shadow-lg transform hover:scale-105">{t.rejoinYes}</button>
                           <button onClick={() => { setShowRejoinModal(false); submitOrder(false, false, form.paymentMethod === 'card' || form.paymentMethod === 'online'); }} className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition">{t.joinNo}</button>
+                      </div>
+                  </div>
+              </div>
+          )}
+          
+          {/* MODAL DE CODIGO QR */}
+          {qrModal.show && (
+              <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in">
+                  <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center relative">
+                      <button onClick={() => setQRModal({show: false, url: ''})} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button>
+                      <h3 className="text-xl font-black text-gray-800 mb-2">{t.qrCode}</h3>
+                      <p className="text-gray-500 text-sm mb-6">Scan to open app</p>
+                      <div className="bg-gray-100 p-4 rounded-xl inline-block">
+                          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrModal.url)}`} alt="QR Code" className="w-48 h-48 object-contain mix-blend-multiply" />
                       </div>
                   </div>
               </div>
