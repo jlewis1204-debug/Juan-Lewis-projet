@@ -87,6 +87,7 @@ const generateShortId = () => {
 
 // --- HELPER: OBTENER ETIQUETA TRADUCIDA ---
 const getLabel = (id, type, lang) => {
+    if (!id) return ''; // Protección contra undefined
     if (type === 'aroma') {
         const item = AROMAS.find(a => a.id === id);
         if (!item) return id;
@@ -103,13 +104,13 @@ const getLabel = (id, type, lang) => {
     return id;
 };
 
-// --- HELPER: VALIDAR FECHAS (MEJORADO) ---
+// --- HELPER: VALIDAR FECHAS ---
 const validateScheduleLogic = (pickupDate, pickupTime, deliveryDate, deliveryTime) => {
     if (!pickupDate || !deliveryDate) return null;
     
-    // Helper para parsear hora AM/PM correctamente
     const parseDateTime = (dateStr, timeSlotStr) => {
-        const timePart = timeSlotStr.split(' - ')[0]; // "08:00 AM"
+        if (!timeSlotStr) return new Date(dateStr); // Fallback
+        const timePart = timeSlotStr.split(' - ')[0]; 
         const [time, modifier] = timePart.split(' ');
         let [hours, minutes] = time.split(':');
         hours = parseInt(hours, 10);
@@ -122,15 +123,12 @@ const validateScheduleLogic = (pickupDate, pickupTime, deliveryDate, deliveryTim
     const pickupDateTime = parseDateTime(pickupDate, pickupTime);
     const deliveryDateTime = parseDateTime(deliveryDate, deliveryTime);
     
-    // Validar si la recogida es en el pasado (con 1 hora de gracia para usabilidad)
-    // Nota: now.getTime() incluye la hora actual.
-    const threshold = new Date(now.getTime() - 60 * 60 * 1000); // 1 hora atrás permitido
+    const threshold = new Date(now.getTime() - 60 * 60 * 1000); 
 
     if (pickupDateTime < threshold) {
         return "errorPastDate";
     }
     
-    // Validar que entrega sea después de recogida (mínimo 4 horas para lavar)
     const minProcessTime = new Date(pickupDateTime.getTime() + 4 * 60 * 60 * 1000);
     if (deliveryDateTime < minProcessTime) {
         return "errorDeliveryOrder";
@@ -169,7 +167,7 @@ const CustomIronIcon = () => (
 
 const CustomPackageIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>);
 const CustomInfoIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>);
-const CustomReceiptIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>);
+const CustomReceiptIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>);
 const CustomLoaderIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>);
 const CustomUploadIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>);
 const CustomCameraIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>);
@@ -603,9 +601,9 @@ const SettingsPanel = ({ config, setConfig, t }) => {
             rejoinFee: parseFloat(editConfig.rejoinFee) || 10,
             rejoinDuration: editConfig.rejoinDuration || '2 months',
             stripePublicKey: editConfig.stripePublicKey || '',
-            adminUsername: newUser ? newUser : (editConfig.adminUsername || 'admin'),
-            adminPassword: newPass ? newPass : (editConfig.adminPassword || '1234'), 
-            recoveryPin: newPin ? newPin : (editConfig.recoveryPin || '0000'),
+            adminUsername: newUser ? newUser.trim() : (editConfig.adminUsername || 'admin'),
+            adminPassword: newPass ? newPass.trim() : (editConfig.adminPassword || '1234'), 
+            recoveryPin: newPin ? newPin.trim() : (editConfig.recoveryPin || '0000'),
             phone: editConfig.phone || '',
             zelleNumber: editConfig.zelleNumber || '',
             zelleMessage: editConfig.zelleMessage || '',
@@ -746,6 +744,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
     const [editingOrder, setEditingOrder] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
+    const [qrModal, setQRModal] = useState({show: false, url: ''});
 
     useEffect(() => {
         if (!isAuth) return;
@@ -760,13 +759,12 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
         return () => unsub();
     }, [isAuth]);
 
-    const handleLogin = (e) => { e.preventDefault(); const validUser = config.adminUsername || 'admin'; const validPass = config.adminPassword || '1234'; if (authInput.user.toLowerCase() === validUser.toLowerCase() && authInput.pass === validPass) { setIsAuth(true); setLoginStatus('idle'); } else { setLoginStatus('error'); setTimeout(() => setLoginStatus('idle'), 2000); } };
-    const handleRecovery = (e) => { e.preventDefault(); const validPin = config.recoveryPin || '0000'; if (recoveryInput === validPin) { setRecoveredCreds({ user: config.adminUsername || 'admin', pass: config.adminPassword || '1234' }); } else { alert(t.wrongRecPin); } };
+    const handleLogin = (e) => { e.preventDefault(); const validUser = config.adminUsername || 'admin'; const validPass = config.adminPassword || '1234'; if (authInput.user.trim().toLowerCase() === validUser.toLowerCase() && authInput.pass.trim() === validPass) { setIsAuth(true); setLoginStatus('idle'); } else { setLoginStatus('error'); setTimeout(() => setLoginStatus('idle'), 2000); } };
+    const handleRecovery = (e) => { e.preventDefault(); const validPin = config.recoveryPin || '0000'; if (recoveryInput.trim() === validPin) { setRecoveredCreds({ user: config.adminUsername || 'admin', pass: config.adminPassword || '1234' }); } else { alert(t.wrongRecPin); } };
     const updateOrderStatus = async (id, status) => { if(db) await updateDoc(doc(db, 'orders', id), { status }); setOrders(prev => prev.map(o => o.id === id ? {...o, status} : o)); };
     const deleteOrder = async (id) => { if(window.confirm(t.deleteOrder + "?")) { if(db) await deleteDoc(doc(db, 'orders', id)); setOrders(prev => prev.filter(o => o.id !== id)); } };
     const startEditing = (order) => { setEditingOrder(order.id); setEditForm({ name: order.customer.name, phone: order.customer.phone, address: order.customer.address, express: order.express || false, isMember: order.isMember || false, notes: order.notes || '', pickupDate: order.details?.pickupDate || '', pickupTime: order.details?.pickupTime || TIME_SLOTS[0], deliveryDate: order.details?.deliveryDate || '', deliveryTime: order.details?.deliveryTime || TIME_SLOTS[0], adminNote: order.adminNote || '' }); };
     const shareOrder = (order) => { const text = `Fast Wave Receipt #${order.orderNumber || order.id.slice(0,6)}\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}\nLink: ${window.location.origin}`; if (navigator.share) { navigator.share({ title: 'Fast Wave Receipt', text: text, url: window.location.href }).catch(console.error); } else { navigator.clipboard.writeText(text); alert("Receipt info copied to clipboard!"); } };
-    
     const saveOrderChanges = async (order) => { 
         const dateError = validateScheduleLogic(editForm.pickupDate, editForm.pickupTime, editForm.deliveryDate, editForm.deliveryTime);
         if (dateError) {
@@ -840,7 +838,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                     /* ... Edit Form (Same as before) ... */
                     <div className="animate-fade-in bg-blue-50 p-4 rounded-lg border border-blue-200" onClick={e => e.stopPropagation()}><h4 className="font-bold text-blue-800 mb-4 flex items-center"><Edit2 className="w-4 h-4 mr-2"/> {t.editingOrder} #{o.orderNumber || o.id.slice(0,6)}</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"><div><label className="block text-xs font-bold text-gray-500">{t.customerInfo}</label><input className="w-full p-2 border rounded mt-1 text-sm" value={editForm.name} onChange={e=>setEditForm({...editForm, name: e.target.value})} placeholder="Name" /><input className="w-full p-2 border rounded mt-1 text-sm" value={editForm.phone} onChange={e=>setEditForm({...editForm, phone: e.target.value})} placeholder="Phone" /><div className="flex gap-2 items-center mt-1"><textarea className="w-full p-2 border rounded text-sm" rows="2" value={editForm.address} onChange={e=>setEditForm({...editForm, address: e.target.value})} placeholder="Address" /><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(editForm.address)}`} target="_blank" rel="noopener noreferrer" className="bg-green-100 text-green-700 p-3 rounded-lg hover:bg-green-200 transition" title="Open in Maps"><MapPin className="w-5 h-5"/></a></div></div><div><label className="block text-xs font-bold text-gray-500 mb-1">Options</label><label className="flex items-center space-x-2"><input type="checkbox" checked={editForm.express} onChange={e=>setEditForm({...editForm, express: e.target.checked})}/> <span className="text-sm">Express</span></label><label className="flex items-center space-x-2 mt-2"><input type="checkbox" checked={editForm.isMember} onChange={e=>setEditForm({...editForm, isMember: e.target.checked})}/> <span className="text-sm">Member</span></label><textarea className="w-full p-2 border rounded mt-2 text-sm" value={editForm.notes} onChange={e=>setEditForm({...editForm, notes: e.target.value})} placeholder="Internal Notes" /></div></div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-white p-3 rounded border border-blue-100"><div><label className="block text-xs font-bold text-blue-600 mb-1">{t.pickupSchedule}</label><input type="date" className="w-full p-2 border rounded text-xs mb-1" value={editForm.pickupDate} onChange={e=>setEditForm({...editForm, pickupDate: e.target.value})} /><select className="w-full p-2 border rounded text-xs" value={editForm.pickupTime} onChange={e=>setEditForm({...editForm, pickupTime: e.target.value})}>{TIME_SLOTS.map(s=><option key={s}>{s}</option>)}</select></div><div><label className="block text-xs font-bold text-green-600 mb-1">{t.deliverySchedule}</label><input type="date" className="w-full p-2 border rounded text-xs mb-1" value={editForm.deliveryDate} onChange={e=>setEditForm({...editForm, deliveryDate: e.target.value})} /><select className="w-full p-2 border rounded text-xs" value={editForm.deliveryTime} onChange={e=>setEditForm({...editForm, deliveryTime: e.target.value})}>{TIME_SLOTS.map(s=><option key={s}>{s}</option>)}</select></div></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-white p-3 rounded border border-blue-100"><div><label className="block text-xs font-bold text-blue-600 mb-1">{t.pickupSchedule}</label><input type="date" className="w-full p-2 border rounded text-xs mb-1" value={editForm.pickupDate} onChange={e=>setEditForm({...editForm, pickupDate: e.target.value})} /><select className="w-full p-2 border rounded text-xs" value={editForm.pickupTime} onChange={e=>setEditForm({...editForm, pickupTime: e.target.value})}>{TIME_SLOTS.map(s=><option key={s} value={s}>{s}</option>)}</select></div><div><label className="block text-xs font-bold text-green-600 mb-1">{t.deliverySchedule}</label><input type="date" className="w-full p-2 border rounded text-xs mb-1" value={editForm.deliveryDate} onChange={e=>setEditForm({...editForm, deliveryDate: e.target.value})} /><select className="w-full p-2 border rounded text-xs" value={editForm.deliveryTime} onChange={e=>setEditForm({...editForm, deliveryTime: e.target.value})}>{TIME_SLOTS.map(s=><option key={s} value={s}>{s}</option>)}</select></div></div>
                     <div className="mb-4"><label className="block text-xs font-bold text-red-500 mb-1">{t.adminNoteLabel}</label><textarea className="w-full p-2 border-2 border-red-100 rounded text-sm focus:border-red-300 outline-none" rows="2" placeholder={t.adminNotePlaceholder} value={editForm.adminNote} onChange={e=>setEditForm({...editForm, adminNote: e.target.value})} /></div>
                     <div className="flex justify-end gap-2"><button onClick={()=>setEditingOrder(null)} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded">Cancel</button><button onClick={()=>saveOrderChanges(o)} className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">Save Changes</button></div></div>
                  ) : (
@@ -889,6 +887,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                  {tab === 'services' && <ServiceEditor services={services} setServices={setServices} t={t} />}
                  {tab === 'settings' && <SettingsPanel config={config} setConfig={setConfig} t={t} />}
             </div>
+            {qrModal.show && (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in"><div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center relative"><button onClick={() => setQRModal({show: false, url: ''})} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button><h3 className="text-xl font-black text-gray-800 mb-2">{t.qrCode}</h3><p className="text-gray-500 text-sm mb-6">Scan to open app</p><div className="bg-gray-100 p-4 rounded-xl inline-block"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrModal.url)}`} alt="QR Code" className="w-48 h-48 object-contain mix-blend-multiply" /></div></div></div>)}
         </div>
     );
 };
@@ -1401,7 +1400,7 @@ ${extras ? extras + '%0a--------------------------------' : ''}
                   </div>
                   <div className={`bg-green-50 p-4 rounded-xl border ${formErrors.deliveryDate ? 'border-red-500' : 'border-green-100'}`}>
                     <label className="block text-sm font-bold text-green-800 mb-2 flex items-center uppercase tracking-wide"><Calendar className="w-4 h-4 mr-2" /> {t.deliveryInfo}</label>
-                    <div className="space-y-2"><div><span className="text-xs text-green-600 font-bold ml-1">{t.deliveryDate}</span><input required type="date" value={form.deliveryDate} onChange={(e) => setForm({ ...form, deliveryDate: e.target.value })} className="w-full p-3 bg-white rounded-lg border border-green-200 focus:border-green-500" /></div><div><span className="text-xs text-green-600 font-bold ml-1">{t.deliveryTime}</span><select className="w-full p-3 bg-white rounded-lg border border-green-200 focus:border-green-500" value={form.deliveryTime} onChange={(e) => setForm({...form, deliveryTime: e.target.value})}>{TIME_SLOTS.map(s => <option key={s} value={s}>{slot}</option>)}</select></div></div>
+                    <div className="space-y-2"><div><span className="text-xs text-green-600 font-bold ml-1">{t.deliveryDate}</span><input required type="date" value={form.deliveryDate} onChange={(e) => setForm({ ...form, deliveryDate: e.target.value })} className="w-full p-3 bg-white rounded-lg border border-green-200 focus:border-green-500" /></div><div><span className="text-xs text-green-600 font-bold ml-1">{t.deliveryTime}</span><select className="w-full p-3 bg-white rounded-lg border border-green-200 focus:border-green-500" value={form.deliveryTime} onChange={(e) => setForm({...form, deliveryTime: e.target.value})}>{TIME_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div>
                   </div>
                 </div>
               </div>
