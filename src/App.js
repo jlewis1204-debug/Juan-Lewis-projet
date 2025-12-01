@@ -103,6 +103,42 @@ const getLabel = (id, type, lang) => {
     return id;
 };
 
+// --- HELPER: VALIDAR FECHAS (MEJORADO) ---
+const validateScheduleLogic = (pickupDate, pickupTime, deliveryDate, deliveryTime) => {
+    if (!pickupDate || !deliveryDate) return null;
+    
+    // Helper para parsear hora AM/PM correctamente
+    const parseDateTime = (dateStr, timeSlotStr) => {
+        const timePart = timeSlotStr.split(' - ')[0]; // "08:00 AM"
+        const [time, modifier] = timePart.split(' ');
+        let [hours, minutes] = time.split(':');
+        hours = parseInt(hours, 10);
+        if (modifier === 'PM' && hours < 12) hours += 12;
+        if (modifier === 'AM' && hours === 12) hours = 0;
+        return new Date(`${dateStr}T${hours.toString().padStart(2, '0')}:${minutes}:00`);
+    };
+    
+    const now = new Date();
+    const pickupDateTime = parseDateTime(pickupDate, pickupTime);
+    const deliveryDateTime = parseDateTime(deliveryDate, deliveryTime);
+    
+    // Validar si la recogida es en el pasado (con 1 hora de gracia para usabilidad)
+    // Nota: now.getTime() incluye la hora actual.
+    const threshold = new Date(now.getTime() - 60 * 60 * 1000); // 1 hora atrás permitido
+
+    if (pickupDateTime < threshold) {
+        return "errorPastDate";
+    }
+    
+    // Validar que entrega sea después de recogida (mínimo 4 horas para lavar)
+    const minProcessTime = new Date(pickupDateTime.getTime() + 4 * 60 * 60 * 1000);
+    if (deliveryDateTime < minProcessTime) {
+        return "errorDeliveryOrder";
+    }
+    
+    return null;
+};
+
 // --- CONSTANTES ---
 const TIME_SLOTS = [
   "08:00 AM - 10:00 AM", "10:00 AM - 12:00 PM",
@@ -133,7 +169,7 @@ const CustomIronIcon = () => (
 
 const CustomPackageIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>);
 const CustomInfoIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>);
-const CustomReceiptIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>);
+const CustomReceiptIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>);
 const CustomLoaderIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>);
 const CustomUploadIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>);
 const CustomCameraIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>);
@@ -307,7 +343,9 @@ const LANGUAGES = {
     apiKey: "Publishable API Key",
     qrCode: "App QR Code",
     scent: "Scent",
-    allergies: "Allergies"
+    allergies: "Allergies",
+    errorPastDate: "Error: You cannot select a past date/time.",
+    errorDeliveryOrder: "Error: Delivery date must be after pickup date."
   },
   es: {
     title: "Fast Wave Lavandería",
@@ -441,7 +479,9 @@ const LANGUAGES = {
     apiKey: "API Key Pública",
     qrCode: "Código QR de App",
     scent: "Aroma",
-    allergies: "Alergias"
+    allergies: "Alergias",
+    errorPastDate: "Error: No puedes seleccionar una fecha/hora pasada.",
+    errorDeliveryOrder: "Error: La fecha de entrega debe ser posterior a la de recogida."
   },
   fr: {
      // ... previous fr keys ...
@@ -466,7 +506,9 @@ const LANGUAGES = {
      apiKey: "Clé API",
      qrCode: "Code QR",
      scent: "Parfum",
-     allergies: "Allergies"
+     allergies: "Allergies",
+     errorPastDate: "Erreur: Date passée.",
+     errorDeliveryOrder: "Erreur: Livraison avant ramassage."
   },
   hi: {
      // ... previous hi keys ...
@@ -491,7 +533,9 @@ const LANGUAGES = {
      apiKey: "एपीआई कुंजी",
      qrCode: "क्यूआर कोड",
      scent: "सुगंध",
-     allergies: "एलर्जी"
+     allergies: "एलर्जी",
+     errorPastDate: "त्रुटि: पिछली तारीख.",
+     errorDeliveryOrder: "त्रुटि: डिलीवरी पिकअप से पहले."
   }
 };
 
@@ -722,7 +766,14 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
     const deleteOrder = async (id) => { if(window.confirm(t.deleteOrder + "?")) { if(db) await deleteDoc(doc(db, 'orders', id)); setOrders(prev => prev.filter(o => o.id !== id)); } };
     const startEditing = (order) => { setEditingOrder(order.id); setEditForm({ name: order.customer.name, phone: order.customer.phone, address: order.customer.address, express: order.express || false, isMember: order.isMember || false, notes: order.notes || '', pickupDate: order.details?.pickupDate || '', pickupTime: order.details?.pickupTime || TIME_SLOTS[0], deliveryDate: order.details?.deliveryDate || '', deliveryTime: order.details?.deliveryTime || TIME_SLOTS[0], adminNote: order.adminNote || '' }); };
     const shareOrder = (order) => { const text = `Fast Wave Receipt #${order.orderNumber || order.id.slice(0,6)}\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}\nLink: ${window.location.origin}`; if (navigator.share) { navigator.share({ title: 'Fast Wave Receipt', text: text, url: window.location.href }).catch(console.error); } else { navigator.clipboard.writeText(text); alert("Receipt info copied to clipboard!"); } };
+    
     const saveOrderChanges = async (order) => { 
+        const dateError = validateScheduleLogic(editForm.pickupDate, editForm.pickupTime, editForm.deliveryDate, editForm.deliveryTime);
+        if (dateError) {
+            alert(t[dateError] || "Date Error");
+            return; 
+        }
+
         let subtotal = Object.entries(order.items).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0); 
         let total = subtotal;
         const expressPct = config.expressPercent || 20; 
@@ -740,7 +791,6 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
 
     const printOrder = (order) => {
         const printWindow = window.open('', '_blank');
-        // ... (calculation logic same as before)
         let subtotal = Object.entries(order.items).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0);
         const expressPct = config.expressPercent || 20; const discountPct = config.discountPercent || 10; const taxPct = config.taxPercent || 0;
         const expressFee = order.express ? subtotal * (expressPct / 100) : 0;
@@ -825,6 +875,13 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                             </div>
                          );
                      })()}
+                     
+                     {/* AROMA AND ALLERGIES DISPLAY IN ADMIN */}
+                     <div className="mt-3 pt-2 border-t border-dashed text-xs text-gray-500">
+                         {o.aroma && <div className="flex justify-between mb-1"><span className="text-purple-600 font-bold">Aroma:</span><span>{getLabel(o.aroma,'aroma',lang)}</span></div>}
+                         {o.allergies && o.allergies.length > 0 && <div className="flex justify-between"><span className="text-red-600 font-bold">Allergies:</span><span className="text-right max-w-[60%]">{o.allergies.map(a => getLabel(a,'allergy',lang)).join(', ')}</span></div>}
+                     </div>
+                     
                      </div><div className="mt-2 text-xs text-gray-500 flex gap-2">{o.aroma && <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded">Aroma: {getLabel(o.aroma,'aroma',lang)}</span>} {o.allergies?.length > 0 && <span className="bg-red-100 text-red-700 px-2 py-1 rounded">Allergies: {o.allergies.map(a=>getLabel(a,'allergy',lang)).join(', ')}</span>}</div></div></div>)}</div>
                  )}</div>))}
                  {filteredOrders.length === 0 && <p className="text-center text-gray-400 py-10">No matching orders found.</p>}</div>
@@ -871,6 +928,9 @@ export default function FastWaveApp() {
 
   // Payment Form State
   const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvc: '', name: '' });
+  
+  // NEW DATE ERROR STATE
+  const [dateErrorMsg, setDateErrorMsg] = useState(null);
 
   useTailwind();
   useAppMode(config.customIcon);
@@ -935,6 +995,16 @@ export default function FastWaveApp() {
       if (!form.pickupDate) errors.pickupDate = true;
       if (!form.deliveryDate) errors.deliveryDate = true;
       setFormErrors(errors);
+
+      // Date Logic Validation
+      const logicError = validateScheduleLogic(form.pickupDate, form.pickupTime, form.deliveryDate, form.deliveryTime);
+      if (logicError) {
+          setDateErrorMsg(t[logicError]);
+          return false;
+      } else {
+          setDateErrorMsg(null);
+      }
+
       return Object.keys(errors).length === 0;
   };
 
@@ -1312,6 +1382,9 @@ ${extras ? extras + '%0a--------------------------------' : ''}
             <form onSubmit={handleCheckoutClick} className="space-y-6 bg-white p-8 rounded-3xl shadow-lg border border-gray-100">
               {Object.keys(formErrors).length > 0 && <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 font-bold text-sm mb-4 animate-shake">{t.fillRequired}</div>}
               
+              {/* ERROR MESSAGE FOR DATES */}
+              {dateErrorMsg && <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 font-bold text-sm mb-4 animate-shake">{dateErrorMsg}</div>}
+
               <h3 className="font-bold text-xl text-gray-800 mb-4 flex items-center"><User className="mr-2" /> {t.details}</h3>
               <div className="grid gap-4">
                 <input required placeholder={t.nameLabel} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={`w-full p-4 bg-gray-50 rounded-xl border focus:bg-white focus:border-cyan-500 outline-none transition ${formErrors.name ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} />
@@ -1324,11 +1397,11 @@ ${extras ? extras + '%0a--------------------------------' : ''}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                   <div className={`bg-blue-50 p-4 rounded-xl border ${formErrors.pickupDate ? 'border-red-500' : 'border-blue-100'}`}>
                     <label className="block text-sm font-bold text-blue-800 mb-2 flex items-center uppercase tracking-wide"><Truck className="w-4 h-4 mr-2" /> {t.pickupInfo}</label>
-                    <div className="space-y-2"><div><span className="text-xs text-blue-600 font-bold ml-1">{t.pickupDate}</span><input required type="date" value={form.pickupDate} onChange={(e) => setForm({ ...form, pickupDate: e.target.value })} className="w-full p-3 bg-white rounded-lg border border-blue-200 focus:border-blue-500" /></div><div><span className="text-xs text-blue-600 font-bold ml-1">{t.pickupTime}</span><select className="w-full p-3 bg-white rounded-lg border border-blue-200 focus:border-blue-500" value={form.pickupTime} onChange={(e) => setForm({...form, pickupTime: e.target.value})}>{TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}</select></div></div>
+                    <div className="space-y-2"><div><span className="text-xs text-blue-600 font-bold ml-1">{t.pickupDate}</span><input required type="date" value={form.pickupDate} onChange={(e) => setForm({ ...form, pickupDate: e.target.value })} className="w-full p-3 bg-white rounded-lg border border-blue-200 focus:border-blue-500" /></div><div><span className="text-xs text-blue-600 font-bold ml-1">{t.pickupTime}</span><select className="w-full p-3 bg-white rounded-lg border border-blue-200 focus:border-blue-500" value={form.pickupTime} onChange={(e) => setForm({...form, pickupTime: e.target.value})}>{TIME_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div>
                   </div>
                   <div className={`bg-green-50 p-4 rounded-xl border ${formErrors.deliveryDate ? 'border-red-500' : 'border-green-100'}`}>
                     <label className="block text-sm font-bold text-green-800 mb-2 flex items-center uppercase tracking-wide"><Calendar className="w-4 h-4 mr-2" /> {t.deliveryInfo}</label>
-                    <div className="space-y-2"><div><span className="text-xs text-green-600 font-bold ml-1">{t.deliveryDate}</span><input required type="date" value={form.deliveryDate} onChange={(e) => setForm({ ...form, deliveryDate: e.target.value })} className="w-full p-3 bg-white rounded-lg border border-green-200 focus:border-green-500" /></div><div><span className="text-xs text-green-600 font-bold ml-1">{t.deliveryTime}</span><select className="w-full p-3 bg-white rounded-lg border border-green-200 focus:border-green-500" value={form.deliveryTime} onChange={(e) => setForm({...form, deliveryTime: e.target.value})}>{TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}</select></div></div>
+                    <div className="space-y-2"><div><span className="text-xs text-green-600 font-bold ml-1">{t.deliveryDate}</span><input required type="date" value={form.deliveryDate} onChange={(e) => setForm({ ...form, deliveryDate: e.target.value })} className="w-full p-3 bg-white rounded-lg border border-green-200 focus:border-green-500" /></div><div><span className="text-xs text-green-600 font-bold ml-1">{t.deliveryTime}</span><select className="w-full p-3 bg-white rounded-lg border border-green-200 focus:border-green-500" value={form.deliveryTime} onChange={(e) => setForm({...form, deliveryTime: e.target.value})}>{TIME_SLOTS.map(s => <option key={s} value={s}>{slot}</option>)}</select></div></div>
                   </div>
                 </div>
               </div>
