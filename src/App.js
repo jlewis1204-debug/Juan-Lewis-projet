@@ -510,7 +510,6 @@ const LANGUAGES = {
     btnUnderstood: "Entendido"
   },
   fr: {
-    // ...
     title: "Fast Wave Pressing",
     heroSubtitle: "Vêtements frais, livrés à votre porte !",
     payApple: "Apple Pay",
@@ -524,7 +523,6 @@ const LANGUAGES = {
     alertTitle: "Mise à jour!",
     alertMsg: "L'horaire de votre commande a été mis à jour.",
     btnUnderstood: "Compris",
-    // ... all other keys
     orderNow: "Commencer",
     sendOrder: "Voir Panier",
     services: "Nos Services",
@@ -652,7 +650,6 @@ const LANGUAGES = {
     errorDeliveryOrder: "Erreur: Livraison avant ramassage."
   },
   hi: {
-    // ...
     title: "Fast Wave Laundry",
     heroSubtitle: "साफ़ कपड़े, आपके दरवाजे पर!",
     payApple: "Apple Pay",
@@ -666,7 +663,6 @@ const LANGUAGES = {
     alertTitle: "अनुसूची अद्यतन!",
     alertMsg: "लॉन्ड्री द्वारा आपकी ऑर्डर अनुसूची अपडेट की गई है।",
     btnUnderstood: "समझ गया",
-    // ... all other keys
     orderNow: "धुलाई शुरू करें",
     sendOrder: "ऑर्डर भेजें",
     services: "हमारी सेवाएँ",
@@ -1001,7 +997,6 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
     const [editingOrder, setEditingOrder] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
-    const [qrModal, setQRModal] = useState({show: false, url: ''});
 
     useEffect(() => {
         if (!isAuth) return;
@@ -1113,7 +1108,7 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                     <div className="flex justify-end gap-2"><button onClick={()=>setEditingOrder(null)} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded">Cancel</button><button onClick={()=>saveOrderChanges(o)} className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">Save Changes</button></div></div>
                  ) : (
                      /* ... Regular Card Expanded Logic for Totals ... */
-                     <div className="flex flex-col gap-4"><div className="flex flex-col md:flex-row justify-between items-start md:items-center"><div><div className="flex items-center gap-2 mb-1"><span className="font-mono font-bold text-cyan-600 bg-cyan-50 px-2 py-1 rounded">#{o.orderNumber || o.id.slice(0,6)}</span><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : o.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status]}</span></div><h3 className="font-bold text-gray-800 flex items-center">{o.customer.name} {expandedOrder === o.id ? <ChevronUp className="w-4 h-4 ml-2 text-gray-400"/> : <ChevronDown className="w-4 h-4 ml-2 text-gray-400"/>}</h3><p className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()} • {o.items ? Object.values(o.items).reduce((a,b)=>a+b,0) : 0} items</p>{o.adminNote && <p className="text-xs text-red-500 mt-1 font-bold">Note: {o.adminNote}</p>}{o.customerResponse && <p className="text-xs text-green-600 mt-1 font-bold">Reply: {o.customerResponse}</p>}</div><div className="flex items-center gap-2 mt-2 md:mt-0" onClick={e => e.stopPropagation()}><select value={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)} className="bg-gray-50 border border-gray-200 text-xs rounded p-2 font-bold outline-none cursor-pointer hover:border-cyan-500 transition">{Object.keys(t.status).map(s => <option key={s} value={s}>{t.status[s]}</option>)}</select><div className="relative group" title="QR Code"><button onClick={() => setQRModal({show: true, url: `${window.location.origin}?track=${o.id}`})} className="p-2 text-gray-500 hover:bg-gray-100 rounded"><QrCode className="w-4 h-4"/></button></div><button onClick={() => shareOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Share"><Share2 className="w-4 h-4"/></button><button onClick={() => startEditing(o)} className="p-2 text-blue-500 hover:bg-blue-50 rounded" title="Edit"><Edit2 className="w-4 h-4"/></button><button onClick={() => printOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Print"><Printer className="w-4 h-4"/></button><button onClick={() => deleteOrder(o.id)} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-4 h-4"/></button></div></div>
+                     <div className="flex flex-col gap-4"><div className="flex flex-col md:flex-row justify-between items-start md:items-center"><div><div className="flex items-center gap-2 mb-1"><span className="font-mono font-bold text-cyan-600 bg-cyan-50 px-2 py-1 rounded">#{o.orderNumber || o.id.slice(0,6)}</span><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : o.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status]}</span></div><h3 className="font-bold text-gray-800 flex items-center">{o.customer.name} {expandedOrder === o.id ? <ChevronUp className="w-4 h-4 ml-2 text-gray-400"/> : <ChevronDown className="w-4 h-4 ml-2 text-gray-400"/>}</h3><p className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()} • {o.items ? Object.values(o.items).reduce((a,b)=>a+b,0) : 0} items</p>{o.adminNote && <p className="text-xs text-red-500 mt-1 font-bold">Note: {o.adminNote}</p>}{o.customerResponse && <p className="text-xs text-green-600 mt-1 font-bold">Reply: {o.customerResponse}</p>}</div><div className="flex items-center gap-2 mt-2 md:mt-0" onClick={e => e.stopPropagation()}><select value={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)} className="bg-gray-50 border border-gray-200 text-xs rounded p-2 font-bold outline-none cursor-pointer hover:border-cyan-500 transition">{Object.keys(t.status).map(s => <option key={s} value={s}>{t.status[s]}</option>)}</select><button onClick={() => shareOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Share"><Share2 className="w-4 h-4"/></button><button onClick={() => startEditing(o)} className="p-2 text-blue-500 hover:bg-blue-50 rounded" title="Edit"><Edit2 className="w-4 h-4"/></button><button onClick={() => printOrder(o)} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Print"><Printer className="w-4 h-4"/></button><button onClick={() => deleteOrder(o.id)} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-4 h-4"/></button></div></div>
                      {expandedOrder === o.id && (<div className="mt-4 pt-4 border-t border-gray-100 animate-fade-in"><div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"><div className="bg-gray-50 p-3 rounded"><h5 className="font-bold text-gray-700 mb-2">Customer Details</h5><p><span className="font-bold">Phone:</span> {o.customer.phone}</p><p><span className="font-bold">Address:</span> {o.customer.address}</p><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.customer.address)}`} target="_blank" rel="noreferrer" className="text-cyan-600 font-bold text-xs mt-1 inline-flex items-center hover:underline"><MapPin className="w-3 h-3 mr-1"/> View Map</a></div><div className="bg-gray-50 p-3 rounded"><h5 className="font-bold text-gray-700 mb-2">Schedule</h5><p><span className="font-bold">Pickup:</span> {o.details.pickupDate} ({o.details.pickupTime})</p><p><span className="font-bold">Delivery:</span> {o.details.deliveryDate} ({o.details.deliveryTime})</p></div></div><div className="mt-4"><h5 className="font-bold text-gray-700 mb-2 text-sm">Items & Costs</h5><div className="space-y-1">{Object.entries(o.items).map(([id, qty]) => { const s = services.find(x => x.id === id); return (<div key={id} className="flex justify-between text-sm border-b border-gray-100 pb-1"><span>{qty}x {s ? getLabel(s.name_en,'', lang) : id}</span><span className="font-bold text-gray-600">${((s?.price || 0) * qty).toFixed(2)}</span></div>) })}
                      
                      {/* TOTAL BREAKDOWN IN ADMIN PANEL */}
@@ -1157,7 +1152,6 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                  {tab === 'services' && <ServiceEditor services={services} setServices={setServices} t={t} />}
                  {tab === 'settings' && <SettingsPanel config={config} setConfig={setConfig} t={t} />}
             </div>
-            {qrModal.show && (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in"><div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center relative"><button onClick={() => setQRModal({show: false, url: ''})} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button><h3 className="text-xl font-black text-gray-800 mb-2">{t.qrCode}</h3><p className="text-gray-500 text-sm mb-6">Scan to open app</p><div className="bg-gray-100 p-4 rounded-xl inline-block"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrModal.url)}`} alt="QR Code" className="w-48 h-48 object-contain mix-blend-multiply" /></div></div></div>)}
         </div>
     );
 };
@@ -1644,7 +1638,12 @@ ${extras ? extras + '%0a--------------------------------' : ''}
           {/* ... Hero ... */}
           <div className="relative h-[550px] flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center"><div className="absolute inset-0 bg-cyan-900/50 mix-blend-multiply"></div></div>
-            <div className="relative z-20 text-center px-4 max-w-4xl mx-auto"><h1 className="text-5xl md:text-7xl font-black text-white drop-shadow-lg mb-4 tracking-tight leading-tight">{t.title}</h1><p className="text-xl md:text-2xl text-cyan-50 font-light mb-10 italic max-w-3xl mx-auto leading-relaxed">"{t.heroSubtitle}"</p><div className="flex flex-col md:flex-row gap-4 justify-center"><button onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })} className="group bg-white text-cyan-700 text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center"><span className="mr-2">{t.orderNow}</span></button><button onClick={() => setView('cart')} className="group bg-cyan-500 text-white text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 hover:bg-cyan-400 transition-all duration-300 flex items-center justify-center border-2 border-white/30"><ShoppingBag className="w-6 h-6 mr-2" /> {t.sendOrder}</button></div></div>
+            <div className="relative z-20 text-center px-4 max-w-4xl mx-auto"><h1 className="text-5xl md:text-7xl font-black text-white drop-shadow-lg mb-4 tracking-tight leading-tight">{t.title}</h1><p className="text-xl md:text-2xl text-cyan-50 font-light mb-10 italic max-w-3xl mx-auto leading-relaxed">"{t.heroSubtitle}"</p><div className="flex flex-col md:flex-row gap-4 justify-center"><button onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })} className="group bg-white text-cyan-700 text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center"><span className="mr-2">{t.orderNow}</span></button><button onClick={() => setView('cart')} className="group bg-cyan-500 text-white text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 hover:bg-cyan-400 transition-all duration-300 flex items-center justify-center border-2 border-white/30"><ShoppingBag className="w-6 h-6 mr-2" /> {t.sendOrder}</button>
+            {/* NEW QR CODE BUTTON IN HERO SECTION */}
+            <button onClick={() => setQRModal({show: true, url: window.location.href})} className="group bg-gray-800 text-white text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center border-2 border-white/30">
+                <QrCode className="w-6 h-6 mr-2" /> {t.shareApp || "Share App"}
+            </button>
+            </div></div>
             <div className="absolute top-10 right-10 bg-yellow-400 text-cyan-900 w-24 h-24 rounded-full flex items-center justify-center text-center font-bold text-xs shadow-xl border-4 border-white rotate-12 z-30 animate-pulse">{config.discountPercent}% OFF<br/>Member</div>
           </div>
           <div id="services" className="max-w-7xl mx-auto px-4 py-16">
@@ -1791,7 +1790,7 @@ ${extras ? extras + '%0a--------------------------------' : ''}
               </div>
           )}
 
-          {/* QR CODE MODAL - AHORA ACCESIBLE GLOBALMENTE FUERA DE HOME */}
+          {/* QR CODE MODAL - ALWAYS VISIBLE */}
           {qrModal.show && (
               <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in">
                   <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center relative">
