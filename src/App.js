@@ -3,7 +3,7 @@ import {
   ShoppingBag, Lock, Phone, Star, Droplet,
   Calendar, Truck, MessageCircle, Settings, 
   Edit2, ArrowLeft, Trash2, Plus, User, CheckCircle, CreditCard, AlertCircle,
-  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, ExternalLink, ChevronDown, ChevronUp, Share2, MessageSquare, Camera, Users, DollarSign, RotateCcw, Percent, Search, QrCode
+  ShieldCheck, Key, Send, Minus, MapPin, Clock, Menu, X, Smartphone, Printer, Save, XCircle, ExternalLink, ChevronDown, ChevronUp, Share2, MessageSquare, Camera, Users, DollarSign, RotateCcw, Percent, Search, QrCode, BellRing
 } from 'lucide-react';
 
 // --- IMPORTACIONES DE FIREBASE ---
@@ -50,6 +50,14 @@ const useTailwind = () => {
 // --- CONFIGURACIÓN "MODO APP" (PWA) DINÁMICA ---
 const useAppMode = (customIcon) => {
   useEffect(() => {
+    if (!document.querySelector('#stripe-js')) {
+        const script = document.createElement('script');
+        script.id = 'stripe-js';
+        script.src = "https://js.stripe.com/v3/";
+        script.async = true;
+        document.head.appendChild(script);
+    }
+
     const iconUrl = customIcon || "https://ui-avatars.com/api/?name=Fast+Wave&background=06b6d4&color=fff&size=512&bold=true&length=2"; 
 
     const manifest = {
@@ -87,7 +95,7 @@ const generateShortId = () => {
 
 // --- HELPER: OBTENER ETIQUETA TRADUCIDA ---
 const getLabel = (id, type, lang) => {
-    if (!id) return ''; // Protección contra undefined
+    if (!id) return ''; 
     if (type === 'aroma') {
         const item = AROMAS.find(a => a.id === id);
         if (!item) return id;
@@ -109,7 +117,7 @@ const validateScheduleLogic = (pickupDate, pickupTime, deliveryDate, deliveryTim
     if (!pickupDate || !deliveryDate) return null;
     
     const parseDateTime = (dateStr, timeSlotStr) => {
-        if (!timeSlotStr) return new Date(dateStr); // Fallback
+        if (!timeSlotStr) return new Date(dateStr); 
         const timePart = timeSlotStr.split(' - ')[0]; 
         const [time, modifier] = timePart.split(' ');
         let [hours, minutes] = time.split(':');
@@ -167,7 +175,7 @@ const CustomIronIcon = () => (
 
 const CustomPackageIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>);
 const CustomInfoIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>);
-const CustomReceiptIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>);
+const CustomReceiptIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>);
 const CustomLoaderIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>);
 const CustomUploadIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>);
 const CustomCameraIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>);
@@ -259,6 +267,8 @@ const LANGUAGES = {
     payCash: "Cash on Delivery",
     payCard: "Card on Delivery",
     payOnline: "Zelle / Transfer",
+    payApple: "Apple Pay",
+    payGoogle: "Google Pay",
     pickupDate: "Pickup Date",
     pickupTime: "Pickup Time",
     deliveryDate: "Delivery Date",
@@ -343,7 +353,15 @@ const LANGUAGES = {
     scent: "Scent",
     allergies: "Allergies",
     errorPastDate: "Error: You cannot select a past date/time.",
-    errorDeliveryOrder: "Error: Delivery date must be after pickup date."
+    errorDeliveryOrder: "Error: Delivery date must be after pickup date.",
+    stripeError: "Error: Payment Configuration Missing. Contact Admin.",
+    shareApp: "Share App",
+    copyLink: "Copy Link",
+    paymentFailed: "Payment Failed",
+    configError: "Configuration Error",
+    alertTitle: "Schedule Updated!",
+    alertMsg: "The laundry has updated the schedule for one of your orders.",
+    btnUnderstood: "Understood"
   },
   es: {
     title: "Fast Wave Lavandería",
@@ -395,6 +413,8 @@ const LANGUAGES = {
     payCash: "Efectivo al recibir",
     payCard: "Tarjeta al recibir",
     payOnline: "Zelle / Transferencia",
+    payApple: "Apple Pay",
+    payGoogle: "Google Pay",
     pickupDate: "Fecha de Recogida",
     pickupTime: "Hora de Recogida",
     deliveryDate: "Fecha de Entrega",
@@ -479,61 +499,298 @@ const LANGUAGES = {
     scent: "Aroma",
     allergies: "Alergias",
     errorPastDate: "Error: No puedes seleccionar una fecha/hora pasada.",
-    errorDeliveryOrder: "Error: La fecha de entrega debe ser posterior a la de recogida."
+    errorDeliveryOrder: "Error: La fecha de entrega debe ser posterior a la de recogida.",
+    stripeError: "Error: Falta configuración de pago. Contacta al administrador.",
+    shareApp: "Compartir App",
+    copyLink: "Copiar Enlace",
+    paymentFailed: "Pago Fallido",
+    configError: "Error de Configuración",
+    alertTitle: "¡Horario Actualizado!",
+    alertMsg: "La lavandería ha actualizado el horario de una de tus órdenes.",
+    btnUnderstood: "Entendido"
   },
   fr: {
-     // ... previous fr keys ...
-     joinMemberTitle: "Devenir membre ?",
-     joinYes: "Oui, Rejoindre",
-     joinNo: "Non, Continuer",
-     rejoinTitle: "Réactiver l'adhésion",
-     rejoinYes: "Payer et Réactiver",
-     rejoinDesc: "Votre adhésion a expiré. Frais pour rejoindre à nouveau.",
-     saveAmount: "Vous économiserez",
-     rulesText1: "Seulement utiliser",
-     rulesText2: "fois par mois.",
-     rulesText3: "Coût de retour",
-     rulesText4: "pour",
-     manageMembers: "Membres Actifs",
-     pastMembers: "Anciens Membres",
-     restoreMember: "Restaurer Gratuit",
-     payCardLabel: "Carte de Crédit",
-     taxLabel: "Taxe (%)",
-     searchPlaceholder: "Rechercher...",
-     gatewayConfig: "Passerelle de Paiement",
-     apiKey: "Clé API",
-     qrCode: "Code QR",
-     scent: "Parfum",
-     allergies: "Allergies",
-     errorPastDate: "Erreur: Date passée.",
-     errorDeliveryOrder: "Erreur: Livraison avant ramassage."
+    // ...
+    title: "Fast Wave Pressing",
+    heroSubtitle: "Vêtements frais, livrés à votre porte !",
+    payApple: "Apple Pay",
+    payGoogle: "Google Pay",
+    qrCode: "Code QR",
+    stripeError: "Erreur: Configuration de paiement manquante.",
+    shareApp: "Partager l'application",
+    copyLink: "Copier le lien",
+    paymentFailed: "Paiement Échoué",
+    configError: "Erreur de Configuration",
+    alertTitle: "Mise à jour!",
+    alertMsg: "L'horaire de votre commande a été mis à jour.",
+    btnUnderstood: "Compris",
+    // ... all other keys
+    orderNow: "Commencer",
+    sendOrder: "Voir Panier",
+    services: "Nos Services",
+    productsToAvoid: "Allergies / Éviter",
+    preferredAroma: "Parfum",
+    details: "Détails de la commande",
+    pickupInfo: "Ramassage",
+    deliveryInfo: "Livraison",
+    payment: "Paiement",
+    total: "Total",
+    submit: "Commander",
+    status: { pending: "En attente", confirmed: "Confirmé", picked_up: "Ramassé", cleaning: "Lavage", delivering: "Livraison", completed: "Terminé" },
+    express: "Lavage Express",
+    member: "Membre",
+    discountMsg: "Remise appliquée !",
+    successMsg: "Commande Reçue !",
+    successSub: "Pour confirmer, envoyez les détails via WhatsApp ou SMS.",
+    orderNumberIs: "Commande #",
+    back: "Retour",
+    adminTitle: "Tableau de bord",
+    adminOrders: "Commandes",
+    adminServices: "Services",
+    adminSettings: "Paramètres",
+    statsTitle: "Statistiques",
+    totalOrders: "Total Commandes",
+    totalRevenue: "Revenu Total",
+    deleteOrder: "Supprimer",
+    editServices: "Modifier Services",
+    genSettings: "Paramètres Généraux",
+    save: "Enregistrer",
+    zelleConf: "Config Zelle",
+    busPhone: "Numéro WhatsApp",
+    disc: "Remise",
+    nameEs: "Nom (Espagnol)",
+    nameEn: "Nom (Anglais)",
+    nameFr: "Nom (Français)",
+    nameHi: "Nom (Hindi)",
+    price: "Prix ($)",
+    addNew: "Ajouter",
+    login: "Connexion Admin",
+    enter: "Entrer",
+    wrongPin: "Identifiants incorrects",
+    sendWhastapp: "Confirmer via WhatsApp",
+    sendSMS: "Confirmer via SMS",
+    payCash: "Espèces / Carte à la livraison",
+    payOnline: "Zelle / Virement",
+    pickupDate: "Date de ramassage",
+    pickupTime: "Heure de ramassage",
+    deliveryDate: "Date de livraison",
+    deliveryTime: "Heure de livraison",
+    payCashLabel: "Payer à la livraison",
+    payCashSub: "Espèces ou Carte",
+    payOnlineLabel: "Payer en ligne",
+    payOnlineSub: "Virement Zelle",
+    zelleNote: "Envoyer capture d'écran",
+    forgotPass: "Oublié ?",
+    recoverTitle: "Récupérer accès",
+    recoverDesc: "Entrez le PIN de récupération.",
+    enterPin: "Entrer PIN",
+    reset: "Révéler",
+    wrongRecPin: "Mauvais PIN",
+    securitySettings: "Sécurité",
+    changeUser: "Changer Utilisateur",
+    changePass: "Changer Mot de passe",
+    changePin: "Changer PIN",
+    currentPass: "Mot de passe actuel",
+    newPass: "Nouveau mot de passe",
+    whatsappLabel: "Numéro WhatsApp",
+    fee: "Frais",
+    off: "REMISE",
+    nameLabel: "Nom complet",
+    phoneLabel: "Téléphone",
+    addressLabel: "Adresse",
+    sending: "Envoi...",
+    orderSent: "Envoyé !",
+    emptyCart: "Panier vide",
+    usernameLabel: "Utilisateur",
+    passwordLabel: "Mot de passe",
+    credsTitle: "Vos identifiants :",
+    user: "Utilisateur :",
+    pass: "Mdp :",
+    expressLabel: "Label Express",
+    expressPercentLabel: "Frais Express (%)",
+    trackOrder: "Suivre commande",
+    yourOrders: "Vos commandes",
+    editingOrder: "Modifier commande",
+    customerInfo: "Info Client",
+    pickupSchedule: "Horaire Ramassage",
+    deliverySchedule: "Horaire Livraison",
+    adminNoteLabel: "Note Admin / Raison",
+    adminNotePlaceholder: "Expliquez le changement...",
+    updateFromLaundry: "Mise à jour :",
+    uploadImage: "Télécharger image",
+    uploadTip: "Cliquer pour télécharger",
+    fillRequired: "Remplissez les champs requis (en rouge).",
+    share: "Partager",
+    deleteReceipt: "Supprimer",
+    replyToAdmin: "Répondre",
+    sendReply: "Envoyer",
+    replySent: "Envoyé!",
+    orderCompleted: "Commande Terminée",
+    joinMemberTitle: "Devenir membre ?",
+    joinMemberDesc: "Devenez membre et obtenez une remise immédiate !",
+    joinYes: "Oui, Rejoindre",
+    joinNo: "Non, Continuer",
+    rejoinTitle: "Réactiver l'adhésion",
+    rejoinYes: "Payer et Réactiver",
+    rejoinDesc: "Votre adhésion a expiré. Frais pour rejoindre à nouveau.",
+    saveAmount: "Vous économiserez",
+    rulesText1: "Seulement utiliser",
+    rulesText2: "fois par mois.",
+    rulesText3: "Coût de retour",
+    rulesText4: "pour",
+    manageMembers: "Membres Actifs",
+    pastMembers: "Anciens Membres",
+    restoreMember: "Restaurer Gratuit",
+    payCardLabel: "Carte de Crédit",
+    taxLabel: "Taxe (%)",
+    searchPlaceholder: "Rechercher...",
+    gatewayConfig: "Passerelle de Paiement",
+    apiKey: "Clé API",
+    scent: "Parfum",
+    allergies: "Allergies",
+    errorPastDate: "Erreur: Date passée.",
+    errorDeliveryOrder: "Erreur: Livraison avant ramassage."
   },
   hi: {
-     // ... previous hi keys ...
-     joinMemberTitle: "सदस्यता में शामिल हों?",
-     joinYes: "हाँ, शामिल हों",
-     joinNo: "नहीं, जारी रखें",
-     rejoinTitle: "सदस्यता पुनः सक्रिय करें",
-     rejoinYes: "शुल्क दें और जुड़ें",
-     rejoinDesc: "आपकी सदस्यता समाप्त हो गई है। फिर से जुड़ने का शुल्क।",
-     saveAmount: "आप बचाएंगे",
-     rulesText1: "केवल उपयोग करें",
-     rulesText2: "बार महीने में।",
-     rulesText3: "पुनः जुड़ने की लागत",
-     rulesText4: "के लिए",
-     manageMembers: "सक्रिय सदस्य",
-     pastMembers: "पूर्व सदस्य",
-     restoreMember: "निःशुल्क बहाल करें",
-     payCardLabel: "क्रेडिट कार्ड",
-     taxLabel: "कर (%)",
-     searchPlaceholder: "खोजें...",
-     gatewayConfig: "भुगतान गेटवे",
-     apiKey: "एपीआई कुंजी",
-     qrCode: "क्यूआर कोड",
-     scent: "सुगंध",
-     allergies: "एलर्जी",
-     errorPastDate: "त्रुटि: पिछली तारीख.",
-     errorDeliveryOrder: "त्रुटि: डिलीवरी पिकअप से पहले."
+    // ...
+    title: "Fast Wave Laundry",
+    heroSubtitle: "साफ़ कपड़े, आपके दरवाजे पर!",
+    payApple: "Apple Pay",
+    payGoogle: "Google Pay",
+    qrCode: "क्यूआर कोड",
+    stripeError: "त्रुटि: भुगतान कॉन्फ़िगरेशन गायब है।",
+    shareApp: "ऐप साझा करें",
+    copyLink: "लिंक कॉपी करें",
+    paymentFailed: "भुगतान असफल",
+    configError: "कॉन्फ़िगरेशन त्रुटि",
+    alertTitle: "अनुसूची अद्यतन!",
+    alertMsg: "लॉन्ड्री द्वारा आपकी ऑर्डर अनुसूची अपडेट की गई है।",
+    btnUnderstood: "समझ गया",
+    // ... all other keys
+    orderNow: "धुलाई शुरू करें",
+    sendOrder: "ऑर्डर भेजें",
+    services: "हमारी सेवाएँ",
+    productsToAvoid: "एलर्जी / बचें",
+    preferredAroma: "सुगंध चयन",
+    details: "ऑर्डर विवरण",
+    pickupInfo: "पिकअप जानकारी",
+    deliveryInfo: "डिलीवरी जानकारी",
+    payment: "भुगतान विधि",
+    total: "कुल",
+    submit: "ऑर्डर की समीक्षा करें",
+    status: { pending: "लंबित", confirmed: "पुष्टि की गई", picked_up: "पिक अप किया गया", cleaning: "धुलाई", delivering: "डिलीवरी", completed: "पूर्ण" },
+    express: "एक्सप्रेस धुलाई",
+    member: "मैं सदस्य हूँ",
+    discountMsg: "छूट लागू!",
+    successMsg: "ऑर्डर प्राप्त हुआ!",
+    successSub: "पुष्टि करने के लिए, कृपया व्हाट्सएप या एसएमएस के माध्यम से विवरण भेजें।",
+    orderNumberIs: "ऑर्डर #",
+    back: "वापस",
+    adminTitle: "व्यवस्थापक डैशबोर्ड",
+    adminOrders: "ऑर्डर",
+    adminServices: "सेवाएँ",
+    adminSettings: "सेटिंग्स",
+    statsTitle: "व्यापार आँकड़े",
+    totalOrders: "कुल ऑर्डर",
+    totalRevenue: "कुल राजस्व",
+    deleteOrder: "ऑर्डर हटाएं",
+    editServices: "सेवाएँ संपादित करें",
+    genSettings: "सामान्य सेटिंग्स",
+    save: "परिवर्तन सहेजें",
+    zelleConf: "Zelle कॉन्फ़िगरेशन",
+    busPhone: "व्हाट्सएप नंबर",
+    disc: "छूट",
+    nameEs: "नाम (स्पेनिश)",
+    nameEn: "नाम (अंग्रेज़ी)",
+    nameFr: "नाम (फ्रेंच)",
+    nameHi: "नाम (हिंदी)",
+    price: "कीमत ($)",
+    addNew: "नया जोड़ें",
+    login: "व्यवस्थापक लॉगिन",
+    enter: "प्रवेश करें",
+    wrongPin: "गलत क्रेडेंशियल्स",
+    sendWhastapp: "व्हाट्सएप द्वारा पुष्टि करें",
+    sendSMS: "एसएमएस द्वारा पुष्टि करें",
+    payCash: "डिलीवरी पर नकद / कार्ड",
+    payOnline: "Zelle / ट्रांसफर",
+    pickupDate: "पिकअप तिथि",
+    pickupTime: "पिकअप समय",
+    deliveryDate: "डिलीवरी तिथि",
+    deliveryTime: "डिलीवरी समय",
+    payCashLabel: "डिलीवरी पर भुगतान",
+    payCashSub: "नकद या कार्ड",
+    payOnlineLabel: "ऑनलाइन भुगतान",
+    payOnlineSub: "Zelle ट्रांसफर",
+    zelleNote: "कृपया स्क्रीनशॉट भेजें",
+    forgotPass: "क्रेडेंशियल्स भूल गए?",
+    recoverTitle: "एक्सेस पुनर्प्राप्त करें",
+    recoverDesc: "लॉगिन विवरण प्रकट करने के लिए रिकवरी पिन दर्ज करें।",
+    enterPin: "पिन दर्ज करें",
+    reset: "प्रकट करें",
+    wrongRecPin: "गलत पिन",
+    securitySettings: "सुरक्षा सेटिंग्स",
+    changeUser: "व्यवस्थापक उपयोगकर्ता बदलें",
+    changePass: "व्यवस्थापक पासवर्ड बदलें",
+    changePin: "रिकवरी पिन बदलें",
+    currentPass: "वर्तमान पासवर्ड",
+    newPass: "नया पासवर्ड",
+    whatsappLabel: "व्हाट्सएप नंबर",
+    fee: "शुल्क",
+    off: "छूट",
+    nameLabel: "पूरा नाम",
+    phoneLabel: "फ़ोन नंबर",
+    addressLabel: "पता",
+    sending: "भेज रहा है...",
+    orderSent: "ऑर्डर सफलतापूर्वक भेजा गया!",
+    emptyCart: "आपकी टोकरी खाली है",
+    usernameLabel: "उपयोगकर्ता नाम",
+    passwordLabel: "पासवर्ड",
+    credsTitle: "आपकी साख:",
+    user: "उपयोगकर्ता:",
+    pass: "पासवर्ड:",
+    expressLabel: "एक्सप्रेस समय लेबल",
+    expressPercentLabel: "एक्सप्रेस शुल्क (%)",
+    trackOrder: "ऑर्डर ट्रैक करें",
+    yourOrders: "आपके ऑर्डर",
+    editingOrder: "ऑर्डर संपादन",
+    customerInfo: "ग्राहक जानकारी",
+    pickupSchedule: "पिकअप अनुसूची",
+    deliverySchedule: "डिलीवरी अनुसूची",
+    adminNoteLabel: "व्यवस्थापक नोट / परिवर्तन का कारण",
+    adminNotePlaceholder: "समझाएं कि आपने अनुसूची या विकल्प क्यों बदले...",
+    updateFromLaundry: "लॉन्ड्री से अपडेट:",
+    uploadImage: "छवि अपलोड करें",
+    uploadTip: "अपलोड करने के लिए क्लिक करें",
+    fillRequired: "आवश्यक फ़ील्ड भरें।",
+    share: "साझा करें",
+    deleteReceipt: "हटाएं",
+    replyToAdmin: "जवाब दें",
+    sendReply: "भेजें",
+    replySent: "भेजा गया",
+    orderCompleted: "आदेश पूरा हुआ",
+    joinMemberTitle: "सदस्यता में शामिल हों?",
+    joinYes: "हाँ, शामिल हों",
+    joinNo: "नहीं, जारी रखें",
+    rejoinTitle: "सदस्यता पुनः सक्रिय करें",
+    rejoinYes: "शुल्क दें और जुड़ें",
+    rejoinDesc: "आपकी सदस्यता समाप्त हो गई है। फिर से जुड़ने का शुल्क।",
+    saveAmount: "आप बचाएंगे",
+    rulesText1: "केवल उपयोग करें",
+    rulesText2: "बार महीने में।",
+    rulesText3: "पुनः जुड़ने की लागत",
+    rulesText4: "के लिए",
+    manageMembers: "सक्रिय सदस्य",
+    pastMembers: "पूर्व सदस्य",
+    restoreMember: "निःशुल्क बहाल करें",
+    payCardLabel: "क्रेडिट कार्ड",
+    taxLabel: "कर (%)",
+    searchPlaceholder: "खोजें...",
+    gatewayConfig: "भुगतान गेटवे",
+    apiKey: "एपीआई कुंजी",
+    scent: "सुगंध",
+    allergies: "एलर्जी",
+    errorPastDate: "त्रुटि: पिछली तारीख.",
+    errorDeliveryOrder: "त्रुटि: डिलीवरी पिकअप से पहले."
   }
 };
 
@@ -784,7 +1041,20 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
         let taxableAmount = (subtotal + expressFee) - discount;
         let tax = taxableAmount * (taxPct / 100);
         total = taxableAmount + tax;
-        const updatedData = { 'customer.name': editForm.name, 'customer.phone': editForm.phone, 'customer.address': editForm.address, express: editForm.express, isMember: editForm.isMember, notes: editForm.notes, total: total, 'details.pickupDate': editForm.pickupDate, 'details.pickupTime': editForm.pickupTime, 'details.deliveryDate': editForm.deliveryDate, 'details.deliveryTime': editForm.deliveryTime, adminNote: editForm.adminNote }; if(db) await updateDoc(doc(db, 'orders', order.id), updatedData); setEditingOrder(null); 
+        
+        // CHECK IF SCHEDULE CHANGED TO TRIGGER ALERT
+        const scheduleChanged = (editForm.pickupDate !== order.details?.pickupDate) || 
+                                (editForm.pickupTime !== order.details?.pickupTime) ||
+                                (editForm.deliveryDate !== order.details?.deliveryDate) ||
+                                (editForm.deliveryTime !== order.details?.deliveryTime);
+
+        const updatedData = { 'customer.name': editForm.name, 'customer.phone': editForm.phone, 'customer.address': editForm.address, express: editForm.express, isMember: editForm.isMember, notes: editForm.notes, total: total, 'details.pickupDate': editForm.pickupDate, 'details.pickupTime': editForm.pickupTime, 'details.deliveryDate': editForm.deliveryDate, 'details.deliveryTime': editForm.deliveryTime, adminNote: editForm.adminNote };
+        
+        if (scheduleChanged) {
+            updatedData.scheduleUpdatedByAdmin = true;
+        }
+
+        if(db) await updateDoc(doc(db, 'orders', order.id), updatedData); setEditingOrder(null); 
     };
 
     const printOrder = (order) => {
@@ -858,19 +1128,19 @@ const AdminView = ({ t, config, setConfig, services, setServices, setView, lang 
                          const tax = taxableAmount * (taxPct / 100);
                          const finalTotal = taxableAmount + tax;
                          return (
-                            <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
-                                <div className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-                                {o.express && <div className="flex justify-between text-cyan-600"><span>Express Fee</span><span>+${expressFee.toFixed(2)}</span></div>}
-                                {o.isMember && <div className="flex justify-between text-yellow-600"><span>Member Discount</span><span>-${discount.toFixed(2)}</span></div>}
-                                {tax > 0 && <div className="flex justify-between"><span>Tax ({taxPct}%)</span><span>+${tax.toFixed(2)}</span></div>}
-                                <div className="flex justify-between items-center pt-2 border-t border-gray-300 mt-2">
-                                    <div>
-                                        <span className="font-bold text-gray-800 text-base">TOTAL</span>
-                                        <div className="text-xs font-bold text-green-600">{o.details.paymentMethod.toUpperCase()} {o.paymentStatus === 'paid' ? '(PAID)' : '(PENDING)'}</div>
-                                    </div>
-                                    <span className="font-black text-xl text-cyan-700">${finalTotal.toFixed(2)}</span>
-                                </div>
-                            </div>
+                           <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
+                               <div className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+                               {o.express && <div className="flex justify-between text-cyan-600"><span>Express Fee</span><span>+${expressFee.toFixed(2)}</span></div>}
+                               {o.isMember && <div className="flex justify-between text-yellow-600"><span>Member Discount</span><span>-${discount.toFixed(2)}</span></div>}
+                               {tax > 0 && <div className="flex justify-between"><span>Tax ({taxPct}%)</span><span>+${tax.toFixed(2)}</span></div>}
+                               <div className="flex justify-between items-center pt-2 border-t border-gray-300 mt-2">
+                                   <div>
+                                       <span className="font-bold text-gray-800 text-base">TOTAL</span>
+                                       <div className="text-xs font-bold text-green-600">{o.details.paymentMethod.toUpperCase()} {o.paymentStatus === 'paid' ? '(PAID)' : '(PENDING)'}</div>
+                                   </div>
+                                   <span className="font-black text-xl text-cyan-700">${finalTotal.toFixed(2)}</span>
+                               </div>
+                           </div>
                          );
                      })()}
                      
@@ -924,12 +1194,16 @@ export default function FastWaveApp() {
   // NEW PAYMENT PROCESSING STATE
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [isLoadingPayment, setIsLoadingPayment] = useState(false);
 
   // Payment Form State
   const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvc: '', name: '' });
   
   // NEW DATE ERROR STATE
   const [dateErrorMsg, setDateErrorMsg] = useState(null);
+  
+  // SCHEDULE UPDATE NOTIFICATION
+  const [scheduleUpdateAlert, setScheduleUpdateAlert] = useState(null); // { id: 'orderId' }
 
   useTailwind();
   useAppMode(config.customIcon);
@@ -951,18 +1225,24 @@ export default function FastWaveApp() {
       }
   }, [form.phone, members]);
 
+  // Global listener for My Orders (to catch schedule updates even on home screen)
   useEffect(() => {
-      if (view === 'track' && config.phone) {
-          const savedOrders = JSON.parse(localStorage.getItem('myOrders') || '[]');
-          if (savedOrders.length > 0 && db) {
-              const q = query(collection(db, 'orders'), where('__name__', 'in', savedOrders.slice(0, 10))); 
-              const unsub = onSnapshot(q, (snap) => {
-                  setMyOrders(snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)));
-              });
-              return () => unsub();
-          } else { setMyOrders([]); }
-      }
-  }, [view]);
+      const savedOrders = JSON.parse(localStorage.getItem('myOrders') || '[]');
+      if (savedOrders.length > 0 && db) {
+          const q = query(collection(db, 'orders'), where('__name__', 'in', savedOrders.slice(0, 10))); 
+          const unsub = onSnapshot(q, (snap) => {
+              const ordersList = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+              setMyOrders(ordersList);
+              
+              // Check for schedule updates
+              const updatedOrder = ordersList.find(o => o.scheduleUpdatedByAdmin === true);
+              if (updatedOrder) {
+                  setScheduleUpdateAlert(updatedOrder);
+              }
+          });
+          return () => unsub();
+      } else { setMyOrders([]); }
+  }, []); // Run on mount (and internal firebase updates handle the rest)
 
   const t = LANGUAGES[lang];
   const updateCart = (id, qty) => { setCart((prev) => { const newQty = (prev[id] || 0) + qty; if (newQty <= 0) { const { [id]: _, ...rest } = prev; return rest; } return { ...prev, [id]: newQty }; }); if (qty > 0) { setItemAddedMsg(id); setTimeout(() => setItemAddedMsg(null), 800); } };
@@ -1011,9 +1291,8 @@ export default function FastWaveApp() {
       e.preventDefault();
       if (!validateForm()) return;
       
-      // Check Payment Method first
-      if (form.paymentMethod === 'card' || form.paymentMethod === 'online') {
-           // Show Payment Simulator first (Requires Card Info)
+      // Allow user to proceed to payment input regardless of config state initially
+      if (form.paymentMethod === 'card' || form.paymentMethod === 'online' || form.paymentMethod === 'apple_pay' || form.paymentMethod === 'google_pay') {
            setIsProcessingPayment(true);
            return;
       }
@@ -1035,14 +1314,33 @@ export default function FastWaveApp() {
 
   // Payment Processing Logic
   const handlePayNow = () => {
-      // Basic validation for card fields
-      if (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvc || !cardDetails.name) {
-          alert("Please fill in all card details.");
-          return;
+      // 1. Validation for Card
+      if (form.paymentMethod === 'card') {
+          if (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvc || !cardDetails.name) {
+              alert("Please fill in all card details.");
+              return;
+          }
       }
       
-      // Simulate processing
-      const timer = setTimeout(() => {
+      // 2. Start Simulation (Spinner)
+      setIsLoadingPayment(true);
+      
+      setTimeout(() => {
+          setIsLoadingPayment(false);
+          
+          // 3. CHECK FOR CONFIG HERE (Late Validation)
+          const hasStripeConfig = config.stripePublicKey && config.stripePublicKey.length > 5;
+          const hasZelleConfig = form.paymentMethod === 'online' ? (config.zelleNumber && config.zelleNumber.length > 5) : true;
+
+          // Si es tarjeta/apple/google y NO hay config -> ERROR
+          if (!hasStripeConfig && (form.paymentMethod !== 'online')) {
+              alert(t.stripeError || "Payment Error: Gateway not configured.");
+              return;
+          }
+          
+          // Zelle: Allow always as requested ("para zelle no s nesesario")
+          
+          // 4. If Config Exists -> Success
           setPaymentSuccess(true);
       }, 2000);
   };
@@ -1058,13 +1356,13 @@ export default function FastWaveApp() {
   const joinMembership = async () => {
       if (db && form.phone.trim()) { await setDoc(doc(db, 'settings', 'members'), { list: arrayUnion(form.phone.trim()) }, { merge: true }); setIsMember(true); }
       setShowMemberModal(false);
-      setTimeout(() => submitOrder(true, false, form.paymentMethod === 'card' || form.paymentMethod === 'online'), 100); 
+      setTimeout(() => submitOrder(true, false, form.paymentMethod !== 'cash'), 100); 
   };
 
   const rejoinMembership = async () => {
       if (db && form.phone.trim()) { await updateDoc(doc(db, 'settings', 'members'), { history: arrayRemove(form.phone.trim()), list: arrayUnion(form.phone.trim()) }); setIsMember(true); }
       setShowRejoinModal(false);
-      setTimeout(() => submitOrder(true, true, form.paymentMethod === 'card' || form.paymentMethod === 'online'), 100); 
+      setTimeout(() => submitOrder(true, true, form.paymentMethod !== 'cash'), 100); 
   };
 
   const submitOrder = async (forceMember = false, isRejoin = false, isPaid = false) => {
@@ -1096,12 +1394,13 @@ export default function FastWaveApp() {
       allergies,
       aroma,
       total: finalTotal,
-      paymentStatus: isPaid ? 'paid' : 'pending', // Guardar estado de pago real
+      paymentStatus: isPaid ? 'paid' : 'pending',
       status: 'pending',
       createdAt: new Date().toISOString(),
       adminNote: '',
       customerResponse: '',
-      orderNumber: orderNum 
+      orderNumber: orderNum,
+      scheduleUpdatedByAdmin: false
     };
 
     try {
@@ -1120,7 +1419,7 @@ export default function FastWaveApp() {
     setIsSubmitting(false);
   };
 
-  const getOwnerWhatsApp = () => { if (!lastOrder) return "#"; const cleanPhone = (config.phone || '').replace(/\D/g, ''); const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6); const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => { const s = services.find(x => x.id === id); const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id; const lineTotal = s ? (s.price * qty).toFixed(2) : '0.00'; return `• ${qty} x ${name}..... $${lineTotal}`; }).join('%0a'); let extras = ""; if(lastOrder.express) extras += `%0a⚡ Express Service: Yes`; if(lastOrder.isMember) extras += `%0a⭐ Member Discount: Yes`; if(lastOrder.wasRejoin) extras += `%0a⚠️ Rejoin Fee Applied`; const msg = `🧾 *RECEIPT #${displayId}*
+  const getOwnerWhatsApp = () => { if (!lastOrder) return "#"; const cleanPhone = (config.phone || '').replace(/\D/g, ''); const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6); const itemsList = Object.entries(lastOrder.items).map(([id, qty]) => { const s = services.find(x => x.id === id); const name = s ? (lang === 'es' ? s.name_es : s.name_en) : id; const lineTotal = s ? (s.price * qty).toFixed(2) : '0.00'; return `• ${qty} x ${name}..... $${lineTotal}`; }).join('%0a'); let extras = ""; if(lastOrder.express) extras += `%0a⚡ Express Service: Yes`; if(lastOrder.isMember) extras += `%0a⭐ Member Discount: Yes`; if(lastOrder.wasRejoin) extras += `%0a⚠️ Rejoin Fee Applied`; const msg = `🧾 *RECEIPT #${lastOrder.orderNumber || lastOrder.id.slice(0,6)}*
 --------------------------------
 👤 *Customer:* ${lastOrder.customer.name}
 📞 *Phone:* ${lastOrder.customer.phone}
@@ -1142,9 +1441,15 @@ ${extras ? extras + '%0a--------------------------------' : ''}
 📝 *Notes:* ${getLabel(lastOrder.aroma,'aroma',lang)}`; return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg.trim())}`; };
 
   const getOwnerSMS = () => { if (!lastOrder) return "#"; const cleanPhone = (config.phone || '').replace(/\D/g,''); const displayId = lastOrder.orderNumber || lastOrder.id.slice(0,6); const msg = `Fast Wave Order #${displayId} - Total: $${lastOrder.total?.toFixed(2)}. Pickup: ${lastOrder.details.pickupDate}. Check app for details.`; return `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`; };
-  const sendCustomerReply = async (orderId, replyText) => { if (!replyText.trim()) return; if (db) { await updateDoc(doc(db, 'orders', orderId), { customerResponse: replyText }); alert(t.replySent); setCustomerReply({ ...customerReply, [orderId]: '' }); } };
-  const deleteLocalOrder = (orderId) => { if(window.confirm("Delete this receipt from your history?")) { const currentSaved = JSON.parse(localStorage.getItem('myOrders') || '[]'); const newSaved = currentSaved.filter(id => id !== orderId); localStorage.setItem('myOrders', JSON.stringify(newSaved)); setMyOrders(prev => prev.filter(o => o.id !== orderId)); } };
   const shareOrder = (order) => { const text = `Fast Wave Receipt #${order.orderNumber || order.id.slice(0,6)}\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}\nLink: ${window.location.origin}`; if (navigator.share) { navigator.share({ title: 'Fast Wave Receipt', text: text, url: window.location.href }).catch(console.error); } else { navigator.clipboard.writeText(text); alert("Receipt info copied to clipboard!"); } };
+
+  // Dismiss alert
+  const dismissScheduleAlert = async () => {
+      if (scheduleUpdateAlert && db) {
+          await updateDoc(doc(db, 'orders', scheduleUpdateAlert.id), { scheduleUpdatedByAdmin: false });
+          setScheduleUpdateAlert(null);
+      }
+  };
 
   if (view === 'success') {
       return (<div className="min-h-screen flex flex-col items-center justify-center text-center p-6 bg-cyan-50 font-sans"><div className="bg-white p-10 rounded-3xl shadow-2xl max-w-md w-full animate-fade-in"><CheckCircle className="w-24 h-24 text-green-500 mx-auto mb-6 animate-bounce" /><h1 className="text-3xl font-black text-gray-800 mb-2">{t.successMsg}</h1><p className="text-gray-500 mb-6">{t.successSub}</p><div className="bg-gray-100 p-4 rounded-xl mb-8 border-2 border-dashed border-gray-300"><p className="text-sm text-gray-500 uppercase font-bold">{t.orderNumberIs}</p><p className="text-xl font-mono font-black text-cyan-600 break-all">{lastOrder?.orderNumber || lastOrder?.id.slice(0,6)}</p><div className={`mt-2 inline-block px-3 py-1 rounded font-bold text-xs ${lastOrder?.paymentStatus === 'paid' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>METHOD: {lastOrder?.details.paymentMethod.toUpperCase()} {lastOrder?.paymentStatus === 'paid' ? '(PAID)' : '(PENDING)'}</div></div><a href={getOwnerWhatsApp()} target="_blank" rel="noreferrer" className="w-full bg-green-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-green-600 transition flex items-center justify-center mb-4 transform hover:scale-105 animate-pulse border-4 border-green-200"><MessageCircle className="w-6 h-6 mr-3"/> {t.sendWhastapp}</a><a href={getOwnerSMS()} className="w-full bg-blue-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-blue-600 transition flex items-center justify-center mb-4 transform hover:scale-105 border-4 border-blue-200"><Smartphone className="w-6 h-6 mr-3"/> {t.sendSMS}</a><button onClick={() => setView('track')} className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-gray-900 transition flex items-center justify-center mt-4"><CustomReceiptIcon className="w-5 h-5 mr-2"/> {t.trackOrder}</button><button onClick={() => setView('home')} className="w-full bg-gray-100 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-200 transition flex items-center justify-center mt-2"><ArrowLeft className="w-5 h-5 mr-2"/> {t.back}</button></div></div>);
@@ -1153,18 +1458,18 @@ ${extras ? extras + '%0a--------------------------------' : ''}
   if (view === 'track') {
       return (
           <div className="min-h-screen bg-slate-50 p-4 font-sans pb-24"><div className="flex justify-between items-center mb-6"><button onClick={() => setView('home')} className="flex items-center text-gray-600 font-bold"><ArrowLeft className="mr-2 w-5 h-5"/> {t.back}</button><button onClick={() => setQRModal({show: true, url: window.location.href})} className="p-2 bg-white rounded-full shadow text-cyan-600 hover:bg-cyan-50"><QrCode className="w-5 h-5"/></button></div><h2 className="text-2xl font-black mb-6">{t.yourOrders}</h2>{myOrders.length === 0 ? (<p className="text-center text-gray-400 mt-10">No orders found.</p>) : (<div className="space-y-6">{myOrders.map(o => (<div key={o.id} className={`p-6 rounded-2xl shadow-lg border-2 relative overflow-hidden transition-all ${o.status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>{o.status === 'completed' && <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">{t.orderCompleted}</div>}<div className="flex justify-between items-start mb-4 border-b border-dashed pb-4"><div><span className="font-mono text-xl font-black text-cyan-700">#{o.orderNumber || o.id.slice(0,6)}</span><p className="text-xs text-gray-400 mt-1">{new Date(o.createdAt).toLocaleString()}</p><span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${o.status === 'completed' ? 'bg-green-200 text-green-800' : 'bg-blue-100 text-blue-700'}`}>{t.status[o.status] || o.status}</span></div><div className="text-right"><button onClick={() => shareOrder(o)} className="text-gray-400 hover:text-cyan-600 mb-2 block ml-auto"><Share2 className="w-5 h-5"/></button></div></div><div className="space-y-2 text-sm text-gray-600 mb-4"><div className="flex items-start"><MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-cyan-500"/> <span>{o.customer.address}</span></div><div className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-cyan-500"/> <span>Pickup: {o.details.pickupDate} ({o.details.pickupTime})</span></div><div className="flex items-center"><Truck className="w-4 h-4 mr-2 text-cyan-500"/> <span>Delivery: {o.details.deliveryDate} ({o.details.deliveryTime})</span></div></div><div className="bg-gray-50 p-4 rounded-xl mb-4">{Object.entries(o.items).map(([k,v]) => { const s = services.find(x=>x.id===k); const totalLine = (s?.price || 0) * v; return (<div key={k} className="flex justify-between py-1 text-sm border-b border-gray-200 last:border-0"><span>{v} x {s ? ((lang === 'es' && s.name_es) ? s.name_es : (lang === 'fr' && s.name_fr) ? s.name_fr : (lang === 'hi' && s.name_hi) ? s.name_hi : s.name_en) : k}</span><span className="font-bold">${totalLine.toFixed(2)}</span></div>) })}
-                 {/* CLIENT TRACKING BREAKDOWN */}
-                 {(() => {
-                     let subtotal = Object.entries(o.items).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0);
-                     const expressPct = config.expressPercent || 20;
-                     const discountPct = config.discountPercent || 10;
-                     const taxPct = config.taxPercent || 0;
-                     const expressFee = o.express ? subtotal * (expressPct / 100) : 0;
-                     const discount = o.isMember ? (subtotal + expressFee) * (discountPct / 100) : 0;
-                     const taxableAmount = (subtotal + expressFee) - discount;
-                     const tax = taxableAmount * (taxPct / 100);
-                     const finalTotal = taxableAmount + tax;
-                     return (
+                  {/* CLIENT TRACKING BREAKDOWN */}
+                  {(() => {
+                      let subtotal = Object.entries(o.items).reduce((acc, [id, qty]) => { const s = services.find(x => x.id === id); return acc + ((s?.price || 0) * qty); }, 0);
+                      const expressPct = config.expressPercent || 20;
+                      const discountPct = config.discountPercent || 10;
+                      const taxPct = config.taxPercent || 0;
+                      const expressFee = o.express ? subtotal * (expressPct / 100) : 0;
+                      const discount = o.isMember ? (subtotal + expressFee) * (discountPct / 100) : 0;
+                      const taxableAmount = (subtotal + expressFee) - discount;
+                      const tax = taxableAmount * (taxPct / 100);
+                      const finalTotal = taxableAmount + tax;
+                      return (
                         <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
                             <div className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
                             {o.express && <div className="flex justify-between text-cyan-600"><span>Express Fee</span><span>+${expressFee.toFixed(2)}</span></div>}
@@ -1185,15 +1490,13 @@ ${extras ? extras + '%0a--------------------------------' : ''}
                                 <span className="font-black text-xl text-cyan-700">${finalTotal.toFixed(2)}</span>
                             </div>
                         </div>
-                     );
-                 })()}
-                 </div>{o.adminNote && (<div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 text-sm text-blue-800 rounded-r"><p className="font-bold text-xs uppercase mb-1 flex items-center"><CustomInfoIcon className="w-3 h-3 mr-1"/> {t.updateFromLaundry}</p><p>{o.adminNote}</p></div>)}<div className="mt-4 pt-4 border-t border-gray-100">{o.customerResponse ? (<div className="text-sm text-green-700 bg-green-50 p-3 rounded border border-green-100"><span className="font-bold block text-xs uppercase">Your Reply:</span>{o.customerResponse}</div>) : (<div className="flex gap-2"><input className="flex-1 border rounded px-3 py-2 text-sm" placeholder="Reply to admin..." value={customerReply[o.id] || ''} onChange={(e) => setCustomerReply({...customerReply, [o.id]: e.target.value})}/><button onClick={() => sendCustomerReply(o.id, customerReply[o.id])} className="bg-cyan-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-cyan-700"><Send className="w-4 h-4"/></button></div>)}</div>{o.status === 'completed' && (<button onClick={() => deleteLocalOrder(o.id)} className="w-full mt-4 bg-gray-200 text-gray-600 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition"><Trash2 className="w-4 h-4 mr-2"/> {t.deleteReceipt}</button>)}</div>))}</div>)}</div>
+                      );
+                  })()}
+                  </div>{o.adminNote && (<div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 text-sm text-blue-800 rounded-r"><p className="font-bold text-xs uppercase mb-1 flex items-center"><CustomInfoIcon className="w-3 h-3 mr-1"/> {t.updateFromLaundry}</p><p>{o.adminNote}</p></div>)}<div className="mt-4 pt-4 border-t border-gray-100">{o.customerResponse ? (<div className="text-sm text-green-700 bg-green-50 p-3 rounded border border-green-100"><span className="font-bold block text-xs uppercase">Your Reply:</span>{o.customerResponse}</div>) : (<div className="flex gap-2"><input className="flex-1 border rounded px-3 py-2 text-sm" placeholder="Reply to admin..." value={customerReply[o.id] || ''} onChange={(e) => setCustomerReply({...customerReply, [o.id]: e.target.value})}/><button onClick={() => sendCustomerReply(o.id, customerReply[o.id])} className="bg-cyan-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-cyan-700"><Send className="w-4 h-4"/></button></div>)}</div>{o.status === 'completed' && (<button onClick={() => deleteLocalOrder(o.id)} className="w-full mt-4 bg-gray-200 text-gray-600 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition"><Trash2 className="w-4 h-4 mr-2"/> {t.deleteReceipt}</button>)}</div>))}</div>)}</div>
       )
   }
 
   if (view === 'admin') return <AdminView t={t} config={config} setConfig={setConfig} services={services} setServices={setServices} setView={setView} lang={lang} />;
-
-  // ... (Vistas HOME y CART con validacion visual) ...
    
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-gray-800">
@@ -1233,6 +1536,9 @@ ${extras ? extras + '%0a--------------------------------' : ''}
             </div>
 
             <div className="md:hidden flex items-center gap-3">
+                 <button onClick={() => setQRModal({show: true, url: window.location.href})} className="p-2 text-gray-600">
+                    <QrCode className="w-6 h-6"/>
+                 </button>
                  <button onClick={() => setView('cart')} className="relative p-2 text-gray-600">
                     <ShoppingBag className="h-6 w-6" />
                     {cartCount > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>}
@@ -1246,7 +1552,29 @@ ${extras ? extras + '%0a--------------------------------' : ''}
         {mobileMenuOpen && (<div className="md:hidden bg-white border-t border-gray-100 p-4 shadow-xl absolute w-full z-40 animate-fade-in-down"><div className="space-y-4"><button onClick={()=>{setView('home'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">Home</button><button onClick={()=>{setView('track'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">My Orders</button><button onClick={()=>{setView('cart'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">Cart ({cartCount})</button><button onClick={()=>{setView('admin'); setMobileMenuOpen(false)}} className="block w-full text-left font-bold text-gray-700 py-2">Admin Login</button><div className="flex justify-between items-center pt-4 border-t"><select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-gray-100 rounded px-2 py-1 text-sm"><option value="en">EN</option><option value="es">ES</option><option value="fr">FR</option><option value="hi">HI</option></select></div></div></div>)}
       </nav>
 
-      {/* SIMULADOR DE PAGO CON FORMULARIO DE TARJETA */}
+      {/* SCHEDULE UPDATE ALERT MODAL */}
+      {scheduleUpdateAlert && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
+              <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center border-l-8 border-yellow-400">
+                  <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                      <BellRing className="w-8 h-8 text-yellow-600" />
+                  </div>
+                  <h3 className="text-xl font-black text-gray-800 mb-2">{t.alertTitle}</h3>
+                  <p className="text-gray-600 mb-6 text-sm">{t.alertMsg} (#{scheduleUpdateAlert.orderNumber || scheduleUpdateAlert.id.slice(0,6)})</p>
+                  
+                  <div className="bg-gray-50 p-3 rounded-lg mb-4 text-left text-sm border border-gray-200">
+                      <p className="mb-1"><span className="font-bold">New Pickup:</span> {scheduleUpdateAlert.details.pickupDate} @ {scheduleUpdateAlert.details.pickupTime}</p>
+                      <p><span className="font-bold">New Delivery:</span> {scheduleUpdateAlert.details.deliveryDate} @ {scheduleUpdateAlert.details.deliveryTime}</p>
+                  </div>
+
+                  <button onClick={dismissScheduleAlert} className="w-full bg-yellow-500 text-white font-bold py-3 rounded-xl hover:bg-yellow-600 transition shadow-lg">
+                      {t.btnUnderstood}
+                  </button>
+              </div>
+          </div>
+      )}
+
+      {/* SIMULADOR DE PAGO CON FORMULARIO DE TARJETA (CONDITIONAL CONTENT) */}
       {isProcessingPayment && (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
               <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center transform scale-100 border-2 border-gray-100 relative">
@@ -1254,68 +1582,43 @@ ${extras ? extras + '%0a--------------------------------' : ''}
                   
                   {!paymentSuccess ? (
                       <div className="py-2">
-                          <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center"><CreditCard className="w-6 h-6 mr-2 text-blue-600"/> Secure Payment</h3>
+                          {/* HEADER DEPENDING ON METHOD */}
+                          {form.paymentMethod === 'card' && <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center"><CreditCard className="w-6 h-6 mr-2 text-blue-600"/> Card Payment</h3>}
+                          {form.paymentMethod === 'apple_pay' && <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center"><Smartphone className="w-6 h-6 mr-2 text-gray-900"/> Apple Pay</h3>}
+                          {form.paymentMethod === 'google_pay' && <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center"><Smartphone className="w-6 h-6 mr-2 text-blue-600"/> Google Pay</h3>}
+                          {form.paymentMethod === 'online' && <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center"><ExternalLink className="w-6 h-6 mr-2 text-purple-600"/> Zelle / Online</h3>}
                           
-                          <div className="space-y-4 text-left">
-                              <div>
-                                  <label className="block text-xs font-bold text-gray-500 mb-1">Card Number</label>
-                                  <div className="relative">
-                                      <input 
-                                        type="text" 
-                                        placeholder="0000 0000 0000 0000" 
-                                        className="w-full p-3 pl-10 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 focus:bg-white outline-none transition"
-                                        value={cardDetails.number}
-                                        onChange={(e) => setCardDetails({...cardDetails, number: e.target.value})}
-                                        maxLength="19"
-                                      />
-                                      <CreditCard className="w-4 h-4 text-gray-400 absolute left-3 top-3.5"/>
-                                  </div>
-                              </div>
-                              
-                              <div className="grid grid-cols-2 gap-4">
+                          {/* CARD INPUTS (ONLY IF CARD) */}
+                          {form.paymentMethod === 'card' && (
+                              <div className="space-y-4 text-left animate-fade-in">
                                   <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Expiry</label>
-                                      <input 
-                                        type="text" 
-                                        placeholder="MM/YY" 
-                                        className="w-full p-3 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 focus:bg-white outline-none transition"
-                                        value={cardDetails.expiry}
-                                        onChange={(e) => setCardDetails({...cardDetails, expiry: e.target.value})}
-                                        maxLength="5"
-                                      />
+                                      <label className="block text-xs font-bold text-gray-500 mb-1">Card Number</label>
+                                      <div className="relative"><input type="text" placeholder="0000 0000 0000 0000" className="w-full p-3 pl-10 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 focus:bg-white outline-none transition" value={cardDetails.number} onChange={(e) => setCardDetails({...cardDetails, number: e.target.value})} maxLength="19"/><CreditCard className="w-4 h-4 text-gray-400 absolute left-3 top-3.5"/></div>
                                   </div>
-                                  <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">CVC</label>
-                                      <input 
-                                        type="text" 
-                                        placeholder="123" 
-                                        className="w-full p-3 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 focus:bg-white outline-none transition"
-                                        value={cardDetails.cvc}
-                                        onChange={(e) => setCardDetails({...cardDetails, cvc: e.target.value})}
-                                        maxLength="3"
-                                      />
+                                  <div className="grid grid-cols-2 gap-4">
+                                      <div><label className="block text-xs font-bold text-gray-500 mb-1">Expiry</label><input type="text" placeholder="MM/YY" className="w-full p-3 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 focus:bg-white outline-none transition" value={cardDetails.expiry} onChange={(e) => setCardDetails({...cardDetails, expiry: e.target.value})} maxLength="5"/></div>
+                                      <div><label className="block text-xs font-bold text-gray-500 mb-1">CVC</label><input type="text" placeholder="123" className="w-full p-3 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 focus:bg-white outline-none transition" value={cardDetails.cvc} onChange={(e) => setCardDetails({...cardDetails, cvc: e.target.value})} maxLength="3"/></div>
                                   </div>
+                                  <div><label className="block text-xs font-bold text-gray-500 mb-1">Name on Card</label><input type="text" placeholder="JOHN DOE" className="w-full p-3 border rounded-lg bg-gray-50 font-bold text-sm focus:border-blue-500 focus:bg-white outline-none transition uppercase" value={cardDetails.name} onChange={(e) => setCardDetails({...cardDetails, name: e.target.value})}/></div>
                               </div>
+                          )}
 
-                              <div>
-                                  <label className="block text-xs font-bold text-gray-500 mb-1">Name on Card</label>
-                                  <input 
-                                    type="text" 
-                                    placeholder="JOHN DOE" 
-                                    className="w-full p-3 border rounded-lg bg-gray-50 font-bold text-sm focus:border-blue-500 focus:bg-white outline-none transition uppercase"
-                                    value={cardDetails.name}
-                                    onChange={(e) => setCardDetails({...cardDetails, name: e.target.value})}
-                                  />
+                          {/* ALTERNATIVE INSTRUCTIONS */}
+                          {form.paymentMethod !== 'card' && (
+                              <div className="mb-6 p-4 bg-gray-50 rounded-xl text-sm text-gray-600">
+                                  {form.paymentMethod === 'apple_pay' && "Confirm payment with Touch ID or Face ID."}
+                                  {form.paymentMethod === 'google_pay' && "Confirm payment with your Google account."}
+                                  {form.paymentMethod === 'online' && "Please complete the transfer and confirm below."}
                               </div>
-                          </div>
+                          )}
 
                           <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
                               <span className="text-gray-500 font-bold">Total</span>
                               <span className="text-2xl font-black text-blue-600">${cartTotals.finalTotal.toFixed(2)}</span>
                           </div>
 
-                          <button onClick={handlePayNow} className="w-full mt-6 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition transform hover:scale-[1.02] flex items-center justify-center">
-                              Pay Now <Lock className="w-4 h-4 ml-2"/>
+                          <button onClick={handlePayNow} disabled={isLoadingPayment} className={`w-full mt-6 text-white py-3 rounded-xl font-bold shadow-lg transition transform hover:scale-[1.02] flex items-center justify-center ${isLoadingPayment ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                              {isLoadingPayment ? <><CustomLoaderIcon className="animate-spin w-5 h-5 mr-2"/> Processing...</> : <>Pay Now <Lock className="w-4 h-4 ml-2"/></>}
                           </button>
                           
                           <p className="text-[10px] text-gray-400 mt-4 text-center flex items-center justify-center"><Lock className="w-3 h-3 mr-1"/> Secured by Stripe</p>
@@ -1325,7 +1628,7 @@ ${extras ? extras + '%0a--------------------------------' : ''}
                           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                               <CheckCircle className="w-10 h-10 text-green-600"/>
                           </div>
-                          <h3 className="text-2xl font-black text-gray-800 mb-2">Payment Successful!</h3>
+                          <h3 className="text-2xl font-black text-gray-800 mb-2">{t.paymentSuccess}</h3>
                           <p className="text-gray-500 mb-6">Your transaction ID: #{generateShortId()}</p>
                           <button onClick={handlePaymentComplete} className="w-full bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-green-600 transition transform hover:scale-105">
                               Continue to Receipt
@@ -1338,7 +1641,7 @@ ${extras ? extras + '%0a--------------------------------' : ''}
 
       {view === 'home' && (
         <div className="animate-fade-in">
-          {/* ... Hero and Services ... */}
+          {/* ... Hero ... */}
           <div className="relative h-[550px] flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center"><div className="absolute inset-0 bg-cyan-900/50 mix-blend-multiply"></div></div>
             <div className="relative z-20 text-center px-4 max-w-4xl mx-auto"><h1 className="text-5xl md:text-7xl font-black text-white drop-shadow-lg mb-4 tracking-tight leading-tight">{t.title}</h1><p className="text-xl md:text-2xl text-cyan-50 font-light mb-10 italic max-w-3xl mx-auto leading-relaxed">"{t.heroSubtitle}"</p><div className="flex flex-col md:flex-row gap-4 justify-center"><button onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })} className="group bg-white text-cyan-700 text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center"><span className="mr-2">{t.orderNow}</span></button><button onClick={() => setView('cart')} className="group bg-cyan-500 text-white text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 hover:bg-cyan-400 transition-all duration-300 flex items-center justify-center border-2 border-white/30"><ShoppingBag className="w-6 h-6 mr-2" /> {t.sendOrder}</button></div></div>
@@ -1388,8 +1691,8 @@ ${extras ? extras + '%0a--------------------------------' : ''}
               <div className="grid gap-4">
                 <input required placeholder={t.nameLabel} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={`w-full p-4 bg-gray-50 rounded-xl border focus:bg-white focus:border-cyan-500 outline-none transition ${formErrors.name ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} />
                 <div>
-                   <input required placeholder="Phone (e.g. 5551234567)" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={`w-full p-4 bg-gray-50 rounded-xl border-2 border-green-100 focus:bg-white focus:border-green-500 outline-none transition ${formErrors.phone ? '!border-red-500 bg-red-50' : ''}`} />
-                   {isMember && <p className="text-xs text-yellow-600 font-bold mt-1">🌟 Member Found! Discount Applied.</p>}
+                    <input required placeholder="Phone (e.g. 5551234567)" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={`w-full p-4 bg-gray-50 rounded-xl border-2 border-green-100 focus:bg-white focus:border-green-500 outline-none transition ${formErrors.phone ? '!border-red-500 bg-red-50' : ''}`} />
+                    {isMember && <p className="text-xs text-yellow-600 font-bold mt-1">🌟 Member Found! Discount Applied.</p>}
                 </div>
                 <textarea required placeholder={t.addressLabel} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className={`w-full p-4 bg-gray-50 rounded-xl border focus:bg-white focus:border-cyan-500 outline-none transition ${formErrors.address ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} />
                 
@@ -1413,6 +1716,17 @@ ${extras ? extras + '%0a--------------------------------' : ''}
                   <label className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition ${form.paymentMethod === 'card' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}><input type="radio" name="payment" value="card" checked={form.paymentMethod === 'card'} onChange={() => setForm({ ...form, paymentMethod: 'card' })} className="w-5 h-5 accent-blue-600 mr-3" /><div className="flex flex-col"><span className="font-bold text-blue-900">{t.payCardLabel}</span></div></label>
                   
                   <label className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition ${form.paymentMethod === 'online' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'}`}><input type="radio" name="payment" value="online" checked={form.paymentMethod === 'online'} onChange={() => setForm({ ...form, paymentMethod: 'online' })} className="w-5 h-5 accent-purple-600 mr-3" /><div className="flex flex-col"><span className="font-bold text-purple-900">{t.payOnlineLabel}</span><span className="text-xs text-purple-600">{t.payOnlineSub}</span></div></label>
+
+                  {/* APPLE PAY & GOOGLE PAY BUTTONS */}
+                  <label className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition ${form.paymentMethod === 'apple_pay' ? 'border-gray-800 bg-gray-100' : 'border-gray-200'}`}>
+                      <input type="radio" name="payment" value="apple_pay" checked={form.paymentMethod === 'apple_pay'} onChange={() => setForm({ ...form, paymentMethod: 'apple_pay' })} className="w-5 h-5 accent-gray-800 mr-3" />
+                      <div className="flex flex-col"><span className="font-bold text-gray-900 flex items-center">{t.payApple}</span></div>
+                  </label>
+
+                  <label className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition ${form.paymentMethod === 'google_pay' ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`}>
+                      <input type="radio" name="payment" value="google_pay" checked={form.paymentMethod === 'google_pay'} onChange={() => setForm({ ...form, paymentMethod: 'google_pay' })} className="w-5 h-5 accent-blue-600 mr-3" />
+                      <div className="flex flex-col"><span className="font-bold text-blue-800 flex items-center">{t.payGoogle}</span></div>
+                  </label>
                 </div>
                 {form.paymentMethod === 'online' && (<div className="bg-purple-50 p-4 rounded-xl border border-purple-200 space-y-2 text-sm text-purple-900"><p><strong>Zelle:</strong> {config.zelleNumber || config.phone}</p><p>{config.zelleMessage || t.zelleNote}</p></div>)}
               </div>
@@ -1476,21 +1790,25 @@ ${extras ? extras + '%0a--------------------------------' : ''}
                   </div>
               </div>
           )}
-          
-          {/* MODAL DE CODIGO QR */}
+
+          {/* QR CODE MODAL - AHORA ACCESIBLE GLOBALMENTE FUERA DE HOME */}
           {qrModal.show && (
               <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in">
                   <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center relative">
-                      <button onClick={() => setQRModal({show: false, url: ''})} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button>
+                      <button onClick={() => setQRModal({show: false, url: ''})} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                          <X className="w-6 h-6"/>
+                      </button>
                       <h3 className="text-xl font-black text-gray-800 mb-2">{t.qrCode}</h3>
-                      <p className="text-gray-500 text-sm mb-6">Scan to open app</p>
-                      <div className="bg-gray-100 p-4 rounded-xl inline-block">
+                      <p className="text-gray-500 text-sm mb-6">{t.shareApp}</p>
+                      <div className="bg-gray-100 p-4 rounded-xl inline-block mb-4">
                           <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrModal.url)}`} alt="QR Code" className="w-48 h-48 object-contain mix-blend-multiply" />
                       </div>
+                      <button onClick={() => navigator.clipboard.writeText(qrModal.url).then(() => alert('Link copied!'))} className="flex items-center justify-center w-full py-2 bg-cyan-50 text-cyan-700 rounded-lg font-bold text-sm hover:bg-cyan-100 transition">
+                          <ExternalLink className="w-4 h-4 mr-2"/> {t.copyLink}
+                      </button>
                   </div>
               </div>
           )}
-
         </div>
       )}
     </div>
