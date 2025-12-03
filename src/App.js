@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from "react";
 import {
   ShoppingBag,
@@ -2922,6 +2923,7 @@ export default function FastWaveApp() {
   }, [lastOrder]);
 
   const t = LANGUAGES[lang];
+
   const updateCart = (id, qty) => {
     setCart((prev) => {
       const newQty = (prev[id] || 0) + qty;
@@ -2936,6 +2938,7 @@ export default function FastWaveApp() {
       setTimeout(() => setItemAddedMsg(null), 800);
     }
   };
+
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
 
   const calculateTotals = () => {
@@ -2955,8 +2958,10 @@ export default function FastWaveApp() {
     const finalTotal = taxableAmount + tax;
     return { subtotal, expressFee, discount, tax, finalTotal };
   };
+
   const cartTotals = calculateTotals();
 
+  // --- VALIDACIÓN DEL FORMULARIO ---
   const validateForm = () => {
     let errors = {};
     if (!form.name.trim()) errors.name = true;
@@ -2965,38 +2970,56 @@ export default function FastWaveApp() {
     if (!form.pickupDate) errors.pickupDate = true;
     if (!form.deliveryDate) errors.deliveryDate = true;
     setFormErrors(errors);
+
     const logicError = validateScheduleLogic(
       form.pickupDate,
       form.pickupTime,
       form.deliveryDate,
       form.deliveryTime
     );
+
     if (logicError) {
       setDateErrorMsg(t[logicError]);
       return false;
     } else {
       setDateErrorMsg(null);
     }
-    return Object.keys(errors).length === 0;
+
+    if (Object.keys(errors).length > 0) {
+      return false;
+    }
+    return true;
   };
 
-  const handleCheckoutClick = (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    if (
-      form.paymentMethod === "card" ||
-      form.paymentMethod === "online" ||
-      form.paymentMethod === "apple_pay" ||
-      form.paymentMethod === "google_pay"
-    ) {
-      setIsProcessingPayment(true);
+  // --- MANEJO DE CLIC EN BOTONES DE PAGO ---
+  const handleMethodClick = (method) => {
+    // 1. Guardamos el método seleccionado
+    setForm((prev) => ({ ...prev, paymentMethod: method }));
+
+    // 2. Validamos que el cliente haya puesto sus datos
+    if (!validateForm()) {
+      alert(
+        lang === "es"
+          ? "Por favor completa tu información personal antes de continuar."
+          : "Please fill in all customer details."
+      );
       return;
     }
-    checkMembershipAndSubmit();
+
+    // 3. ABRIMOS EL MODAL PARA TODOS LOS MÉTODOS (INCLUIDO EFECTIVO)
+    // Esto asegura que el botón "reaccione" y el flujo sea igual para todos.
+    setIsProcessingPayment(true);
   };
 
-  const checkMembershipAndSubmit = (isPaid = false) => {
+  const checkMembershipAndSubmit = (
+    isPaid = false,
+    forceRejoin = false,
+    ignoredParam = false,
+    methodOverride = null
+  ) => {
     const phone = form.phone.trim();
+    const currentMethod = methodOverride || form.paymentMethod;
+
     if (!isMember) {
       if (pastMembers.includes(phone)) {
         setShowRejoinModal(true);
@@ -3009,40 +3032,86 @@ export default function FastWaveApp() {
         setShowMemberModal(true);
       }
     } else {
-      submitOrder(false, false, isPaid);
+      submitOrder(false, false, isPaid, currentMethod);
     }
   };
 
+  // --- PROCESAR PAGO / CONFIRMAR ORDEN ---
   const handlePayNow = () => {
-    if (form.paymentMethod === "card") {
-      if (
-        !cardDetails.number ||
-        !cardDetails.expiry ||
-        !cardDetails.cvc ||
-        !cardDetails.name
-      ) {
-        alert("Please fill in all card details.");
-        return;
-      }
+    // 1. CASO EFECTIVO (CASH)
+    if (form.paymentMethod === "cash") {
+      setIsLoadingPayment(true);
+      // Pequeña simulación para dar feedback visual al cliente
+      setTimeout(() => {
+        setIsLoadingPayment(false);
+        setPaymentSuccess(true);
+      }, 1000);
+      return;
     }
-    setIsLoadingPayment(true);
-    setTimeout(() => {
-      setIsLoadingPayment(false);
+
+    // 2. CASO ZELLE (ONLINE)
+    if (form.paymentMethod === "online") {
+      setPaymentSuccess(true);
+      return;
+    }
+
+    // 3. CASO TARJETA / WALLETS (STRIPE)
+    if (["card", "apple_pay", "google_pay"].includes(form.paymentMethod)) {
+      // A) Validar datos de tarjeta si aplica
+      if (form.paymentMethod === "card") {
+        if (
+          !cardDetails.number ||
+          !cardDetails.expiry ||
+          !cardDetails.cvc ||
+          !cardDetails.name
+        ) {
+          alert(
+            lang === "es"
+              ? "Llene los datos de la tarjeta."
+              : "Fill in card details."
+          );
+          return;
+        }
+      }
+
+      // B) Validar Configuración del Admin
       const hasStripeConfig =
-        config.stripePublicKey && config.stripePublicKey.length > 5;
-      if (!hasStripeConfig && form.paymentMethod !== "online") {
-        alert(t.stripeError || "Payment Error: Gateway not configured.");
+        config.stripePublicKey && config.stripePublicKey.trim().length > 10;
+
+      if (!hasStripeConfig) {
+        const errorMsg =
+          lang === "es"
+            ? "Error: El sistema de pagos no está configurado (Falta API Key). Contacte al administrador."
+            : t.stripeError || "Error: Payment Config Missing.";
+        alert(errorMsg);
+        // Borrar datos si hay error
+        setCardDetails({ number: "", expiry: "", cvc: "", name: "" });
         return;
       }
-      setPaymentSuccess(true);
-    }, 2000);
+
+      // C) Procesar
+      setIsLoadingPayment(true);
+      setTimeout(() => {
+        setIsLoadingPayment(false);
+        setPaymentSuccess(true);
+      }, 2000);
+    }
   };
 
+  // --- FINALIZAR PROCESO ---
   const handlePaymentComplete = () => {
     setIsProcessingPayment(false);
     setPaymentSuccess(false);
+    // Borrar datos de tarjeta por seguridad
     setCardDetails({ number: "", expiry: "", cvc: "", name: "" });
-    checkMembershipAndSubmit(true);
+
+    // Determinar si la orden se marca como PAGADA o PENDIENTE
+    // Si es Efectivo (cash) -> NO está pagada aún (isPaid = false)
+    // Si es Online/Tarjeta -> SÍ está pagada (isPaid = true)
+    const isPaid = form.paymentMethod !== "cash";
+
+    // Enviar al administrador
+    checkMembershipAndSubmit(isPaid, false, false, form.paymentMethod);
   };
 
   const joinMembership = async () => {
@@ -3056,7 +3125,13 @@ export default function FastWaveApp() {
     }
     setShowMemberModal(false);
     setTimeout(
-      () => submitOrder(true, false, form.paymentMethod !== "cash"),
+      () =>
+        submitOrder(
+          true,
+          false,
+          form.paymentMethod !== "cash",
+          form.paymentMethod
+        ),
       100
     );
   };
@@ -3071,7 +3146,13 @@ export default function FastWaveApp() {
     }
     setShowRejoinModal(false);
     setTimeout(
-      () => submitOrder(true, true, form.paymentMethod !== "cash"),
+      () =>
+        submitOrder(
+          true,
+          true,
+          form.paymentMethod !== "cash",
+          form.paymentMethod
+        ),
       100
     );
   };
@@ -3079,12 +3160,15 @@ export default function FastWaveApp() {
   const submitOrder = async (
     forceMember = false,
     isRejoin = false,
-    isPaid = false
+    isPaid = false,
+    methodOverride = null
   ) => {
     setIsSubmitting(true);
     const orderNum = generateShortId();
     const currentIsMember = forceMember || isMember;
     const totals = calculateTotals();
+    const currentMethod = methodOverride || form.paymentMethod;
+
     let finalTotal = totals.finalTotal;
     if (forceMember) {
       const subtotal = totals.subtotal;
@@ -3100,6 +3184,7 @@ export default function FastWaveApp() {
       const rejoinFee = parseFloat(config.rejoinFee) || 10;
       finalTotal += rejoinFee;
     }
+
     const orderData = {
       customer: { name: form.name, phone: form.phone, address: form.address },
       items: cart,
@@ -3108,7 +3193,7 @@ export default function FastWaveApp() {
         pickupTime: form.pickupTime,
         deliveryDate: form.deliveryDate,
         deliveryTime: form.deliveryTime,
-        paymentMethod: form.paymentMethod,
+        paymentMethod: currentMethod,
       },
       express: isExpress,
       isMember: currentIsMember,
@@ -3154,7 +3239,7 @@ export default function FastWaveApp() {
       setView("success");
     } catch (e) {
       console.error(e);
-      alert("Error sending order. Please try again.");
+      alert(lang === "es" ? "Error enviando orden." : "Error sending order.");
     }
     setIsSubmitting(false);
   };
@@ -3184,7 +3269,6 @@ export default function FastWaveApp() {
 --------------------------------
 📅 *PICKUP:*
 ${lastOrder.details.pickupDate} - ${lastOrder.details.pickupTime}
-
 🚚 *DELIVERY:*
 ${lastOrder.details.deliveryDate} - ${lastOrder.details.deliveryTime}
 --------------------------------
@@ -3210,6 +3294,7 @@ ${extras ? extras + "%0a--------------------------------" : ""}
     )}. Pickup: ${lastOrder.details.pickupDate}. Check app for details.`;
     return `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`;
   };
+
   const shareOrder = (order) => {
     const text = `Fast Wave Receipt #${
       order.orderNumber || order.id.slice(0, 6)
@@ -3229,6 +3314,7 @@ ${extras ? extras + "%0a--------------------------------" : ""}
       alert("Receipt info copied to clipboard!");
     }
   };
+
   const dismissScheduleAlert = async () => {
     if (scheduleUpdateAlert && db) {
       await updateDoc(doc(db, "orders", scheduleUpdateAlert.id), {
@@ -3549,7 +3635,6 @@ ${extras ? extras + "%0a--------------------------------" : ""}
       </div>
     );
   }
-
   if (view === "admin")
     return (
       <AdminView
@@ -3562,9 +3647,10 @@ ${extras ? extras + "%0a--------------------------------" : ""}
         lang={lang}
       />
     );
-
+  // --- RENDERIZADO DE LA APP ---
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-gray-800">
+      {/* --- BARRA DE NAVEGACIÓN (NAVBAR) --- */}
       <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-cyan-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
@@ -3711,6 +3797,7 @@ ${extras ? extras + "%0a--------------------------------" : ""}
         )}
       </nav>
 
+      {/* --- ALERTA DE CAMBIO DE HORARIO --- */}
       {scheduleUpdateAlert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center border-l-8 border-yellow-400">
@@ -3748,6 +3835,7 @@ ${extras ? extras + "%0a--------------------------------" : ""}
         </div>
       )}
 
+      {/* --- MODAL DE PROCESAMIENTO DE PAGO --- */}
       {isProcessingPayment && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center transform scale-100 border-2 border-gray-100 relative">
@@ -3757,43 +3845,47 @@ ${extras ? extras + "%0a--------------------------------" : ""}
             >
               <X className="w-6 h-6" />
             </button>
+
             {!paymentSuccess ? (
               <div className="py-2">
+                {/* --- ENCABEZADOS --- */}
                 {form.paymentMethod === "card" && (
                   <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center">
-                    <CreditCard className="w-6 h-6 mr-2 text-blue-600" /> Card
-                    Payment
+                    <CreditCard className="w-6 h-6 mr-2 text-blue-600" />{" "}
+                    {t.payCardLabel || "Card"}
                   </h3>
                 )}
-                {form.paymentMethod === "apple_pay" && (
+                {(form.paymentMethod === "apple_pay" ||
+                  form.paymentMethod === "google_pay") && (
                   <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center">
-                    <Smartphone className="w-6 h-6 mr-2 text-gray-900" /> Apple
-                    Pay
-                  </h3>
-                )}
-                {form.paymentMethod === "google_pay" && (
-                  <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center">
-                    <Smartphone className="w-6 h-6 mr-2 text-blue-600" /> Google
-                    Pay
+                    <Smartphone className="w-6 h-6 mr-2 text-gray-900" /> Wallet
                   </h3>
                 )}
                 {form.paymentMethod === "online" && (
-                  <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center justify-center">
                     <ExternalLink className="w-6 h-6 mr-2 text-purple-600" />{" "}
-                    Zelle / Online
+                    {t.payOnlineLabel}
                   </h3>
                 )}
+                {form.paymentMethod === "cash" && (
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 mr-2 text-green-600" />{" "}
+                    {t.payCashLabel}
+                  </h3>
+                )}
+
+                {/* --- FORMULARIO TARJETA --- */}
                 {form.paymentMethod === "card" && (
                   <div className="space-y-4 text-left animate-fade-in">
                     <div>
                       <label className="block text-xs font-bold text-gray-500 mb-1">
-                        Card Number
+                        {lang === "es" ? "Número de Tarjeta" : "Card Number"}
                       </label>
                       <div className="relative">
                         <input
                           type="text"
                           placeholder="0000 0000 0000 0000"
-                          className="w-full p-3 pl-10 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 focus:bg-white outline-none transition"
+                          className="w-full p-3 pl-10 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 outline-none"
                           value={cardDetails.number}
                           onChange={(e) =>
                             setCardDetails({
@@ -3809,12 +3901,12 @@ ${extras ? extras + "%0a--------------------------------" : ""}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1">
-                          Expiry
+                          MM/YY
                         </label>
                         <input
                           type="text"
                           placeholder="MM/YY"
-                          className="w-full p-3 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 focus:bg-white outline-none transition"
+                          className="w-full p-3 border rounded-lg bg-gray-50 font-mono text-sm outline-none"
                           value={cardDetails.expiry}
                           onChange={(e) =>
                             setCardDetails({
@@ -3832,7 +3924,7 @@ ${extras ? extras + "%0a--------------------------------" : ""}
                         <input
                           type="text"
                           placeholder="123"
-                          className="w-full p-3 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 focus:bg-white outline-none transition"
+                          className="w-full p-3 border rounded-lg bg-gray-50 font-mono text-sm outline-none"
                           value={cardDetails.cvc}
                           onChange={(e) =>
                             setCardDetails({
@@ -3840,18 +3932,20 @@ ${extras ? extras + "%0a--------------------------------" : ""}
                               cvc: e.target.value,
                             })
                           }
-                          maxLength="3"
+                          maxLength="4"
                         />
                       </div>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-500 mb-1">
-                        Name on Card
+                        {lang === "es"
+                          ? "Nombre en la Tarjeta"
+                          : "Cardholder Name"}
                       </label>
                       <input
                         type="text"
-                        placeholder="JOHN DOE"
-                        className="w-full p-3 border rounded-lg bg-gray-50 font-bold text-sm focus:border-blue-500 focus:bg-white outline-none transition uppercase"
+                        placeholder="JUAN PEREZ"
+                        className="w-full p-3 border rounded-lg bg-gray-50 font-bold text-sm uppercase outline-none"
                         value={cardDetails.name}
                         onChange={(e) =>
                           setCardDetails({
@@ -3863,62 +3957,143 @@ ${extras ? extras + "%0a--------------------------------" : ""}
                     </div>
                   </div>
                 )}
-                {form.paymentMethod !== "card" && (
-                  <div className="mb-6 p-4 bg-gray-50 rounded-xl text-sm text-gray-600">
-                    {form.paymentMethod === "apple_pay" &&
-                      "Confirm payment with Touch ID or Face ID."}
-                    {form.paymentMethod === "google_pay" &&
-                      "Confirm payment with your Google account."}
-                    {form.paymentMethod === "online" &&
-                      "Please complete the transfer and confirm below."}
+
+                {/* --- INFO ZELLE --- */}
+                {form.paymentMethod === "online" && (
+                  <div className="bg-purple-50 p-5 rounded-xl border-2 border-purple-100 text-left mb-6">
+                    <p className="text-xs text-purple-800 font-bold mb-2 uppercase tracking-wide border-b border-purple-200 pb-1">
+                      {lang === "es" ? "Enviar pago a:" : "Send payment to:"}
+                    </p>
+                    <div className="bg-white p-3 rounded shadow-sm mb-4 border border-purple-100">
+                      <span className="block text-xs text-gray-400 mb-1">
+                        Email / Teléfono:
+                      </span>
+                      <span className="text-xl font-black text-gray-800 break-all">
+                        {config.zelleNumber && config.zelleNumber !== ""
+                          ? config.zelleNumber
+                          : "---"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-purple-800 font-bold mb-1 uppercase tracking-wide">
+                      Instructions:
+                    </p>
+                    <p className="text-sm text-gray-600 mb-4 leading-relaxed font-medium">
+                      {config.zelleMessage && config.zelleMessage !== ""
+                        ? config.zelleMessage
+                        : "Use Zelle app."}
+                    </p>
+                    <div className="bg-white p-4 rounded-lg border-dashed border-2 border-purple-200 text-center">
+                      <span className="block text-xs text-gray-400 uppercase font-bold mb-1">
+                        Total
+                      </span>
+                      <span className="text-3xl font-black text-purple-600">
+                        ${cartTotals.finalTotal.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 )}
-                <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
-                  <span className="text-gray-500 font-bold">Total</span>
-                  <span className="text-2xl font-black text-blue-600">
-                    ${cartTotals.finalTotal.toFixed(2)}
-                  </span>
-                </div>
-                <button
-                  onClick={handlePayNow}
-                  disabled={isLoadingPayment}
-                  className={`w-full mt-6 text-white py-3 rounded-xl font-bold shadow-lg transition transform hover:scale-[1.02] flex items-center justify-center ${
-                    isLoadingPayment
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700"
-                  }`}
-                >
-                  {isLoadingPayment ? (
-                    <>
-                      <CustomLoaderIcon className="animate-spin w-5 h-5 mr-2" />{" "}
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      Pay Now <Lock className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </button>
-                <p className="text-[10px] text-gray-400 mt-4 text-center flex items-center justify-center">
-                  <Lock className="w-3 h-3 mr-1" /> Secured by Stripe
-                </p>
+
+                {/* --- INFO EFECTIVO --- */}
+                {form.paymentMethod === "cash" && (
+                  <div className="bg-green-50 p-5 rounded-xl border-2 border-green-100 text-center mb-6">
+                    <p className="text-sm text-green-800 font-bold mb-4">
+                      {lang === "es"
+                        ? "Pagarás al repartidor en el momento de la entrega."
+                        : "You will pay the driver upon delivery."}
+                    </p>
+                    <div className="bg-white p-4 rounded-lg border-dashed border-2 border-green-200 inline-block">
+                      <span className="block text-xs text-gray-400 uppercase font-bold mb-1">
+                        Total a Pagar
+                      </span>
+                      <span className="text-3xl font-black text-green-600">
+                        ${cartTotals.finalTotal.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- BOTONES CONFIRMACIÓN --- */}
+                {form.paymentMethod !== "online" ? (
+                  <button
+                    onClick={handlePayNow}
+                    disabled={isLoadingPayment}
+                    className={`w-full mt-6 text-white py-3 rounded-xl font-bold shadow-lg transition transform hover:scale-[1.02] flex items-center justify-center ${
+                      isLoadingPayment
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : form.paymentMethod === "cash"
+                        ? "bg-green-600 hover:bg-green-700"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                  >
+                    {isLoadingPayment ? (
+                      <>
+                        <CustomLoaderIcon className="animate-spin w-5 h-5 mr-2" />{" "}
+                        ...
+                      </>
+                    ) : (
+                      <>
+                        {form.paymentMethod === "cash"
+                          ? lang === "es"
+                            ? "Confirmar Orden"
+                            : "Confirm Order"
+                          : lang === "es"
+                          ? "Pagar Ahora"
+                          : "Pay Now"}
+                        <CheckCircle className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handlePayNow}
+                    className="w-full mt-2 bg-purple-600 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-purple-700 transition flex items-center justify-center animate-pulse"
+                  >
+                    <CheckCircle className="w-5 h-5 mr-2" />{" "}
+                    {lang === "es" ? "Confirmar Pago" : "Confirm Payment"}
+                  </button>
+                )}
+
+                {form.paymentMethod === "card" && (
+                  <p className="text-[10px] text-gray-400 mt-4 text-center flex items-center justify-center">
+                    <Lock className="w-3 h-3 mr-1" /> Secure by Stripe
+                  </p>
+                )}
               </div>
             ) : (
+              /* --- PANTALLA ÉXITO --- */
               <div className="py-4 animate-fade-in">
                 <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-10 h-10 text-green-600" />
                 </div>
                 <h3 className="text-2xl font-black text-gray-800 mb-2">
-                  {t.paymentSuccess}
+                  {form.paymentMethod === "cash"
+                    ? lang === "es"
+                      ? "Orden Confirmada"
+                      : "Order Confirmed"
+                    : t.paymentSuccess || "Success"}
                 </h3>
-                <p className="text-gray-500 mb-6">
-                  Your transaction ID: #{generateShortId()}
+                <p className="text-gray-500 mb-6 px-4">
+                  {form.paymentMethod === "cash"
+                    ? lang === "es"
+                      ? "Tu pedido ha sido recibido. Prepara el efectivo."
+                      : "Your order has been received. Please have cash ready."
+                    : lang === "es"
+                    ? "Pago completado exitosamente."
+                    : "Payment successful."}
                 </p>
+                <div className="bg-gray-50 rounded-lg p-3 mb-6 mx-4">
+                  <p className="text-xs text-gray-400 font-bold uppercase">
+                    Ref
+                  </p>
+                  <p className="font-mono font-bold text-gray-700">
+                    #{generateShortId()}
+                  </p>
+                </div>
                 <button
                   onClick={handlePaymentComplete}
                   className="w-full bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-green-600 transition transform hover:scale-105"
                 >
-                  Continue to Receipt
+                  {lang === "es" ? "Ver Recibo" : "View Receipt"}
                 </button>
               </div>
             )}
@@ -3926,6 +4101,7 @@ ${extras ? extras + "%0a--------------------------------" : ""}
         </div>
       )}
 
+      {/* --- VISTA CARRITO --- */}
       {view === "cart" && (
         <div className="max-w-4xl mx-auto p-6 animate-fade-in pb-24">
           <h2 className="text-3xl font-black text-gray-800 mb-6 flex items-center">
@@ -4155,73 +4331,59 @@ ${extras ? extras + "%0a--------------------------------" : ""}
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() =>
-                        setForm({ ...form, paymentMethod: "cash" })
-                      }
-                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition ${
+                      onClick={() => handleMethodClick("cash")}
+                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition hover:bg-green-50 hover:border-green-200 border-gray-100 ${
                         form.paymentMethod === "cash"
-                          ? "border-green-500 bg-green-50 text-green-700"
-                          : "border-gray-100 hover:border-gray-200"
+                          ? "bg-green-50 border-green-200"
+                          : ""
                       }`}
                     >
-                      <DollarSign className="w-6 h-6 mb-1" />{" "}
+                      <DollarSign className="w-6 h-6 mb-1 text-green-600" />{" "}
                       <span className="text-xs font-bold">
                         {t.payCashLabel}
                       </span>
                     </button>
                     <button
-                      onClick={() =>
-                        setForm({ ...form, paymentMethod: "card" })
-                      }
-                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition ${
+                      onClick={() => handleMethodClick("card")}
+                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition hover:bg-blue-50 hover:border-blue-200 border-gray-100 ${
                         form.paymentMethod === "card"
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
-                          : "border-gray-100 hover:border-gray-200"
+                          ? "bg-blue-50 border-blue-200"
+                          : ""
                       }`}
                     >
-                      <CreditCard className="w-6 h-6 mb-1" />{" "}
+                      <CreditCard className="w-6 h-6 mb-1 text-blue-600" />{" "}
                       <span className="text-xs font-bold">
                         {t.payCardLabel}
                       </span>
                     </button>
                     <button
-                      onClick={() =>
-                        setForm({ ...form, paymentMethod: "online" })
-                      }
-                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition ${
+                      onClick={() => handleMethodClick("online")}
+                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition hover:bg-purple-50 hover:border-purple-200 border-gray-100 ${
                         form.paymentMethod === "online"
-                          ? "border-purple-500 bg-purple-50 text-purple-700"
-                          : "border-gray-100 hover:border-gray-200"
+                          ? "bg-purple-50 border-purple-200"
+                          : ""
                       }`}
                     >
-                      <ExternalLink className="w-6 h-6 mb-1" />{" "}
+                      <ExternalLink className="w-6 h-6 mb-1 text-purple-600" />{" "}
                       <span className="text-xs font-bold">Zelle / Online</span>
                     </button>
                     <button
-                      onClick={() =>
-                        setForm({ ...form, paymentMethod: "apple_pay" })
-                      }
-                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition ${
+                      onClick={() => handleMethodClick("apple_pay")}
+                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition hover:bg-gray-100 hover:border-gray-300 border-gray-100 ${
                         form.paymentMethod === "apple_pay"
-                          ? "border-gray-800 bg-gray-100 text-gray-900"
-                          : "border-gray-100 hover:border-gray-200"
+                          ? "bg-gray-100 border-gray-300"
+                          : ""
                       }`}
                     >
-                      <Smartphone className="w-6 h-6 mb-1" />{" "}
+                      <Smartphone className="w-6 h-6 mb-1 text-gray-800" />{" "}
                       <span className="text-xs font-bold">Apple Pay</span>
                     </button>
                   </div>
                 </div>
-                <button
-                  onClick={handleCheckoutClick}
-                  disabled={isSubmitting}
-                  className="w-full bg-cyan-900 text-white py-4 rounded-xl font-bold shadow-xl hover:bg-black transition transform hover:scale-105 flex items-center justify-center"
-                >
-                  {isSubmitting ? "Sending..." : t.submit}
-                </button>
+
                 <button
                   onClick={() => setView("home")}
-                  className="w-full text-gray-400 font-bold text-sm hover:text-gray-600"
+                  className="w-full text-gray-400 font-bold text-sm hover:text-gray-600 mt-4"
                 >
                   Cancel
                 </button>
@@ -4231,6 +4393,7 @@ ${extras ? extras + "%0a--------------------------------" : ""}
         </div>
       )}
 
+      {/* --- VISTA HOME (PRINCIPAL) --- */}
       {view === "home" && (
         <div className="animate-fade-in">
           <div className="relative h-[550px] flex items-center justify-center overflow-hidden">
@@ -4505,6 +4668,330 @@ ${extras ? extras + "%0a--------------------------------" : ""}
         </div>
       )}
 
+      {/* --- VISTA SUCCESS --- */}
+      {view === "success" && (
+        <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 bg-cyan-50 font-sans">
+          <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-md w-full animate-fade-in">
+            <CheckCircle className="w-24 h-24 text-green-500 mx-auto mb-6 animate-bounce" />
+            <h1 className="text-3xl font-black text-gray-800 mb-2">
+              {t.successMsg}
+            </h1>
+            <p className="text-gray-500 mb-6">{t.successSub}</p>
+            <div className="bg-gray-100 p-4 rounded-xl mb-8 border-2 border-dashed border-gray-300">
+              <p className="text-sm text-gray-500 uppercase font-bold">
+                {t.orderNumberIs}
+              </p>
+              <p className="text-xl font-mono font-black text-cyan-600 break-all">
+                {lastOrder?.orderNumber || lastOrder?.id.slice(0, 6)}
+              </p>
+              <div
+                className={`mt-2 inline-block px-3 py-1 rounded font-bold text-xs ${
+                  lastOrder?.paymentStatus === "paid"
+                    ? "bg-green-200 text-green-800"
+                    : "bg-yellow-200 text-yellow-800"
+                }`}
+              >
+                METHOD: {lastOrder?.details.paymentMethod.toUpperCase()}{" "}
+                {lastOrder?.paymentStatus === "paid" ? "(PAID)" : "(PENDING)"}
+              </div>
+            </div>
+            <a
+              href={getOwnerWhatsApp()}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full bg-green-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-green-600 transition flex items-center justify-center mb-4 transform hover:scale-105 animate-pulse border-4 border-green-200"
+            >
+              <MessageCircle className="w-6 h-6 mr-3" /> {t.sendWhastapp}
+            </a>
+            <a
+              href={getOwnerSMS()}
+              className="w-full bg-blue-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-blue-600 transition flex items-center justify-center mb-4 transform hover:scale-105 border-4 border-blue-200"
+            >
+              <Smartphone className="w-6 h-6 mr-3" /> {t.sendSMS}
+            </a>
+            <button
+              onClick={() => setView("track")}
+              className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-gray-900 transition flex items-center justify-center mt-4"
+            >
+              <CustomReceiptIcon className="w-5 h-5 mr-2" /> {t.trackOrder}
+            </button>
+            <button
+              onClick={() => setView("home")}
+              className="w-full bg-gray-100 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-200 transition flex items-center justify-center mt-2"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" /> {t.back}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- VISTA TRACK --- */}
+      {view === "track" && (
+        <div className="min-h-screen bg-slate-50 p-4 font-sans pb-24">
+          <div className="flex justify-between items-center mb-6">
+            <button
+              onClick={() => setView("home")}
+              className="flex items-center text-gray-600 font-bold"
+            >
+              <ArrowLeft className="mr-2 w-5 h-5" /> {t.back}
+            </button>
+            <button
+              onClick={() =>
+                setQRModal({ show: true, url: window.location.href })
+              }
+              className="p-2 bg-white rounded-full shadow text-cyan-600 hover:bg-cyan-50"
+            >
+              <QrCode className="w-5 h-5" />
+            </button>
+          </div>
+          <h2 className="text-2xl font-black mb-6">{t.yourOrders}</h2>
+          {myOrders.length === 0 ? (
+            <p className="text-center text-gray-400 mt-10">No orders found.</p>
+          ) : (
+            <div className="space-y-6">
+              {myOrders.map((o) => (
+                <div
+                  key={o.id}
+                  className={`p-6 rounded-2xl shadow-lg border-2 relative overflow-hidden transition-all ${
+                    o.status === "completed"
+                      ? "bg-green-50 border-green-200"
+                      : "bg-white border-gray-100"
+                  }`}
+                >
+                  {o.status === "completed" && (
+                    <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
+                      {t.orderCompleted}
+                    </div>
+                  )}
+                  <div className="flex justify-between items-start mb-4 border-b border-dashed pb-4">
+                    <div>
+                      <span className="font-mono text-xl font-black text-cyan-700">
+                        #{o.orderNumber || o.id.slice(0, 6)}
+                      </span>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {new Date(o.createdAt).toLocaleString()}
+                      </p>
+                      <span
+                        className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${
+                          o.status === "completed"
+                            ? "bg-green-200 text-green-800"
+                            : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                        {t.status[o.status] || o.status}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <button
+                        onClick={() => shareOrder(o)}
+                        className="text-gray-400 hover:text-cyan-600 mb-2 block ml-auto"
+                      >
+                        <Share2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm text-gray-600 mb-4">
+                    <div className="flex items-start">
+                      <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-cyan-500" />{" "}
+                      <span>{o.customer.address}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Calendar className="w-4 h-4 mr-2 text-cyan-500" />{" "}
+                      <span>
+                        Pickup: {o.details.pickupDate} ({o.details.pickupTime})
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <Truck className="w-4 h-4 mr-2 text-cyan-500" />{" "}
+                      <span>
+                        Delivery: {o.details.deliveryDate} (
+                        {o.details.deliveryTime})
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl mb-4">
+                    {Object.entries(o.items).map(([k, v]) => {
+                      const s = services.find((x) => x.id === k);
+                      const totalLine = (s?.price || 0) * v;
+                      return (
+                        <div
+                          key={k}
+                          className="flex justify-between py-1 text-sm border-b border-gray-200 last:border-0"
+                        >
+                          <span>
+                            {v} x{" "}
+                            {s
+                              ? lang === "es" && s.name_es
+                                ? s.name_es
+                                : lang === "fr" && s.name_fr
+                                ? s.name_fr
+                                : lang === "hi" && s.name_hi
+                                ? s.name_hi
+                                : s.name_en
+                              : k}
+                          </span>
+                          <span className="font-bold">
+                            ${totalLine.toFixed(2)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {(() => {
+                      let subtotal = Object.entries(o.items).reduce(
+                        (acc, [id, qty]) => {
+                          const s = services.find((x) => x.id === id);
+                          return acc + (s?.price || 0) * qty;
+                        },
+                        0
+                      );
+                      const expressPct = config.expressPercent || 20;
+                      const discountPct = config.discountPercent || 10;
+                      const taxPct = config.taxPercent || 0;
+                      const expressFee = o.express
+                        ? subtotal * (expressPct / 100)
+                        : 0;
+                      const discount = o.isMember
+                        ? (subtotal + expressFee) * (discountPct / 100)
+                        : 0;
+                      const taxableAmount = subtotal + expressFee - discount;
+                      const tax = taxableAmount * (taxPct / 100);
+                      const finalTotal = taxableAmount + tax;
+                      return (
+                        <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
+                          <div className="flex justify-between">
+                            <span>Subtotal</span>
+                            <span>${subtotal.toFixed(2)}</span>
+                          </div>
+                          {o.express && (
+                            <div className="flex justify-between text-cyan-600">
+                              <span>Express Fee</span>
+                              <span>+${expressFee.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {o.isMember && (
+                            <div className="flex justify-between text-yellow-600">
+                              <span>Member Discount</span>
+                              <span>-${discount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {tax > 0 && (
+                            <div className="flex justify-between">
+                              <span>Tax ({taxPct}%)</span>
+                              <span>+${tax.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="mt-3 pt-2 border-t border-dashed text-xs text-gray-500">
+                            {o.aroma && (
+                              <div className="flex justify-between mb-1">
+                                <span className="text-purple-600 font-bold">
+                                  Aroma:
+                                </span>
+                                <span>{getLabel(o.aroma, "aroma", lang)}</span>
+                              </div>
+                            )}
+                            {o.allergies && o.allergies.length > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-red-600 font-bold">
+                                  Allergies:
+                                </span>
+                                <span className="text-right max-w-[60%]">
+                                  {o.allergies
+                                    .map((a) => getLabel(a, "allergy", lang))
+                                    .join(", ")}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-center pt-3 border-t border-gray-300 mt-2">
+                            <div>
+                              <span className="font-bold text-gray-800 text-base">
+                                TOTAL
+                              </span>
+                              <div className="text-xs font-bold text-green-600">
+                                {o.details.paymentMethod.toUpperCase()}{" "}
+                                {o.paymentStatus === "paid"
+                                  ? "(PAID)"
+                                  : "(PENDING)"}
+                              </div>
+                            </div>
+                            <span className="font-black text-xl text-cyan-700">
+                              ${finalTotal.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}{" "}
+                  </div>
+                  {o.adminNote && (
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 text-sm text-blue-800 rounded-r">
+                      <p className="font-bold text-xs uppercase mb-1 flex items-center">
+                        <CustomInfoIcon className="w-3 h-3 mr-1" />{" "}
+                        {t.updateFromLaundry}
+                      </p>
+                      <p>{o.adminNote}</p>
+                    </div>
+                  )}
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    {o.customerResponse ? (
+                      <div className="text-sm text-green-700 bg-green-50 p-3 rounded border border-green-100">
+                        <span className="font-bold block text-xs uppercase">
+                          Your Reply:
+                        </span>
+                        {o.customerResponse}
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          className="flex-1 border rounded px-3 py-2 text-sm"
+                          placeholder="Reply to admin..."
+                          value={customerReply[o.id] || ""}
+                          onChange={(e) =>
+                            setCustomerReply({
+                              ...customerReply,
+                              [o.id]: e.target.value,
+                            })
+                          }
+                        />
+                        <button
+                          onClick={() =>
+                            sendCustomerReply(o.id, customerReply[o.id])
+                          }
+                          className="bg-cyan-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-cyan-700"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {o.status === "completed" && (
+                    <button
+                      onClick={() => deleteLocalOrder(o.id)}
+                      className="w-full mt-4 bg-gray-200 text-gray-600 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" /> {t.deleteReceipt}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* --- VISTA ADMIN --- */}
+      {view === "admin" && (
+        <AdminView
+          t={t}
+          config={config}
+          setConfig={setConfig}
+          services={services}
+          setServices={setServices}
+          setView={setView}
+          lang={lang}
+        />
+      )}
+
+      {/* --- MODALES --- */}
       {showMemberModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center border-4 border-yellow-300 relative overflow-hidden">
@@ -4529,7 +5016,12 @@ ${extras ? extras + "%0a--------------------------------" : ""}
               <button
                 onClick={() => {
                   setShowMemberModal(false);
-                  submitOrder(false, false, form.paymentMethod !== "cash");
+                  submitOrder(
+                    false,
+                    false,
+                    form.paymentMethod !== "cash",
+                    form.paymentMethod
+                  );
                 }}
                 className="w-full text-gray-400 font-bold text-sm hover:text-gray-600"
               >
@@ -4550,7 +5042,6 @@ ${extras ? extras + "%0a--------------------------------" : ""}
           </div>
         </div>
       )}
-
       {showRejoinModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center border-l-8 border-red-400">
@@ -4584,7 +5075,12 @@ ${extras ? extras + "%0a--------------------------------" : ""}
               <button
                 onClick={() => {
                   setShowRejoinModal(false);
-                  submitOrder(false, false, form.paymentMethod !== "cash");
+                  submitOrder(
+                    false,
+                    false,
+                    form.paymentMethod !== "cash",
+                    form.paymentMethod
+                  );
                 }}
                 className="w-full text-gray-400 font-bold text-sm hover:text-gray-600"
               >
@@ -4594,7 +5090,6 @@ ${extras ? extras + "%0a--------------------------------" : ""}
           </div>
         </div>
       )}
-
       {qrModal.show && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center relative">
@@ -4627,6 +5122,29 @@ ${extras ? extras + "%0a--------------------------------" : ""}
             >
               <ExternalLink className="w-4 h-4 mr-2" /> {t.copyLink}
             </button>
+
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              <a
+                href={`mailto:?body=${qrModal.url}`}
+                className="flex flex-col items-center p-2 bg-gray-50 rounded hover:bg-gray-100 text-xs font-bold text-gray-600"
+              >
+                <span className="mb-1">📧</span> Email
+              </a>
+              <a
+                href={`sms:?body=${qrModal.url}`}
+                className="flex flex-col items-center p-2 bg-gray-50 rounded hover:bg-gray-100 text-xs font-bold text-gray-600"
+              >
+                <span className="mb-1">💬</span> SMS
+              </a>
+              <a
+                href={`https://wa.me/?text=${qrModal.url}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-col items-center p-2 bg-gray-50 rounded hover:bg-gray-100 text-xs font-bold text-gray-600"
+              >
+                <span className="mb-1">📱</span> Whatsapp
+              </a>
+            </div>
           </div>
         </div>
       )}
