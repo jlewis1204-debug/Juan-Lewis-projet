@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ShoppingBag,
   Lock,
@@ -43,9 +42,9 @@ import {
   Search,
   QrCode,
   BellRing,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
-
-// --- IMPORTACIONES DE FIREBASE ---
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -64,7 +63,7 @@ import {
 } from "firebase/firestore";
 import { getAuth, signInAnonymously } from "firebase/auth";
 
-// --- TU CONFIGURACIÓN DE FIREBASE ---
+// --- 1. CONFIGURACIÓN FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyA8Ujw8L5uErmgL_x3fNRx530fSWjavu7M",
   authDomain: "fast-wave-laundry-86d9f.firebaseapp.com",
@@ -75,17 +74,16 @@ const firebaseConfig = {
   measurementId: "G-RV7JTXY252",
 };
 
-// Inicializar Firebase (Modo Seguro)
 let db, auth;
 try {
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   auth = getAuth(app);
 } catch (error) {
-  console.warn("Error iniciando Firebase:", error);
+  console.warn("Error Firebase:", error);
 }
 
-// --- AUTO-CARGA DE ESTILOS TAILWIND ---
+// --- 2. UTILS ---
 const useTailwind = () => {
   useEffect(() => {
     if (!document.querySelector("#tailwind-script")) {
@@ -97,7 +95,6 @@ const useTailwind = () => {
   }, []);
 };
 
-// --- CONFIGURACIÓN "MODO APP" (PWA) DINÁMICA ---
 const useAppMode = (customIcon) => {
   useEffect(() => {
     if (!document.querySelector("#stripe-js")) {
@@ -107,144 +104,13 @@ const useAppMode = (customIcon) => {
       script.async = true;
       document.head.appendChild(script);
     }
-
-    const iconUrl =
-      customIcon ||
-      "https://ui-avatars.com/api/?name=Fast+Wave&background=06b6d4&color=fff&size=512&bold=true&length=2";
-
-    const manifest = {
-      name: "Fast Wave Laundry",
-      short_name: "Fast Wave",
-      start_url: ".",
-      display: "standalone",
-      background_color: "#ffffff",
-      theme_color: "#06b6d4",
-      icons: [
-        { src: iconUrl, sizes: "192x192", type: "image/png" },
-        { src: iconUrl, sizes: "512x512", type: "image/png" },
-      ],
-    };
-
-    const stringManifest = JSON.stringify(manifest);
-    const blob = new Blob([stringManifest], { type: "application/json" });
-    const manifestURL = URL.createObjectURL(blob);
-    let link = document.querySelector('link[rel="manifest"]');
-    if (link) {
-      link.href = manifestURL;
-    } else {
-      link = document.createElement("link");
-      link.rel = "manifest";
-      link.href = manifestURL;
-      document.head.appendChild(link);
-    }
-
-    const metaTags = [
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      {
-        name: "apple-mobile-web-app-status-bar-style",
-        content: "black-translucent",
-      },
-      { name: "theme-color", content: "#06b6d4" },
-    ];
-    metaTags.forEach((tagInfo) => {
-      let meta = document.querySelector(`meta[name="${tagInfo.name}"]`);
-      if (!meta) {
-        meta = document.createElement("meta");
-        meta.name = tagInfo.name;
-        document.head.appendChild(meta);
-      }
-      meta.content = tagInfo.content;
-    });
-
-    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
-    if (appleIcon) {
-      appleIcon.href = iconUrl;
-    } else {
-      appleIcon = document.createElement("link");
-      appleIcon.rel = "apple-touch-icon";
-      appleIcon.href = iconUrl;
-      document.head.appendChild(appleIcon);
-    }
-    let favicon = document.querySelector('link[rel="icon"]');
-    if (favicon) {
-      favicon.href = iconUrl;
-    } else {
-      favicon = document.createElement("link");
-      favicon.rel = "icon";
-      favicon.href = iconUrl;
-      document.head.appendChild(favicon);
-    }
   }, [customIcon]);
 };
 
-// --- HELPER: GENERAR ID CORTO ---
-const generateShortId = () => {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-};
+const generateShortId = () =>
+  Math.random().toString(36).substring(2, 8).toUpperCase();
 
-// --- HELPER: OBTENER ETIQUETA TRADUCIDA ---
-const getLabel = (id, type, lang) => {
-  if (!id) return "";
-  if (type === "aroma") {
-    const item = AROMAS.find((a) => a.id === id);
-    if (!item) return id;
-    return item[lang] || item["en"] || id;
-  }
-  if (type === "allergy") {
-    const item = AVOID_PRODUCTS.find((p) => p.id === id);
-    if (!item) return id;
-    if (lang === "es") return item.label_es;
-    if (lang === "fr") return item.label_fr;
-    if (lang === "hi") return item.label_hi;
-    return item.label_en;
-  }
-  return id;
-};
-
-// --- HELPER: VALIDAR FECHAS ---
-const validateScheduleLogic = (
-  pickupDate,
-  pickupTime,
-  deliveryDate,
-  deliveryTime
-) => {
-  if (!pickupDate || !deliveryDate) return null;
-
-  const parseDateTime = (dateStr, timeSlotStr) => {
-    if (!timeSlotStr) return new Date(dateStr);
-    const timePart = timeSlotStr.split(" - ")[0];
-    if (!timePart) return new Date(dateStr); // Safety check
-    const [time, modifier] = timePart.split(" ");
-    let [hours, minutes] = time.split(":");
-    hours = parseInt(hours, 10);
-    if (modifier === "PM" && hours < 12) hours += 12;
-    if (modifier === "AM" && hours === 12) hours = 0;
-    return new Date(
-      `${dateStr}T${hours.toString().padStart(2, "0")}:${minutes}:00`
-    );
-  };
-
-  const now = new Date();
-  const pickupDateTime = parseDateTime(pickupDate, pickupTime);
-  const deliveryDateTime = parseDateTime(deliveryDate, deliveryTime);
-
-  const threshold = new Date(now.getTime() - 60 * 60 * 1000);
-
-  if (pickupDateTime < threshold) {
-    return "errorPastDate";
-  }
-
-  const minProcessTime = new Date(
-    pickupDateTime.getTime() + 4 * 60 * 60 * 1000
-  );
-  if (deliveryDateTime < minProcessTime) {
-    return "errorDeliveryOrder";
-  }
-
-  return null;
-};
-
-// --- CONSTANTES ---
+// --- 3. DATOS ---
 const TIME_SLOTS = [
   "08:00 AM - 10:00 AM",
   "10:00 AM - 12:00 PM",
@@ -253,171 +119,13 @@ const TIME_SLOTS = [
   "04:00 PM - 06:00 PM",
   "06:00 PM - 08:00 PM",
 ];
-
-// --- ICONOS MANUALES (SVG) ---
-const CustomIronIcon = () => (
-  <svg
-    viewBox="0 0 64 64"
-    className="w-full h-full p-4"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <defs>
-      <linearGradient id="ironBody" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#22d3ee" />
-        <stop offset="100%" stopColor="#0891b2" />
-      </linearGradient>
-      <linearGradient id="ironSole" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#94a3b8" />
-        <stop offset="100%" stopColor="#475569" />
-      </linearGradient>
-    </defs>
-    <path
-      fill="url(#ironSole)"
-      d="M4 46h56c2.2 0 4 1.8 4 4s-1.8 4-4 4H4c-2.2 0-4-1.8-4-4s1.8-4 4-4z"
-    />
-    <path
-      fill="url(#ironBody)"
-      d="M8 46h48c0-14-10-26-26-26h-4c-10 0-16 8-16 26z"
-    />
-    <path
-      fill="none"
-      stroke="#155e75"
-      strokeWidth="6"
-      strokeLinecap="round"
-      d="M22 20V12c0-4.4 4.4-8 8.8-8h10.4c8.8 0 12.8 7.2 12.8 16v12"
-    />
-    <circle cx="34" cy="34" r="5" fill="#fff" opacity="0.9" />
-    <circle cx="34" cy="34" r="2" fill="#155e75" />
-  </svg>
-);
-
-const CustomPackageIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
-    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-    <line x1="12" y1="22.08" x2="12" y2="12"></line>
-  </svg>
-);
-const CustomInfoIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <circle cx="12" cy="12" r="10"></circle>
-    <line x1="12" y1="16" x2="12" y2="12"></line>
-    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-  </svg>
-);
-const CustomReceiptIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path>
-    <line x1="16" y1="8" x2="8" y2="8"></line>
-    <line x1="16" y1="12" x2="8" y2="12"></line>
-    <line x1="16" y1="16" x2="8" y2="16"></line>
-  </svg>
-);
-const CustomLoaderIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-  </svg>
-);
-const CustomUploadIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-    <polyline points="17 8 12 3 7 8" />
-    <line x1="12" y1="3" x2="12" y2="15" />
-  </svg>
-);
-const CustomCameraIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-    <circle cx="12" cy="13" r="4" />
-  </svg>
-);
-
-// --- COMPONENTE LOGO ---
-const BrandLogo = ({ customIcon }) => (
-  <div className="relative flex items-center justify-center px-5 py-2 overflow-hidden rounded-full border-2 border-cyan-100 shadow-sm group hover:shadow-md transition-all cursor-pointer">
-    <div className="absolute inset-0 bg-gradient-to-r from-cyan-100 via-white to-cyan-50"></div>
-    <div className="relative z-10 flex items-center">
-      {customIcon && (
-        <img
-          src={customIcon}
-          alt="Icon"
-          className="w-6 h-6 mr-2 object-contain rounded-full"
-        />
-      )}
-      <div className="flex flex-col items-center">
-        <span className="font-black text-xl text-cyan-900 leading-none tracking-tight drop-shadow-sm">
-          Fast Wave
-        </span>
-        <span className="text-[9px] font-bold text-cyan-700 uppercase tracking-widest">
-          Laundry Service
-        </span>
-      </div>
-    </div>
-  </div>
-);
-
 const INITIAL_SERVICES = [
   {
     id: "wash_fold",
     name_en: "Wash & Fold (per lb)",
     name_es: "Lavado y Doblado (por lb)",
-    name_fr: "Lavage et Pliage",
-    name_hi: "धलाई और तह",
+    name_fr: "Lavage et Pliage (par lb)",
+    name_hi: "धलाई और तह (प्रति lb)",
     price: 1.5,
     image:
       "https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=400&q=80",
@@ -427,8 +135,8 @@ const INITIAL_SERVICES = [
     id: "dry_clean_shirt",
     name_en: "Dry Clean Shirt",
     name_es: "Lavado en Seco Camisa",
-    name_fr: "Chemise",
-    name_hi: "शर्ट",
+    name_fr: "Chemise Nettoyage à Sec",
+    name_hi: "ड्राई क्लीन शर्ट",
     price: 5.0,
     image:
       "https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=400",
@@ -438,8 +146,8 @@ const INITIAL_SERVICES = [
     id: "dry_clean_suit",
     name_en: "Dry Clean Suit",
     name_es: "Lavado en Seco Traje",
-    name_fr: "Costume",
-    name_hi: "सूट",
+    name_fr: "Costume Nettoyage à Sec",
+    name_hi: "ड्राई क्लीन सूट",
     price: 15.0,
     image:
       "https://images.pexels.com/photos/3755706/pexels-photo-3755706.jpeg?auto=compress&cs=tinysrgb&w=400",
@@ -449,8 +157,8 @@ const INITIAL_SERVICES = [
     id: "ironing",
     name_en: "Ironing Service",
     name_es: "Servicio de Planchado",
-    name_fr: "Repassage",
-    name_hi: "इस्त्री",
+    name_fr: "Service de Repassage",
+    name_hi: "इस्त्री सेवा",
     price: 3.0,
     type: "component",
     componentName: "CustomIronIcon",
@@ -459,53 +167,26 @@ const INITIAL_SERVICES = [
     id: "bedding",
     name_en: "Bedding / Comforter",
     name_es: "Ropa de Cama",
-    name_fr: "Literie",
-    name_hi: "बिस्तर",
+    name_fr: "Literie / Edredon",
+    name_hi: "बिस्तर / रजाई",
     price: 20.0,
     image:
       "https://images.pexels.com/photos/164595/pexels-photo-164595.jpeg?auto=compress&cs=tinysrgb&w=400",
     type: "image",
   },
 ];
-
 const AVOID_PRODUCTS = [
-  {
-    id: "softener",
-    label_en: "No Softener",
-    label_es: "Sin Suavizante",
-    label_fr: "Sans Adoucissant",
-    label_hi: "कोई सॉफ़्नर नहीं",
-  },
-  {
-    id: "bleach",
-    label_en: "No Bleach",
-    label_es: "Sin Cloro",
-    label_fr: "Sans Javel",
-    label_hi: "कोई ब्लीच नहीं",
-  },
-  {
-    id: "scented",
-    label_en: "No Scent",
-    label_es: "Sin Perfume",
-    label_fr: "Sans Parfum",
-    label_hi: "कोई सुगंध नहीं",
-  },
+  { id: "softener", label_en: "No Softener", label_es: "Sin Suavizante" },
+  { id: "bleach", label_en: "No Bleach", label_es: "Sin Cloro" },
+  { id: "scented", label_en: "No Scent", label_es: "Sin Perfume" },
 ];
-
 const AROMAS = [
-  { id: "Floral", en: "Floral", es: "Floral", fr: "Floral", hi: "पुष्प" },
-  { id: "Fresh", en: "Fresh", es: "Fresco", fr: "Frais", hi: "ताज़ा" },
-  { id: "Citrus", en: "Citrus", es: "Cítrico", fr: "Agrumes", hi: "खट्टे" },
-  { id: "Woody", en: "Woody", es: "Amaderado", fr: "Boisé", hi: "लकड़ी" },
-  {
-    id: "Unscented",
-    en: "Unscented",
-    es: "Sin Olor",
-    fr: "Sans Parfum",
-    hi: "बिना सुगंध",
-  },
+  { id: "Floral", en: "Floral", es: "Floral" },
+  { id: "Fresh", en: "Fresh", es: "Fresco" },
+  { id: "Citrus", en: "Citrus", es: "Cítrico" },
+  { id: "Woody", en: "Woody", es: "Amaderado" },
+  { id: "Unscented", en: "Unscented", es: "Sin Olor" },
 ];
-
 const LANGUAGES = {
   en: {
     title: "Fast Wave Laundry",
@@ -531,7 +212,6 @@ const LANGUAGES = {
     },
     express: "Express Wash",
     member: "I am a Member",
-    discountMsg: "Discount Applied!",
     successMsg: "Order Received!",
     successSub: "To confirm, please send details via WhatsApp or SMS below.",
     orderNumberIs: "Order #",
@@ -540,127 +220,41 @@ const LANGUAGES = {
     adminOrders: "Orders",
     adminServices: "Services",
     adminSettings: "Settings",
-    statsTitle: "Business Stats",
-    totalOrders: "Total Orders",
-    totalRevenue: "Total Revenue",
     deleteOrder: "Delete Order",
     editServices: "Edit Services",
     genSettings: "General Settings",
     save: "Save Changes",
-    zelleConf: "Zelle Configuration",
-    busPhone: "WhatsApp Number",
-    disc: "Discount",
-    nameEs: "Name (Spanish)",
-    nameEn: "Name (English)",
-    nameFr: "Name (French)",
-    nameHi: "Name (Hindi)",
-    price: "Price ($)",
-    addNew: "Add New",
     login: "Admin Login",
     enter: "Enter",
     wrongPin: "Wrong Credentials",
-    sendWhastapp: "Confirm via WhatsApp",
-    sendSMS: "Confirm via SMS",
-    payCash: "Cash on Delivery",
-    payCard: "Card on Delivery",
-    payOnline: "Zelle / Transfer",
-    payApple: "Apple Pay",
-    payGoogle: "Google Pay",
-    pickupDate: "Pickup Date",
-    pickupTime: "Pickup Time",
-    deliveryDate: "Delivery Date",
-    deliveryTime: "Delivery Time",
     payCashLabel: "Pay Cash",
     payCardLabel: "Credit/Debit Card",
     payOnlineLabel: "Pay Online",
-    payOnlineSub: "Zelle Transfer",
-    zelleNote: "Please send screenshot",
-    forgotPass: "Forgot Credentials?",
-    recoverTitle: "Recover Access",
-    recoverDesc: "Enter recovery PIN to reveal login details.",
-    enterPin: "Enter PIN",
-    reset: "Reveal",
-    wrongRecPin: "Wrong PIN",
-    securitySettings: "Security Settings",
-    changeUser: "Change Admin Username",
-    changePass: "Change Admin Password",
-    changePin: "Change Recovery PIN",
-    currentPass: "Current Password",
-    newPass: "New Password",
-    whatsappLabel: "WhatsApp Number",
-    fee: "Fee",
-    off: "OFF",
     nameLabel: "Full Name",
     phoneLabel: "Phone Number",
     addressLabel: "Address",
-    sending: "Sending...",
-    orderSent: "Order Sent Successfully!",
     emptyCart: "Your cart is empty",
     usernameLabel: "Username",
     passwordLabel: "Password",
-    credsTitle: "Your Credentials:",
-    user: "User:",
-    pass: "Pass:",
-    expressLabel: "Express Time Label",
-    expressPercentLabel: "Express Fee (%)",
     trackOrder: "Track Order",
     yourOrders: "Your Orders",
-    editingOrder: "Editing Order",
-    customerInfo: "Customer Info",
-    pickupSchedule: "Pickup Schedule",
-    deliverySchedule: "Delivery Schedule",
-    adminNoteLabel: "Admin Note / Reason for Change",
-    adminNotePlaceholder:
-      "Explain why you changed the schedule or options (visible to client)...",
-    updateFromLaundry: "Update from Laundry:",
-    uploadImage: "Upload Image",
-    uploadTip: "Click to upload",
-    fillRequired: "Please fill in all required fields (highlighted in red).",
-    share: "Share Receipt",
-    deleteReceipt: "Delete Receipt",
-    replyToAdmin: "Reply to Admin",
-    sendReply: "Send",
-    replySent: "Reply Sent!",
-    orderCompleted: "Order Completed",
     joinMemberTitle: "Join Membership?",
     joinYes: "Yes, Join & Save",
     joinNo: "No, Continue",
     rejoinTitle: "Rejoin Membership",
     rejoinYes: "Pay Fee & Rejoin",
-    customIcon: "Custom App Icon",
-    membershipRules: "Membership Rules",
-    minVisitsLabel: "Min Visits/Month",
-    rejoinFeeLabel: "Rejoin Fee ($)",
-    rejoinDurationLabel: "Rejoin Penalty Duration",
-    manageMembers: "Manage Members",
-    pastMembers: "Past Members (Expired)",
-    addMember: "Add Member",
-    restoreMember: "Restore Free",
-    phonePlaceholder: "Phone Number",
-    rulesText1: "The only requirement is to use our service",
-    rulesText2: "times a month. If not, the membership will be removed.",
-    rulesText3: "To rejoin, it will cost",
-    rulesText4: "for",
-    saveAmount: "You will save",
-    rejoinDesc:
-      "Your membership expired. To get the discount again, there is a rejoining fee.",
-    taxLabel: "Tax (%)",
-    searchPlaceholder: "Search by name or phone...",
-    gatewayConfig: "Payment Gateway (Stripe)",
-    apiKey: "Publishable API Key",
     qrCode: "App QR Code",
-    scent: "Scent",
-    allergies: "Allergies",
-    errorPastDate: "Error: You cannot select a past date/time.",
-    errorDeliveryOrder: "Error: Delivery date must be after pickup date.",
-    stripeError: "Error: Payment Configuration Missing. Contact Admin.",
     shareApp: "Share App",
     copyLink: "Copy Link",
-    paymentFailed: "Payment Failed",
-    configError: "Configuration Error",
+    paymentSuccess: "Payment Successful",
     alertTitle: "Schedule Updated!",
     alertMsg: "The laundry has updated the schedule for one of your orders.",
     btnUnderstood: "Understood",
+    pickupDate: "Pickup Date",
+    pickupTime: "Pickup Time",
+    deliveryDate: "Delivery Date",
+    deliveryTime: "Delivery Time",
+    customerInfo: "Customer Info",
   },
   es: {
     title: "Fast Wave Lavandería",
@@ -686,7 +280,6 @@ const LANGUAGES = {
     },
     express: "Lavado Express",
     member: "Soy Miembro",
-    discountMsg: "¡Descuento Aplicado!",
     successMsg: "¡Orden Recibida!",
     successSub: "Para confirmar, envía el pedido por WhatsApp o SMS.",
     orderNumberIs: "Orden #",
@@ -695,292 +288,113 @@ const LANGUAGES = {
     adminOrders: "Pedidos",
     adminServices: "Servicios",
     adminSettings: "Ajustes",
-    statsTitle: "Estadísticas",
-    totalOrders: "Total de Pedidos",
-    totalRevenue: "Ingresos Totales",
     deleteOrder: "Borrar Orden",
     editServices: "Editar Servicios",
     genSettings: "Configuración General",
     save: "Guardar Cambios",
-    zelleConf: "Configuración de Zelle",
-    busPhone: "Número de WhatsApp",
-    disc: "Descuento",
-    nameEs: "Nombre (Español)",
-    nameEn: "Nombre (Inglés)",
-    nameFr: "Nombre (Francés)",
-    nameHi: "Nombre (Hindi)",
-    price: "Precio ($)",
-    addNew: "Agregar Nuevo",
     login: "Acceso Admin",
     enter: "Entrar",
     wrongPin: "Credenciales Incorrectas",
-    sendWhastapp: "Confirmar por WhatsApp",
-    sendSMS: "Confirmar por SMS",
-    payCash: "Efectivo al recibir",
-    payCard: "Tarjeta al recibir",
-    payOnline: "Zelle / Transferencia",
-    payApple: "Apple Pay",
-    payGoogle: "Google Pay",
-    pickupDate: "Fecha de Recogida",
-    pickupTime: "Hora de Recogida",
-    deliveryDate: "Fecha de Entrega",
-    deliveryTime: "Hora de Entrega",
     payCashLabel: "Pagar Efectivo",
     payCardLabel: "Tarjeta Crédito/Débito",
     payOnlineLabel: "Pagar Online",
-    zelleNote: "Enviar captura",
-    forgotPass: "¿Olvidaste tus datos?",
-    recoverTitle: "Recuperar Acceso",
-    recoverDesc: "Introduce tu PIN de recuperación para ver tus datos.",
-    enterPin: "Ingresar PIN",
-    reset: "Revelar",
-    wrongRecPin: "PIN Incorrecto",
-    securitySettings: "Seguridad",
-    changeUser: "Cambiar Usuario Admin",
-    changePass: "Cambiar Contraseña Admin",
-    changePin: "Cambiar PIN Recuperación",
-    currentPass: "Contraseña Actual",
-    newPass: "Nueva Contraseña",
-    whatsappLabel: "Número de WhatsApp",
-    fee: "Cargo",
-    off: "DCTO",
     nameLabel: "Nombre Completo",
     phoneLabel: "Teléfono",
     addressLabel: "Dirección",
-    sending: "Enviando Orden...",
-    orderSent: "¡Orden Enviada!",
     emptyCart: "Tu carrito está vacío",
     usernameLabel: "Usuario",
     passwordLabel: "Contraseña",
-    credsTitle: "Tus Credenciales:",
-    user: "Usuario:",
-    pass: "Clave:",
-    expressLabel: "Etiqueta Tiempo Express",
-    expressPercentLabel: "Recargo Express (%)",
     trackOrder: "Rastrear Orden",
     yourOrders: "Tus Pedidos",
-    editingOrder: "Editando Orden",
-    customerInfo: "Info del Cliente",
-    pickupSchedule: "Horario de Recogida",
-    deliverySchedule: "Horario de Entrega",
-    adminNoteLabel: "Nota de Admin / Razón del Cambio",
-    adminNotePlaceholder:
-      "Explica por qué cambiaste el horario u opciones (visible para el cliente)...",
-    updateFromLaundry: "Actualización de Lavandería:",
-    uploadImage: "Subir Imagen",
-    uploadTip: "Clic para subir",
-    fillRequired: "Por favor llena los campos requeridos (marcados en rojo).",
-    share: "Compartir Recibo",
-    deleteReceipt: "Borrar Recibo",
-    replyToAdmin: "Responder al Admin",
-    sendReply: "Enviar",
-    replySent: "¡Enviado!",
-    orderCompleted: "Orden Completada",
     joinMemberTitle: "¿Unirte a la Membresía?",
-    joinMemberDesc:
-      "¡Hazte miembro y obtén un descuento instantáneo en esta orden!",
     joinYes: "Sí, Unirme y Ahorrar",
     joinNo: "No, Continuar",
     rejoinTitle: "Reactivar Membresía",
     rejoinYes: "Pagar Cargo y Reactivar",
-    customIcon: "Icono de App Personalizado",
-    membershipRules: "Reglas de Membresía",
-    minVisitsLabel: "Mín. Visitas/Mes",
-    rejoinFeeLabel: "Costo Reingreso ($)",
-    rejoinDurationLabel: "Duración Penalización",
-    manageMembers: "Gestionar Miembros Activos",
-    pastMembers: "Ex-Miembros (Expirados)",
-    addMember: "Agregar Miembro",
-    restoreMember: "Restaurar Gratis",
-    phonePlaceholder: "Número de Teléfono",
-    rulesText1: "La única exigencia es usar nuestro servicio",
-    rulesText2: "veces al mes. Si no, la membresía se borrará del sistema.",
-    rulesText3: "Si quieres volverte a hacer miembro, te costará",
-    rulesText4: "por",
-    saveAmount: "Ahorrarás",
-    rejoinDesc:
-      "Tu membresía expiró. Para volver a obtener el descuento, hay un cargo de reingreso.",
-    taxLabel: "Impuesto (%)",
-    searchPlaceholder: "Buscar por nombre o teléfono...",
-    gatewayConfig: "Pasarela de Pagos (Stripe)",
-    apiKey: "API Key Pública",
     qrCode: "Código QR de App",
-    scent: "Aroma",
-    allergies: "Alergias",
-    errorPastDate: "Error: No puedes seleccionar una fecha/hora pasada.",
-    errorDeliveryOrder:
-      "Error: La fecha de entrega debe ser posterior a la de recogida.",
-    stripeError:
-      "Error: Falta configuración de pago. Contacta al administrador.",
     shareApp: "Compartir App",
     copyLink: "Copiar Enlace",
-    paymentFailed: "Pago Fallido",
-    configError: "Error de Configuración",
+    paymentSuccess: "Pago Exitoso",
     alertTitle: "¡Horario Actualizado!",
     alertMsg: "La lavandería ha actualizado el horario de una de tus órdenes.",
     btnUnderstood: "Entendido",
+    pickupDate: "Fecha de Recogida",
+    pickupTime: "Hora de Recogida",
+    deliveryDate: "Fecha de Entrega",
+    deliveryTime: "Hora de Entrega",
+    customerInfo: "Info del Cliente",
   },
   fr: {
     title: "Fast Wave Pressing",
-    heroSubtitle: "Vêtements frais, livrés à votre porte !",
-    payApple: "Apple Pay",
-    payGoogle: "Google Pay",
-    qrCode: "Code QR",
-    stripeError: "Erreur: Configuration de paiement manquante.",
-    shareApp: "Partager l'application",
-    copyLink: "Copier le lien",
-    paymentFailed: "Paiement Échoué",
-    configError: "Erreur de Configuration",
-    alertTitle: "Mise à jour!",
-    alertMsg: "L'horaire de votre commande a été mis à jour.",
-    btnUnderstood: "Compris",
+    heroSubtitle: "Vêtements frais, livrés à votre porte!",
     orderNow: "Commencer",
-    sendOrder: "Voir Panier",
+    sendOrder: "Envoyer",
     services: "Nos Services",
     productsToAvoid: "Allergies / Éviter",
     preferredAroma: "Parfum",
     details: "Détails de la commande",
-    pickupInfo: "Ramassage",
-    deliveryInfo: "Livraison",
-    payment: "Paiement",
+    pickupInfo: "Info Retrait",
+    deliveryInfo: "Info Livraison",
+    payment: "Méthode de paiement",
     total: "Total",
-    submit: "Commander",
+    submit: "Confirmer",
     status: {
       pending: "En attente",
       confirmed: "Confirmé",
       picked_up: "Ramassé",
       cleaning: "Lavage",
-      delivering: "Livraison",
+      delivering: "En livraison",
       completed: "Terminé",
     },
     express: "Lavage Express",
-    member: "Membre",
-    discountMsg: "Remise appliquée !",
-    successMsg: "Commande Reçue !",
-    successSub: "Pour confirmer, envoyez les détails via WhatsApp ou SMS.",
+    member: "Je suis Membre",
+    successMsg: "Commande Reçue!",
+    successSub: "Pour confirmer, envoyez les détails par WhatsApp ou SMS.",
     orderNumberIs: "Commande #",
     back: "Retour",
     adminTitle: "Tableau de bord",
     adminOrders: "Commandes",
     adminServices: "Services",
     adminSettings: "Paramètres",
-    statsTitle: "Statistiques",
-    totalOrders: "Total Commandes",
-    totalRevenue: "Revenu Total",
     deleteOrder: "Supprimer",
     editServices: "Modifier Services",
     genSettings: "Paramètres Généraux",
-    save: "Enregistrer",
-    zelleConf: "Config Zelle",
-    busPhone: "Numéro WhatsApp",
-    disc: "Remise",
-    nameEs: "Nom (Espagnol)",
-    nameEn: "Nom (Anglais)",
-    nameFr: "Nom (Français)",
-    nameHi: "Nom (Hindi)",
-    price: "Prix ($)",
-    addNew: "Ajouter",
+    save: "Sauvegarder",
     login: "Connexion Admin",
     enter: "Entrer",
     wrongPin: "Identifiants incorrects",
-    sendWhastapp: "Confirmer via WhatsApp",
-    sendSMS: "Confirmer via SMS",
-    payCash: "Espèces / Carte à la livraison",
-    payOnline: "Zelle / Virement",
-    pickupDate: "Date de ramassage",
-    pickupTime: "Heure de ramassage",
-    deliveryDate: "Date de livraison",
-    deliveryTime: "Heure de livraison",
-    payCashLabel: "Payer à la livraison",
-    payCashSub: "Espèces ou Carte",
+    payCashLabel: "Espèces",
+    payCardLabel: "Carte Crédit/Débit",
     payOnlineLabel: "Payer en ligne",
-    payOnlineSub: "Virement Zelle",
-    zelleNote: "Envoyer capture d'écran",
-    forgotPass: "Oublié ?",
-    recoverTitle: "Récupérer accès",
-    recoverDesc: "Entrez le PIN de récupération.",
-    enterPin: "Entrer PIN",
-    reset: "Révéler",
-    wrongRecPin: "Mauvais PIN",
-    securitySettings: "Sécurité",
-    changeUser: "Changer Utilisateur",
-    changePass: "Changer Mot de passe",
-    changePin: "Changer PIN",
-    currentPass: "Mot de passe actuel",
-    newPass: "Nouveau mot de passe",
-    whatsappLabel: "Numéro WhatsApp",
-    fee: "Frais",
-    off: "REMISE",
     nameLabel: "Nom complet",
     phoneLabel: "Téléphone",
     addressLabel: "Adresse",
-    sending: "Envoi...",
-    orderSent: "Envoyé !",
-    emptyCart: "Panier vide",
+    emptyCart: "Votre panier est vide",
     usernameLabel: "Utilisateur",
     passwordLabel: "Mot de passe",
-    credsTitle: "Vos identifiants :",
-    user: "Utilisateur :",
-    pass: "Mdp :",
-    expressLabel: "Label Express",
-    expressPercentLabel: "Frais Express (%)",
     trackOrder: "Suivre commande",
     yourOrders: "Vos commandes",
-    editingOrder: "Modifier commande",
-    customerInfo: "Info Client",
-    pickupSchedule: "Horaire Ramassage",
-    deliverySchedule: "Horaire Livraison",
-    adminNoteLabel: "Note Admin / Raison",
-    adminNotePlaceholder: "Expliquez le changement...",
-    updateFromLaundry: "Mise à jour :",
-    uploadImage: "Télécharger image",
-    uploadTip: "Cliquer pour télécharger",
-    fillRequired: "Remplissez les champs requis (en rouge).",
-    share: "Partager",
-    deleteReceipt: "Supprimer",
-    replyToAdmin: "Répondre",
-    sendReply: "Envoyer",
-    replySent: "Envoyé!",
-    orderCompleted: "Commande Terminée",
-    joinMemberTitle: "Devenir membre ?",
-    joinMemberDesc: "Devenez membre et obtenez une remise immédiate !",
+    joinMemberTitle: "Devenir Membre?",
     joinYes: "Oui, Rejoindre",
     joinNo: "Non, Continuer",
-    rejoinTitle: "Réactiver l'adhésion",
+    rejoinTitle: "Réactiver Membre",
     rejoinYes: "Payer et Réactiver",
-    rejoinDesc: "Votre adhésion a expiré. Frais pour rejoindre à nouveau.",
-    saveAmount: "Vous économiserez",
-    rulesText1: "Seulement utiliser",
-    rulesText2: "fois par mois.",
-    rulesText3: "Coût de retour",
-    rulesText4: "pour",
-    manageMembers: "Membres Actifs",
-    pastMembers: "Anciens Membres",
-    restoreMember: "Restaurer Gratuit",
-    payCardLabel: "Carte de Crédit",
-    taxLabel: "Taxe (%)",
-    searchPlaceholder: "Rechercher...",
-    gatewayConfig: "Passerelle de Paiement",
-    apiKey: "Clé API",
-    scent: "Parfum",
-    allergies: "Allergies",
-    errorPastDate: "Erreur: Date passée.",
-    errorDeliveryOrder: "Erreur: Livraison avant ramassage.",
+    qrCode: "Code QR App",
+    shareApp: "Partager",
+    copyLink: "Copier Lien",
+    paymentSuccess: "Paiement Réussi",
+    alertTitle: "Horaire Mis à Jour!",
+    alertMsg: "La laverie a mis à jour l'horaire.",
+    btnUnderstood: "Compris",
+    pickupDate: "Date Retrait",
+    pickupTime: "Heure Retrait",
+    deliveryDate: "Date Livraison",
+    deliveryTime: "Heure Livraison",
+    customerInfo: "Info Client",
   },
   hi: {
-    title: "Fast Wave Laundry",
-    heroSubtitle: "साफ़ कपड़े, आपके दरवाजे पर!",
-    payApple: "Apple Pay",
-    payGoogle: "Google Pay",
-    qrCode: "क्यूआर कोड",
-    stripeError: "त्रुटि: भुगतान कॉन्फ़िगरेशन गायब है।",
-    shareApp: "ऐप साझा करें",
-    copyLink: "लिंक कॉपी करें",
-    paymentFailed: "भुगतान असफल",
-    configError: "कॉन्फ़िगरेशन त्रुटि",
-    alertTitle: "अनुसूची अद्यतन!",
-    alertMsg: "लॉन्ड्री द्वारा आपकी ऑर्डर अनुसूची अपडेट की गई है।",
-    btnUnderstood: "समझ गया",
+    title: "फास्ट वेव लॉन्ड्री",
+    heroSubtitle: "ताजे कपड़े, सीधे आपके दरवाजे पर!",
     orderNow: "धुलाई शुरू करें",
     sendOrder: "ऑर्डर भेजें",
     services: "हमारी सेवाएँ",
@@ -989,815 +403,761 @@ const LANGUAGES = {
     details: "ऑर्डर विवरण",
     pickupInfo: "पिकअप जानकारी",
     deliveryInfo: "डिलीवरी जानकारी",
-    payment: "भुगतान विधि",
+    payment: "भुगतान का तरीका",
     total: "कुल",
-    submit: "ऑर्डर की समीक्षा करें",
+    submit: "ऑर्डर की समीक्षा",
     status: {
       pending: "लंबित",
-      confirmed: "पुष्टि की गई",
-      picked_up: "पिक अप किया गया",
+      confirmed: "पुष्टि",
+      picked_up: "पिक अप",
       cleaning: "धुलाई",
-      delivering: "डिलीवरी",
+      delivering: "वितरण",
       completed: "पूर्ण",
     },
     express: "एक्सप्रेस धुलाई",
     member: "मैं सदस्य हूँ",
-    discountMsg: "छूट लागू!",
     successMsg: "ऑर्डर प्राप्त हुआ!",
-    successSub:
-      "पुष्टि करने के लिए, कृपया व्हाट्सएप या एसएमएस के माध्यम से विवरण भेजें।",
+    successSub: "पुष्टि के लिए, कृपया व्हाट्सएप या एसएमएस भेजें।",
     orderNumberIs: "ऑर्डर #",
     back: "वापस",
-    adminTitle: "व्यवस्थापक डैशबोर्ड",
+    adminTitle: "एडमिन डैशबोर्ड",
     adminOrders: "ऑर्डर",
     adminServices: "सेवाएँ",
     adminSettings: "सेटिंग्स",
-    statsTitle: "व्यापार आँकड़े",
-    totalOrders: "कुल ऑर्डर",
-    totalRevenue: "कुल राजस्व",
     deleteOrder: "ऑर्डर हटाएं",
     editServices: "सेवाएँ संपादित करें",
     genSettings: "सामान्य सेटिंग्स",
-    save: "परिवर्तन सहेजें",
-    zelleConf: "Zelle कॉन्फ़िगरेशन",
-    busPhone: "व्हाट्सएप नंबर",
-    disc: "छूट",
-    nameEs: "नाम (स्पेनिश)",
-    nameEn: "नाम (अंग्रेज़ी)",
-    nameFr: "नाम (फ्रेंच)",
-    nameHi: "नाम (हिंदी)",
-    price: "कीमत ($)",
-    addNew: "नया जोड़ें",
-    login: "व्यवस्थापक लॉगिन",
-    enter: "प्रवेश करें",
+    save: "सहेजें",
+    login: "एडमिन लॉगिन",
+    enter: "प्रवेश",
     wrongPin: "गलत क्रेडेंशियल्स",
-    sendWhastapp: "व्हाट्सएप द्वारा पुष्टि करें",
-    sendSMS: "एसएमएस द्वारा पुष्टि करें",
-    payCash: "डिलीवरी पर नकद / कार्ड",
-    payOnline: "Zelle / ट्रांसफर",
+    payCashLabel: "नकद भुगतान",
+    payCardLabel: "क्रेडिट/डेबिट कार्ड",
+    payOnlineLabel: "ऑनलाइन भुगतान",
+    nameLabel: "पूरा नाम",
+    phoneLabel: "फ़ोन नंबर",
+    addressLabel: "पता",
+    emptyCart: "आपकी गाड़ी खाली है",
+    usernameLabel: "उपयोगकर्ता",
+    passwordLabel: "पासवर्ड",
+    trackOrder: "ऑर्डर ट्रैक करें",
+    yourOrders: "आपके ऑर्डर",
+    joinMemberTitle: "सदस्य बनें?",
+    joinYes: "हाँ, जुड़ें और बचाएं",
+    joinNo: "नहीं, जारी रखें",
+    rejoinTitle: "सदस्यता पुन: सक्रिय करें",
+    rejoinYes: "शुल्क दें और जुड़ें",
+    qrCode: "ऐप क्यूआर कोड",
+    shareApp: "शेयर ऐप",
+    copyLink: "लिंक कॉपी करें",
+    paymentSuccess: "भुगतान सफल",
+    alertTitle: "समय सारिणी अपडेट!",
+    alertMsg: "लॉन्ड्री ने आपके ऑर्डर का समय अपडेट किया है।",
+    btnUnderstood: "समझ गया",
     pickupDate: "पिकअप तिथि",
     pickupTime: "पिकअप समय",
     deliveryDate: "डिलीवरी तिथि",
     deliveryTime: "डिलीवरी समय",
-    payCashLabel: "डिलीवरी पर भुगतान",
-    payCashSub: "नकद या कार्ड",
-    payOnlineLabel: "ऑनलाइन भुगतान",
-    payOnlineSub: "Zelle ट्रांसफर",
-    zelleNote: "कृपया स्क्रीनशॉट भेजें",
-    forgotPass: "क्रेडेंशियल्स भूल गए?",
-    recoverTitle: "एक्सेस पुनर्प्राप्त करें",
-    recoverDesc: "लॉगिन विवरण प्रकट करने के लिए रिकवरी पिन दर्ज करें।",
-    enterPin: "पिन दर्ज करें",
-    reset: "प्रकट करें",
-    wrongRecPin: "गलत पिन",
-    securitySettings: "सुरक्षा सेटिंग्स",
-    changeUser: "व्यवस्थापक उपयोगकर्ता बदलें",
-    changePass: "व्यवस्थापक पासवर्ड बदलें",
-    changePin: "रिकवरी पिन बदलें",
-    currentPass: "वर्तमान पासवर्ड",
-    newPass: "नया पासवर्ड",
-    whatsappLabel: "व्हाट्सएप नंबर",
-    fee: "शुल्क",
-    off: "छूट",
-    nameLabel: "पूरा नाम",
-    phoneLabel: "फ़ोन नंबर",
-    addressLabel: "पता",
-    sending: "भेज रहा है...",
-    orderSent: "ऑर्डर सफलतापूर्वक भेजा गया!",
-    emptyCart: "आपकी टोकरी खाली है",
-    usernameLabel: "उपयोगकर्ता नाम",
-    passwordLabel: "पासवर्ड",
-    credsTitle: "आपकी साख:",
-    user: "उपयोगकर्ता:",
-    pass: "पासवर्ड:",
-    expressLabel: "एक्सप्रेस समय लेबल",
-    expressPercentLabel: "एक्सप्रेस शुल्क (%)",
-    trackOrder: "ऑर्डर ट्रैक करें",
-    yourOrders: "आपके ऑर्डर",
-    editingOrder: "ऑर्डर संपादन",
     customerInfo: "ग्राहक जानकारी",
-    pickupSchedule: "पिकअप अनुसूची",
-    deliverySchedule: "डिलीवरी अनुसूची",
-    adminNoteLabel: "व्यवस्थापक नोट / परिवर्तन का कारण",
-    adminNotePlaceholder: "समझाएं कि आपने अनुसूची या विकल्प क्यों बदले...",
-    updateFromLaundry: "लॉन्ड्री से अपडेट:",
-    uploadImage: "छवि अपलोड करें",
-    uploadTip: "अपलोड करने के लिए क्लिक करें",
-    fillRequired: "आवश्यक फ़ील्ड भरें।",
-    share: "साझा करें",
-    deleteReceipt: "हटाएं",
-    replyToAdmin: "जवाब दें",
-    sendReply: "भेजें",
-    replySent: "भेजा गया",
-    orderCompleted: "आदेश पूरा हुआ",
-    joinMemberTitle: "सदस्यता में शामिल हों?",
-    joinYes: "हाँ, शामिल हों",
-    joinNo: "नहीं, जारी रखें",
-    rejoinTitle: "सदस्यता पुनः सक्रिय करें",
-    rejoinYes: "शुल्क दें और जुड़ें",
-    rejoinDesc: "आपकी सदस्यता समाप्त हो गई है। फिर से जुड़ने का शुल्क।",
-    saveAmount: "आप बचाएंगे",
-    rulesText1: "केवल उपयोग करें",
-    rulesText2: "बार महीने में।",
-    rulesText3: "पुनः जुड़ने की लागत",
-    rulesText4: "के लिए",
-    manageMembers: "सक्रिय सदस्य",
-    pastMembers: "पूर्व सदस्य",
-    restoreMember: "निःशुल्क बहाल करें",
-    payCardLabel: "क्रेडिट कार्ड",
-    taxLabel: "कर (%)",
-    searchPlaceholder: "खोजें...",
-    gatewayConfig: "भुगतान गेटवे",
-    apiKey: "एपीआई कुंजी",
-    scent: "सुगंध",
-    allergies: "एलर्जी",
-    errorPastDate: "त्रुटि: पिछली तारीख.",
-    errorDeliveryOrder: "त्रुटि: डिलीवरी पिकअप से पहले.",
   },
 };
 
-// --- COMPONENTES DE ADMIN ---
+// --- ICONOS ---
+const CustomIronIcon = () => (
+  <svg
+    viewBox="0 0 64 64"
+    className="w-full h-full p-4"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      fill="#475569"
+      d="M4 46h56c2.2 0 4 1.8 4 4s-1.8 4-4 4H4c-2.2 0-4-1.8-4-4s1.8-4 4-4z"
+    />
+    <path fill="#0891b2" d="M8 46h48c0-14-10-26-26-26h-4c-10 0-16 8-16 26z" />
+    <path
+      fill="none"
+      stroke="#155e75"
+      strokeWidth="6"
+      strokeLinecap="round"
+      d="M22 20V12c0-4.4 4.4-8 8.8-8h10.4c8.8 0 12.8 7.2 12.8 16v12"
+    />
+    <circle cx="34" cy="34" r="2" fill="#155e75" />
+  </svg>
+);
+const BrandLogo = ({ customIcon }) => (
+  <div className="relative flex items-center justify-center px-5 py-2 overflow-hidden rounded-full border-2 border-cyan-100 shadow-sm group hover:shadow-md transition-all cursor-pointer bg-white">
+    <div className="relative z-10 flex items-center">
+      {customIcon && (
+        <img
+          src={customIcon}
+          alt="Icon"
+          className="w-6 h-6 mr-2 object-contain rounded-full"
+        />
+      )}
+      <div className="flex flex-col items-center">
+        <span className="font-black text-xl text-cyan-900 leading-none tracking-tight">
+          Fast Wave
+        </span>
+        <span className="text-[9px] font-bold text-cyan-700 uppercase tracking-widest">
+          Laundry Service
+        </span>
+      </div>
+    </div>
+  </div>
+);
+const CustomPackageIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+  </svg>
+);
+const CustomReceiptIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1z"></path>
+    <line x1="16" y1="8" x2="8" y2="8"></line>
+    <line x1="16" y1="12" x2="8" y2="12"></line>
+    <line x1="16" y1="16" x2="8" y2="16"></line>
+  </svg>
+);
+const CustomLoaderIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+  </svg>
+);
+const CustomInfoIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <circle cx="12" cy="12" r="10"></circle>
+    <line x1="12" y1="16" x2="12" y2="12"></line>
+    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+  </svg>
+);
 
+// --- HELPERS ---
+const getLabel = (id, type, lang) => {
+  if (!id) return "";
+  if (type === "aroma") {
+    const item = AROMAS.find((a) => a.id === id);
+    return item ? item[lang] || item["en"] : id;
+  }
+  if (type === "allergy") {
+    const item = AVOID_PRODUCTS.find((p) => p.id === id);
+    return item ? (lang === "es" ? item.label_es : item.label_en) : id;
+  }
+  return id;
+};
+const validateScheduleLogic = (pd, pt, dd, dt) => {
+  if (!pd || !dd) return null;
+  const start = new Date(`${pd}T${pt.split(" ")[0]}`);
+  const end = new Date(`${dd}T${dt.split(" ")[0]}`);
+  if (start < new Date().setHours(0, 0, 0, 0)) return "errorPastDate";
+  if (end <= start) return "errorDeliveryOrder";
+  return null;
+};
+
+// --- HELPER SUBIDA DE IMAGEN ---
+const handleImageUpload = (e, callback) => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = () => callback(reader.result);
+    reader.readAsDataURL(file);
+  }
+};
+
+// --- ADMIN COMPONENTS ---
 const ServiceEditor = ({ services, setServices, t }) => {
-  const [localServices, setLocalServices] = useState(services);
-  const [saveStatus, setSaveStatus] = useState("idle");
-  const updateField = (id, field, value) => {
-    setLocalServices((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s))
+  const [newService, setNewService] = useState({
+    id: "",
+    name_en: "",
+    name_es: "",
+    name_fr: "",
+    name_hi: "",
+    price: 0,
+    image: "",
+  });
+  const handleServiceChange = (id, field, value) => {
+    const updated = services.map((s) =>
+      s.id === id ? { ...s, [field]: value } : s
     );
+    setServices(updated);
   };
-  const handleImageUpload = (e, id) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateField(id, "image", reader.result);
-      };
-      reader.readAsDataURL(file);
+  const handleDeleteService = (id) => {
+    if (window.confirm("Delete?")) {
+      setServices(services.filter((s) => s.id !== id));
     }
+  };
+  const handleAddService = () => {
+    if (!newService.id) return alert("ID required");
+    setServices([...services, newService]);
+    setNewService({
+      id: "",
+      name_en: "",
+      name_es: "",
+      name_fr: "",
+      name_hi: "",
+      price: 0,
+      image: "",
+    });
   };
   const saveServices = async () => {
-    setSaveStatus("saving");
-    try {
-      const finalServices = localServices.map((s) => ({
-        ...s,
-        price: parseFloat(s.price) || 0,
-      }));
-      if (db)
-        await setDoc(doc(db, "settings", "services"), { list: finalServices });
-      setServices(finalServices);
-      setSaveStatus("saved");
-    } catch (e) {
-      console.error(e);
-      setSaveStatus("error");
+    if (db) {
+      await setDoc(
+        doc(db, "settings", "services"),
+        { list: services },
+        { merge: true }
+      );
+      alert("Saved!");
     }
-    setTimeout(() => setSaveStatus("idle"), 2000);
   };
-  const addNew = () =>
-    setLocalServices([
-      ...localServices,
-      {
-        id: Date.now().toString(),
-        name_es: "Nuevo",
-        name_en: "New",
-        name_fr: "Nouveau",
-        name_hi: "नया",
-        price: 0,
-        image: "",
-        type: "image",
-      },
-    ]);
-  const remove = (id) =>
-    setLocalServices((prev) => prev.filter((s) => s.id !== id));
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 animate-fade-in">
-      <h3 className="text-xl font-bold mb-4 flex items-center text-cyan-800">
-        <Edit2 className="w-5 h-5 mr-2" /> {t.editServices}
-      </h3>
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex justify-between items-center">
+        <h3 className="text-2xl font-bold text-cyan-900 flex items-center">
+          <Edit2 className="w-6 h-6 mr-2" /> {t.editServices}
+        </h3>
+        <button
+          onClick={saveServices}
+          className="bg-cyan-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition flex items-center shadow-lg"
+        >
+          <Save className="w-5 h-5 mr-2" /> {t.save}
+        </button>
+      </div>
       <div className="space-y-4">
-        {localServices.map((s) => (
+        {services.map((s) => (
           <div
             key={s.id}
-            className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center bg-gray-50 p-3 rounded border border-gray-200"
+            className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-12 gap-4 items-center relative group"
           >
-            <div className="md:col-span-1 flex flex-col items-center justify-center relative group">
-              {s.image ? (
-                <>
-                  <img
-                    src={s.image}
-                    alt="service"
-                    className="w-12 h-12 object-cover rounded-lg shadow-sm"
-                    onError={(e) =>
-                      (e.target.src = "https://via.placeholder.com/40")
-                    }
-                  />
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 rounded-lg cursor-pointer transition-opacity text-[10px] font-bold text-center leading-tight">
-                    <CustomUploadIcon className="w-4 h-4" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleImageUpload(e, s.id)}
-                    />
-                  </label>
-                </>
-              ) : (
-                <>
-                  {s.type === "component" &&
-                  s.componentName === "CustomIronIcon" ? (
-                    <div className="w-12 h-12">
-                      <CustomIronIcon />
-                    </div>
-                  ) : (
-                    <img
-                      src={s.image || "https://via.placeholder.com/40"}
-                      alt="service"
-                      className="w-12 h-12 object-cover rounded-lg shadow-sm"
-                    />
-                  )}
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 rounded-lg cursor-pointer transition-opacity text-[10px] font-bold text-center leading-tight">
-                    <CustomUploadIcon className="w-4 h-4" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleImageUpload(e, s.id)}
-                    />
-                  </label>
-                </>
-              )}
-            </div>
-            <div className="md:col-span-2">
-              <input
-                className="w-full p-2 border rounded text-xs"
-                placeholder="ES Name"
-                value={s.name_es || ""}
-                onChange={(e) => updateField(s.id, "name_es", e.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <input
-                className="w-full p-2 border rounded text-xs"
-                placeholder="EN Name"
-                value={s.name_en || ""}
-                onChange={(e) => updateField(s.id, "name_en", e.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <input
-                className="w-full p-2 border rounded text-xs"
-                placeholder="FR Name"
-                value={s.name_fr || ""}
-                onChange={(e) => updateField(s.id, "name_fr", e.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <input
-                className="w-full p-2 border rounded text-xs"
-                placeholder="HI Name"
-                value={s.name_hi || ""}
-                onChange={(e) => updateField(s.id, "name_hi", e.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2 relative">
-              <input
-                className="w-full p-2 border rounded text-xs text-gray-400"
-                placeholder="Img"
-                value={
-                  s.image
-                    ? s.image.startsWith("data:")
-                      ? "Uploaded"
-                      : "URL"
-                    : ""
-                }
-                disabled
-              />
-              <label
-                className="absolute right-1 top-1 bg-gray-200 hover:bg-gray-300 p-1 rounded cursor-pointer"
-                title={t.uploadImage}
-              >
-                <CustomCameraIcon className="w-4 h-4 text-gray-600" />
+            <div className="col-span-12 md:col-span-1 flex justify-center">
+              <label className="cursor-pointer relative">
+                <img
+                  src={s.image || "https://via.placeholder.com/60"}
+                  className="w-16 h-16 rounded-lg object-cover border-2 border-gray-100 shadow-sm hover:opacity-70"
+                />
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => handleImageUpload(e, s.id)}
+                  onChange={(e) =>
+                    handleImageUpload(e, (url) =>
+                      handleServiceChange(s.id, "image", url)
+                    )
+                  }
                 />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/30 rounded-lg">
+                  <Camera className="text-white w-6 h-6" />
+                </div>
               </label>
             </div>
-            <div className="md:col-span-1 text-center flex justify-center">
-              <button
-                onClick={() => remove(s.id)}
-                className="text-white bg-red-500 hover:bg-red-600 p-2 rounded w-8 h-8 flex items-center justify-center"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="md:col-span-12 mt-1 px-1">
+            <div className="col-span-12 md:col-span-9 grid grid-cols-2 md:grid-cols-4 gap-3">
               <input
-                type="number"
-                className="w-full p-2 border rounded font-bold text-green-700 text-center"
-                placeholder="Price"
-                value={s.price}
-                onChange={(e) => updateField(s.id, "price", e.target.value)}
+                className="p-2 border rounded text-sm"
+                placeholder="Spanish"
+                value={s.name_es}
+                onChange={(e) =>
+                  handleServiceChange(s.id, "name_es", e.target.value)
+                }
+              />
+              <input
+                className="p-2 border rounded text-sm"
+                placeholder="English"
+                value={s.name_en}
+                onChange={(e) =>
+                  handleServiceChange(s.id, "name_en", e.target.value)
+                }
+              />
+              <input
+                className="p-2 border rounded text-sm"
+                placeholder="French"
+                value={s.name_fr || ""}
+                onChange={(e) =>
+                  handleServiceChange(s.id, "name_fr", e.target.value)
+                }
+              />
+              <input
+                className="p-2 border rounded text-sm"
+                placeholder="Hindi"
+                value={s.name_hi || ""}
+                onChange={(e) =>
+                  handleServiceChange(s.id, "name_hi", e.target.value)
+                }
               />
             </div>
+            <div className="col-span-12 md:col-span-2 flex flex-col gap-2">
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-green-600 font-bold">
+                  $
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full p-2 pl-6 border-2 border-green-100 rounded text-green-700 font-black text-center"
+                  value={s.price}
+                  onChange={(e) =>
+                    handleServiceChange(
+                      s.id,
+                      "price",
+                      parseFloat(e.target.value)
+                    )
+                  }
+                />
+              </div>
+            </div>
+            <button
+              onClick={() => handleDeleteService(s.id)}
+              className="absolute -top-2 -right-2 bg-red-100 text-red-500 p-2 rounded-full shadow hover:bg-red-500 hover:text-white transition"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
         ))}
-      </div>
-      <div className="mt-6 flex gap-3">
-        <button
-          onClick={addNew}
-          className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-bold flex items-center"
-        >
-          <Plus className="w-4 h-4 mr-2" /> {t.addNew}
-        </button>
-        <button
-          onClick={saveServices}
-          disabled={saveStatus !== "idle"}
-          className={`flex-1 px-4 py-3 text-white rounded-lg font-bold flex justify-center items-center shadow-lg transition-all duration-300 ${
-            saveStatus === "saved"
-              ? "bg-green-500"
-              : saveStatus === "saving"
-              ? "bg-cyan-400"
-              : "bg-cyan-600"
-          }`}
-        >
-          {saveStatus === "saved"
-            ? "Saved!"
-            : saveStatus === "saving"
-            ? "..."
-            : t.save}
-        </button>
+        <div className="bg-gray-50 p-4 rounded-xl border-2 border-dashed border-gray-300 flex flex-col gap-4">
+          <p className="font-bold text-gray-500 text-sm">Add New Service</p>
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <input
+              className="p-2 border rounded"
+              placeholder="ID"
+              value={newService.id}
+              onChange={(e) =>
+                setNewService({ ...newService, id: e.target.value })
+              }
+            />
+            <input
+              className="p-2 border rounded"
+              placeholder="ES"
+              value={newService.name_es}
+              onChange={(e) =>
+                setNewService({ ...newService, name_es: e.target.value })
+              }
+            />
+            <input
+              className="p-2 border rounded"
+              placeholder="EN"
+              value={newService.name_en}
+              onChange={(e) =>
+                setNewService({ ...newService, name_en: e.target.value })
+              }
+            />
+            <input
+              className="p-2 border rounded"
+              placeholder="FR"
+              value={newService.name_fr}
+              onChange={(e) =>
+                setNewService({ ...newService, name_fr: e.target.value })
+              }
+            />
+            <input
+              className="p-2 border rounded"
+              placeholder="HI"
+              value={newService.name_hi}
+              onChange={(e) =>
+                setNewService({ ...newService, name_hi: e.target.value })
+              }
+            />
+            <input
+              type="number"
+              className="p-2 border rounded"
+              placeholder="$"
+              value={newService.price}
+              onChange={(e) =>
+                setNewService({
+                  ...newService,
+                  price: parseFloat(e.target.value),
+                })
+              }
+            />
+          </div>
+          <button
+            onClick={handleAddService}
+            className="bg-gray-800 text-white py-2 rounded font-bold flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add Service
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
 const SettingsPanel = ({ config, setConfig, t }) => {
-  const [editConfig, setEditConfig] = useState({ ...config });
-  const [saveStatus, setSaveStatus] = useState("idle");
-  const [newUser, setNewUser] = useState("");
-  const [newPass, setNewPass] = useState("");
-  const [newPin, setNewPin] = useState("");
-
+  const [localConfig, setLocalConfig] = useState(config);
   const [membersList, setMembersList] = useState([]);
-  const [pastMembersList, setPastMembersList] = useState([]);
   const [newMemberPhone, setNewMemberPhone] = useState("");
-
   useEffect(() => {
+    setLocalConfig(config);
     if (db) {
-      const unsub = onSnapshot(doc(db, "settings", "members"), (snap) => {
-        if (snap.exists()) {
-          setMembersList(snap.data().list || []);
-          setPastMembersList(snap.data().history || []);
-        }
+      onSnapshot(doc(db, "settings", "members"), (doc) => {
+        if (doc.exists()) setMembersList(doc.data().list || []);
       });
-      return () => unsub();
     }
-  }, []);
-
-  const handleIconUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditConfig((prev) => ({ ...prev, customIcon: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const saveSettings = async () => {
-    setSaveStatus("saving");
-
-    const finalConfig = {
-      ...editConfig,
-      discountPercent: parseFloat(editConfig.discountPercent) || 0,
-      expressPercent: parseFloat(editConfig.expressPercent) || 20,
-      taxPercent: parseFloat(editConfig.taxPercent) || 0,
-      minVisits: parseFloat(editConfig.minVisits) || 2,
-      rejoinFee: parseFloat(editConfig.rejoinFee) || 10,
-      rejoinDuration: editConfig.rejoinDuration || "2 months",
-      stripePublicKey: editConfig.stripePublicKey || "",
-      adminUsername: newUser
-        ? newUser.trim()
-        : editConfig.adminUsername || "admin",
-      adminPassword: newPass
-        ? newPass.trim()
-        : editConfig.adminPassword || "1234",
-      recoveryPin: newPin ? newPin.trim() : editConfig.recoveryPin || "0000",
-      phone: editConfig.phone || "",
-      zelleNumber: editConfig.zelleNumber || "",
-      zelleMessage: editConfig.zelleMessage || "",
-      expressText: editConfig.expressText || "24h",
-      customIcon: editConfig.customIcon || "",
-    };
-
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), 10000)
-    );
-
-    try {
-      if (auth && !auth.currentUser) {
-        await signInAnonymously(auth);
-      }
-
-      if (db) {
-        await Promise.race([
-          setDoc(doc(db, "settings", "general"), finalConfig),
-          timeoutPromise,
-        ]);
-      }
-
-      setConfig(finalConfig);
-      setNewUser("");
-      setNewPass("");
-      setNewPin("");
-      setSaveStatus("saved");
-    } catch (e) {
-      console.error("Error saving:", e);
-      setSaveStatus("error");
-    }
-
-    setTimeout(() => setSaveStatus("idle"), 2000);
-  };
-
-  const addMember = async () => {
-    if (!newMemberPhone.trim()) return;
+  }, [config]);
+  const handleSave = async () => {
     if (db) {
+      await setDoc(doc(db, "settings", "general"), localConfig, {
+        merge: true,
+      });
+      setConfig(localConfig);
+      alert("Saved!");
+    }
+  };
+  const addMember = async () => {
+    if (db && newMemberPhone) {
       await setDoc(
         doc(db, "settings", "members"),
-        {
-          list: arrayUnion(newMemberPhone.trim()),
-          history: arrayRemove(newMemberPhone.trim()),
-        },
+        { list: arrayUnion(newMemberPhone) },
         { merge: true }
       );
       setNewMemberPhone("");
     }
   };
-
   const removeMember = async (phone) => {
-    if (
-      window.confirm("Remove member? They will be moved to 'Past Members'.")
-    ) {
-      if (db) {
-        await updateDoc(doc(db, "settings", "members"), {
-          list: arrayRemove(phone),
-          history: arrayUnion(phone),
-        });
-      }
-    }
-  };
-
-  const restoreMember = async (phone) => {
-    if (window.confirm("Restore this member for FREE?")) {
-      if (db) {
-        await updateDoc(doc(db, "settings", "members"), {
-          history: arrayRemove(phone),
-          list: arrayUnion(phone),
-        });
-      }
+    if (db && window.confirm(`Remove ${phone}?`)) {
+      await updateDoc(doc(db, "settings", "members"), {
+        list: arrayRemove(phone),
+      });
     }
   };
 
   return (
-    <div className="bg-white p-8 rounded-xl shadow-lg max-w-2xl mx-auto border border-gray-100 animate-fade-in">
-      <h3 className="text-xl font-bold mb-6 flex items-center text-gray-800">
-        <Settings className="w-5 h-5 mr-2" /> {t.genSettings}
-      </h3>
-      <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-6">
-        <label className="block text-sm font-bold text-green-800 mb-1 flex items-center">
-          <MessageCircle className="w-4 h-4 mr-2" /> {t.busPhone}
-        </label>
-        <input
-          value={editConfig.phone || ""}
-          onChange={(e) =>
-            setEditConfig({ ...editConfig, phone: e.target.value })
-          }
-          className="w-full p-3 border border-green-300 rounded-lg bg-white font-bold text-lg"
-          placeholder="Ej: 16098287989"
-        />
+    <div className="max-w-4xl mx-auto animate-fade-in pb-10">
+      <div className="flex justify-between items-center mb-8">
+        <h3 className="text-2xl font-black text-gray-800">General Settings</h3>
+        <button
+          onClick={handleSave}
+          className="bg-cyan-900 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition flex items-center"
+        >
+          <Save className="w-5 h-5 mr-2" /> Save Changes
+        </button>
       </div>
-
-      <div className="mb-6 p-4 bg-cyan-50 rounded-lg border border-cyan-200">
-        <label className="block text-sm font-bold text-cyan-800 mb-2 flex items-center">
-          <Camera className="w-4 h-4 mr-2" /> {t.customIcon}
-        </label>
-        <div className="flex items-center gap-4">
-          {editConfig.customIcon && (
-            <img
-              src={editConfig.customIcon}
-              alt="App Icon"
-              className="w-16 h-16 rounded-lg shadow-sm object-cover border-2 border-white"
-            />
-          )}
+      <div className="space-y-6">
+        <div className="bg-green-50 border-2 border-green-100 p-6 rounded-2xl">
+          <label className="flex items-center text-green-800 font-bold mb-2">
+            <MessageCircle className="w-5 h-5 mr-2" /> WhatsApp Number
+          </label>
           <input
-            type="file"
-            accept="image/*"
-            onChange={handleIconUpload}
-            className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-100 file:text-cyan-700 hover:file:bg-cyan-200"
+            className="w-full text-2xl font-black p-4 rounded-xl border-2 border-green-200 text-gray-800 focus:border-green-500 outline-none"
+            value={localConfig.phone || ""}
+            onChange={(e) =>
+              setLocalConfig({ ...localConfig, phone: e.target.value })
+            }
           />
         </div>
-      </div>
-
-      <div className="space-y-6">
+        <div className="bg-cyan-50 border-2 border-cyan-100 p-6 rounded-2xl flex items-center gap-4">
+          <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-sm border overflow-hidden">
+            {localConfig.customIcon ? (
+              <img
+                src={localConfig.customIcon}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Camera className="text-gray-300" />
+            )}
+          </div>
+          <div className="flex-1">
+            <label className="block text-cyan-900 font-bold mb-1">
+              Custom App Icon
+            </label>
+            <div className="flex gap-2">
+              <label className="cursor-pointer bg-cyan-200 text-cyan-800 px-4 py-2 rounded-xl font-bold text-xs hover:bg-cyan-300 transition">
+                Choose File
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) =>
+                    handleImageUpload(e, (url) =>
+                      setLocalConfig({ ...localConfig, customIcon: url })
+                    )
+                  }
+                />
+              </label>
+            </div>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">
-              {t.disc} (Member %)
+          <div className="bg-white p-4 rounded-2xl border shadow-sm">
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+              Discount (Member %)
             </label>
             <input
               type="number"
-              value={editConfig.discountPercent}
+              className="w-full text-xl font-black p-2 border rounded"
+              value={localConfig.discountPercent || 10}
               onChange={(e) =>
-                setEditConfig({
-                  ...editConfig,
-                  discountPercent: e.target.value,
+                setLocalConfig({
+                  ...localConfig,
+                  discountPercent: parseFloat(e.target.value),
                 })
               }
-              className="w-full p-3 border rounded-lg bg-gray-50"
             />
           </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">
-              {t.expressPercentLabel}
+          <div className="bg-white p-4 rounded-2xl border shadow-sm">
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+              Express Fee (%)
             </label>
             <input
               type="number"
-              value={editConfig.expressPercent || 20}
+              className="w-full text-xl font-black p-2 border rounded"
+              value={localConfig.expressPercent || 20}
               onChange={(e) =>
-                setEditConfig({ ...editConfig, expressPercent: e.target.value })
+                setLocalConfig({
+                  ...localConfig,
+                  expressPercent: parseFloat(e.target.value),
+                })
               }
-              className="w-full p-3 border rounded-lg bg-gray-50"
             />
           </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">
-              {t.taxLabel}
+          <div className="bg-white p-4 rounded-2xl border shadow-sm">
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+              Tax (%)
             </label>
             <input
               type="number"
-              value={editConfig.taxPercent || 0}
+              className="w-full text-xl font-black p-2 border rounded"
+              value={localConfig.taxPercent || 0}
               onChange={(e) =>
-                setEditConfig({ ...editConfig, taxPercent: e.target.value })
+                setLocalConfig({
+                  ...localConfig,
+                  taxPercent: parseFloat(e.target.value),
+                })
               }
-              className="w-full p-3 border rounded-lg bg-gray-50"
             />
           </div>
         </div>
-
-        {/* PAYMENT GATEWAY CONFIG */}
-        <div className="p-5 bg-blue-50 rounded-xl border-2 border-blue-100">
-          <h4 className="font-bold text-blue-900 mb-4 flex items-center">
-            <CreditCard className="w-5 h-5 mr-2" /> {t.gatewayConfig}
-          </h4>
-          <div>
-            <label className="block text-xs font-bold text-blue-800 mb-1">
-              {t.apiKey}
+        <div className="bg-blue-50 border-2 border-blue-100 p-6 rounded-2xl">
+          <label className="flex items-center text-blue-900 font-bold mb-3">
+            <CreditCard className="w-5 h-5 mr-2" /> Payment Gateway (Stripe)
+          </label>
+          <div className="bg-white p-4 rounded-xl border border-blue-200">
+            <label className="block text-xs font-bold text-blue-400 mb-1 uppercase">
+              Publishable API Key
             </label>
             <input
-              type="text"
-              value={editConfig.stripePublicKey || ""}
+              className="w-full p-2 font-mono text-sm bg-transparent outline-none text-gray-700"
+              value={localConfig.stripePublicKey || ""}
               onChange={(e) =>
-                setEditConfig({
-                  ...editConfig,
+                setLocalConfig({
+                  ...localConfig,
                   stripePublicKey: e.target.value,
                 })
               }
-              className="w-full p-3 border border-blue-200 rounded-lg bg-white font-mono text-sm"
               placeholder="pk_live_..."
             />
-            <p className="text-[10px] text-blue-600 mt-1">
-              Enter your Stripe Public Key to enable real card processing.
-            </p>
           </div>
+          <p className="text-xs text-blue-400 mt-2 ml-1">
+            Enter your Stripe Public Key to enable real card processing.
+          </p>
         </div>
-
-        {/* MEMBERSHIP RULES & MANAGEMENT */}
-        <div className="p-5 bg-yellow-50 rounded-xl border-2 border-yellow-100">
-          <h4 className="font-bold text-yellow-900 mb-4 flex items-center">
-            <Star className="w-5 h-5 mr-2" /> {t.membershipRules}
+        <div className="bg-purple-50 border-2 border-purple-100 p-6 rounded-2xl">
+          <label className="flex items-center text-purple-900 font-bold mb-3">
+            <ExternalLink className="w-5 h-5 mr-2" /> Zelle Configuration
+          </label>
+          <input
+            className="w-full p-3 mb-3 rounded-xl border border-purple-200 font-bold text-lg"
+            value={localConfig.zelleNumber || ""}
+            onChange={(e) =>
+              setLocalConfig({ ...localConfig, zelleNumber: e.target.value })
+            }
+            placeholder="Zelle Number/Email"
+          />
+          <textarea
+            className="w-full p-3 rounded-xl border border-purple-200 text-sm h-20"
+            value={localConfig.zelleMessage || ""}
+            onChange={(e) =>
+              setLocalConfig({ ...localConfig, zelleMessage: e.target.value })
+            }
+            placeholder="Payment Instructions..."
+          />
+        </div>
+        <div className="bg-yellow-50 border-2 border-yellow-100 p-6 rounded-2xl">
+          <h4 className="font-bold text-yellow-800 flex items-center mb-4">
+            <Star className="w-5 h-5 mr-2" /> Membership Rules
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-xs font-bold text-yellow-800 mb-1">
-                {t.minVisitsLabel}
+              <label className="text-xs font-bold text-yellow-700">
+                Min Visits
               </label>
               <input
                 type="number"
-                value={editConfig.minVisits || 2}
+                className="w-full p-2 rounded border-yellow-200 border"
+                value={localConfig.minVisits || 2}
                 onChange={(e) =>
-                  setEditConfig({ ...editConfig, minVisits: e.target.value })
+                  setLocalConfig({
+                    ...localConfig,
+                    minVisits: parseFloat(e.target.value),
+                  })
                 }
-                className="w-full p-2 border border-yellow-200 rounded bg-white"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-yellow-800 mb-1">
-                {t.rejoinFeeLabel}
+              <label className="text-xs font-bold text-yellow-700">
+                Rejoin Fee ($)
               </label>
               <input
                 type="number"
-                value={editConfig.rejoinFee || 10}
+                className="w-full p-2 rounded border-yellow-200 border"
+                value={localConfig.rejoinFee || 10}
                 onChange={(e) =>
-                  setEditConfig({ ...editConfig, rejoinFee: e.target.value })
+                  setLocalConfig({
+                    ...localConfig,
+                    rejoinFee: parseFloat(e.target.value),
+                  })
                 }
-                className="w-full p-2 border border-yellow-200 rounded bg-white"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-yellow-800 mb-1">
-                {t.rejoinDurationLabel}
+              <label className="text-xs font-bold text-yellow-700">
+                Penalty
               </label>
               <input
-                type="text"
-                value={editConfig.rejoinDuration || "2 months"}
+                className="w-full p-2 rounded border-yellow-200 border"
+                value={localConfig.rejoinDuration || "2 months"}
                 onChange={(e) =>
-                  setEditConfig({
-                    ...editConfig,
+                  setLocalConfig({
+                    ...localConfig,
                     rejoinDuration: e.target.value,
                   })
                 }
-                className="w-full p-2 border border-yellow-200 rounded bg-white"
-                placeholder="e.g. 2 months"
               />
             </div>
           </div>
-
-          <div className="mt-4 pt-4 border-t border-yellow-200">
-            <label className="block text-sm font-bold text-yellow-900 mb-2">
-              {t.manageMembers} ({membersList.length})
-            </label>
+          <div className="bg-white rounded-xl p-4 border border-yellow-200">
+            <h5 className="font-bold text-gray-700 mb-3 text-sm">
+              Manage Members ({membersList.length})
+            </h5>
             <div className="flex gap-2 mb-3">
               <input
-                placeholder={t.phonePlaceholder}
+                className="flex-1 p-2 border rounded-lg bg-gray-50"
+                placeholder="Phone Number"
                 value={newMemberPhone}
                 onChange={(e) => setNewMemberPhone(e.target.value)}
-                className="flex-1 p-2 border rounded text-sm"
               />
               <button
                 onClick={addMember}
-                className="bg-yellow-500 text-white px-4 rounded font-bold text-sm hover:bg-yellow-600"
+                className="bg-yellow-500 text-white font-bold px-4 rounded-lg shadow-sm hover:bg-yellow-600"
               >
-                {t.addMember}
+                Add Member
               </button>
             </div>
-            <div className="max-h-40 overflow-y-auto bg-white border rounded p-2 space-y-1 mb-4">
-              {membersList.map((phone) => (
+            <div className="max-h-40 overflow-y-auto space-y-1">
+              {membersList.map((m) => (
                 <div
-                  key={phone}
-                  className="flex justify-between items-center text-sm p-1 hover:bg-gray-50"
+                  key={m}
+                  className="flex justify-between items-center p-2 hover:bg-gray-50 rounded border-b border-gray-100 last:border-0"
                 >
-                  <span>{phone}</span>
+                  <span className="font-mono text-sm text-gray-600">{m}</span>
                   <button
-                    onClick={() => removeMember(phone)}
-                    className="text-red-500 hover:text-red-700"
+                    onClick={() => removeMember(m)}
+                    className="text-red-400 hover:text-red-600"
                   >
                     <XCircle className="w-4 h-4" />
                   </button>
                 </div>
               ))}
             </div>
-            <label className="block text-sm font-bold text-gray-500 mb-2">
-              {t.pastMembers} ({pastMembersList.length})
-            </label>
-            <div className="max-h-32 overflow-y-auto bg-gray-50 border border-gray-200 rounded p-2 space-y-1">
-              {pastMembersList.length === 0 && (
-                <p className="text-xs text-gray-400 italic text-center">
-                  No expired members.
-                </p>
-              )}
-              {pastMembersList.map((phone) => (
-                <div
-                  key={phone}
-                  className="flex justify-between items-center text-sm p-1"
-                >
-                  <span className="text-gray-600">{phone}</span>
-                  <button
-                    onClick={() => restoreMember(phone)}
-                    className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 flex items-center"
-                  >
-                    <RotateCcw className="w-3 h-3 mr-1" /> {t.restoreMember}
-                  </button>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">
-            {t.expressLabel}
-          </label>
-          <input
-            type="text"
-            value={editConfig.expressText || "24h"}
-            onChange={(e) =>
-              setEditConfig({ ...editConfig, expressText: e.target.value })
-            }
-            className="w-full p-3 border rounded-lg bg-gray-50"
-            placeholder="e.g. 6h"
-          />
-        </div>
-        <div className="p-5 bg-purple-50 rounded-xl border-2 border-purple-100">
-          <h4 className="font-bold text-purple-900 mb-4 flex items-center">
-            <CreditCard className="w-5 h-5 mr-2" /> {t.zelleConf}
+        <div className="bg-red-50 border-2 border-red-100 p-6 rounded-2xl">
+          <h4 className="font-bold text-red-800 flex items-center mb-4">
+            <ShieldCheck className="w-5 h-5 mr-2" /> Security Settings
           </h4>
-          <input
-            value={editConfig.zelleNumber || ""}
-            onChange={(e) =>
-              setEditConfig({ ...editConfig, zelleNumber: e.target.value })
-            }
-            className="w-full p-3 border border-purple-200 rounded-lg bg-white"
-            placeholder="Zelle Email/Phone"
-          />
-          <textarea
-            value={editConfig.zelleMessage || ""}
-            onChange={(e) =>
-              setEditConfig({ ...editConfig, zelleMessage: e.target.value })
-            }
-            className="w-full p-3 border border-purple-200 rounded-lg bg-white mt-2"
-            placeholder="Zelle Instructions"
-          />
-        </div>
-        <div className="p-5 bg-red-50 rounded-xl border-2 border-red-100">
-          <h4 className="font-bold text-red-900 mb-4 flex items-center">
-            <ShieldCheck className="w-5 h-5 mr-2" /> {t.securitySettings}
-          </h4>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-3">
             <div>
-              <label className="block text-xs font-bold text-red-700 mb-1">
-                {t.changeUser}
+              <label className="text-xs font-bold text-red-700">
+                Change Admin Username
               </label>
               <input
-                type="text"
-                value={newUser}
-                onChange={(e) => setNewUser(e.target.value)}
-                className="w-full p-3 border border-red-200 rounded-lg bg-white"
+                className="w-full p-3 rounded-xl border border-red-200"
+                value={localConfig.adminUsername || ""}
+                onChange={(e) =>
+                  setLocalConfig({
+                    ...localConfig,
+                    adminUsername: e.target.value,
+                  })
+                }
                 placeholder="New Username"
-                autoComplete="off"
               />
-              <p className="text-[10px] text-gray-500 mt-1">
-                Leave empty to keep current.
-              </p>
             </div>
             <div>
-              <label className="block text-xs font-bold text-red-700 mb-1">
-                {t.changePass}
+              <label className="text-xs font-bold text-red-700">
+                Change Admin Password
               </label>
               <input
-                type="password"
-                value={newPass}
-                onChange={(e) => setNewPass(e.target.value)}
-                className="w-full p-3 border border-red-200 rounded-lg bg-white"
+                className="w-full p-3 rounded-xl border border-red-200"
+                value={localConfig.adminPassword || ""}
+                onChange={(e) =>
+                  setLocalConfig({
+                    ...localConfig,
+                    adminPassword: e.target.value,
+                  })
+                }
                 placeholder="New Password"
-                autoComplete="new-password"
               />
-              <p className="text-[10px] text-gray-500 mt-1">
-                Leave empty to keep current.
-              </p>
             </div>
             <div>
-              <label className="block text-xs font-bold text-red-700 mb-1">
-                {t.changePin}
+              <label className="text-xs font-bold text-red-700">
+                Change Recovery PIN
               </label>
               <input
-                type="text"
-                value={newPin}
-                onChange={(e) => setNewPin(e.target.value)}
-                className="w-full p-3 border border-red-200 rounded-lg bg-white"
-                placeholder="New PIN (Recovery)"
+                className="w-full p-3 rounded-xl border border-red-200"
+                value={localConfig.recoveryPin || ""}
+                onChange={(e) =>
+                  setLocalConfig({
+                    ...localConfig,
+                    recoveryPin: e.target.value,
+                  })
+                }
+                placeholder="New PIN (Default 0000)"
               />
-              <p className="text-[10px] text-gray-500 mt-1">Default is 0000.</p>
             </div>
           </div>
         </div>
       </div>
-      <button
-        onClick={saveSettings}
-        disabled={saveStatus !== "idle"}
-        className={`w-full py-4 rounded-xl font-bold mt-8 flex items-center justify-center shadow-lg transition-all duration-300 text-white ${
-          saveStatus === "saved"
-            ? "bg-green-600"
-            : saveStatus === "saving"
-            ? "bg-cyan-500"
-            : "bg-cyan-600"
-        }`}
-      >
-        {saveStatus === "saved"
-          ? "Saved!"
-          : saveStatus === "saving"
-          ? "..."
-          : t.save}
-      </button>
     </div>
   );
 };
 
-// --- VISTAS PRINCIPALES (ADMIN) ---
+// --- ADMIN VIEW (CON CHAT REAL) ---
 const AdminView = ({
   t,
   config,
@@ -1808,33 +1168,27 @@ const AdminView = ({
   lang,
 }) => {
   const [authInput, setAuthInput] = useState({ user: "", pass: "" });
-  const [recoveryInput, setRecoveryInput] = useState("");
   const [isAuth, setIsAuth] = useState(false);
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
-  const [recoveredCreds, setRecoveredCreds] = useState(null);
   const [orders, setOrders] = useState([]);
   const [tab, setTab] = useState("orders");
-  const [loginStatus, setLoginStatus] = useState("idle");
   const [expandedOrder, setExpandedOrder] = useState(null);
-  const [editingOrder, setEditingOrder] = useState(null);
-  const [editForm, setEditForm] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [adminShareData, setAdminShareData] = useState(null);
+
+  // CHAT STATE
+  const [chatInput, setChatInput] = useState("");
 
   useEffect(() => {
     if (!isAuth) return;
     let unsub = () => {};
     if (db) {
-      try {
-        unsub = onSnapshot(collection(db, "orders"), (snap) => {
-          setOrders(
-            snap.docs
-              .map((d) => ({ id: d.id, ...d.data() }))
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-          );
-        });
-      } catch (e) {
-        console.warn("Firestore access restricted in demo");
-      }
+      unsub = onSnapshot(collection(db, "orders"), (snap) => {
+        setOrders(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        );
+      });
     }
     return () => unsub();
   }, [isAuth]);
@@ -1848,334 +1202,86 @@ const AdminView = ({
       authInput.pass.trim() === validPass
     ) {
       setIsAuth(true);
-      setLoginStatus("idle");
     } else {
-      setLoginStatus("error");
-      setTimeout(() => setLoginStatus("idle"), 2000);
+      alert(t.wrongPin);
     }
   };
-  const handleRecovery = (e) => {
-    e.preventDefault();
-    const validPin = config.recoveryPin || "0000";
-    if (recoveryInput.trim() === validPin) {
-      setRecoveredCreds({
-        user: config.adminUsername || "admin",
-        pass: config.adminPassword || "1234",
-      });
-    } else {
-      alert(t.wrongRecPin);
-    }
-  };
+
   const updateOrderStatus = async (id, status) => {
     if (db) await updateDoc(doc(db, "orders", id), { status });
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
   };
   const deleteOrder = async (id) => {
     if (window.confirm(t.deleteOrder + "?")) {
       if (db) await deleteDoc(doc(db, "orders", id));
-      setOrders((prev) => prev.filter((o) => o.id !== id));
-    }
-  };
-  const startEditing = (order) => {
-    setEditingOrder(order.id);
-    setEditForm({
-      name: order.customer.name,
-      phone: order.customer.phone,
-      address: order.customer.address,
-      express: order.express || false,
-      isMember: order.isMember || false,
-      notes: order.notes || "",
-      pickupDate: order.details?.pickupDate || "",
-      pickupTime: order.details?.pickupTime || TIME_SLOTS[0],
-      deliveryDate: order.details?.deliveryDate || "",
-      deliveryTime: order.details?.deliveryTime || TIME_SLOTS[0],
-      adminNote: order.adminNote || "",
-    });
-  };
-  const shareOrder = (order) => {
-    const text = `Fast Wave Receipt #${
-      order.orderNumber || order.id.slice(0, 6)
-    }\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}\nLink: ${
-      window.location.origin
-    }`;
-    if (navigator.share) {
-      navigator
-        .share({
-          title: "Fast Wave Receipt",
-          text: text,
-          url: window.location.href,
-        })
-        .catch(console.error);
-    } else {
-      navigator.clipboard.writeText(text);
-      alert("Receipt info copied to clipboard!");
     }
   };
 
-  const saveOrderChanges = async (order) => {
-    const dateError = validateScheduleLogic(
-      editForm.pickupDate,
-      editForm.pickupTime,
-      editForm.deliveryDate,
-      editForm.deliveryTime
-    );
-    if (dateError) {
-      alert(t[dateError] || "Date Error");
-      return;
-    }
-    let subtotal = Object.entries(order.items).reduce((acc, [id, qty]) => {
-      const s = services.find((x) => x.id === id);
-      return acc + (s?.price || 0) * qty;
-    }, 0);
-    let total = subtotal;
-    const expressPct = config.expressPercent || 20;
-    const discountPct = config.discountPercent || 10;
-    const taxPct = config.taxPercent || 0;
-    let expressFee = 0;
-    let discount = 0;
-    if (editForm.express) expressFee = subtotal * (expressPct / 100);
-    if (editForm.isMember)
-      discount = (subtotal + expressFee) * (discountPct / 100);
-    let taxableAmount = subtotal + expressFee - discount;
-    let tax = taxableAmount * (taxPct / 100);
-    total = taxableAmount + tax;
-    const scheduleChanged =
-      editForm.pickupDate !== order.details?.pickupDate ||
-      editForm.pickupTime !== order.details?.pickupTime ||
-      editForm.deliveryDate !== order.details?.deliveryDate ||
-      editForm.deliveryTime !== order.details?.deliveryTime;
-    const updatedData = {
-      "customer.name": editForm.name,
-      "customer.phone": editForm.phone,
-      "customer.address": editForm.address,
-      express: editForm.express,
-      isMember: editForm.isMember,
-      notes: editForm.notes,
-      total: total,
-      "details.pickupDate": editForm.pickupDate,
-      "details.pickupTime": editForm.pickupTime,
-      "details.deliveryDate": editForm.deliveryDate,
-      "details.deliveryTime": editForm.deliveryTime,
-      adminNote: editForm.adminNote,
+  const sendChatMessage = async (orderId, currentMessages = []) => {
+    if (!chatInput.trim() || !db) return;
+    const newMessage = {
+      text: chatInput,
+      sender: "admin",
+      date: new Date().toISOString(),
     };
-    if (scheduleChanged) {
-      updatedData.scheduleUpdatedByAdmin = true;
-    }
-    if (db) await updateDoc(doc(db, "orders", order.id), updatedData);
-    setEditingOrder(null);
+    const updatedMessages = [...(currentMessages || []), newMessage];
+    await updateDoc(doc(db, "orders", orderId), { chat: updatedMessages });
+    setChatInput("");
   };
 
-  const printOrder = (order) => {
-    const printWindow = window.open("", "_blank");
-    let subtotal = Object.entries(order.items).reduce((acc, [id, qty]) => {
-      const s = services.find((x) => x.id === id);
-      return acc + (s?.price || 0) * qty;
-    }, 0);
-    const expressPct = config.expressPercent || 20;
-    const discountPct = config.discountPercent || 10;
-    const taxPct = config.taxPercent || 0;
-    const expressFee = order.express ? subtotal * (expressPct / 100) : 0;
-    const discount = order.isMember
-      ? (subtotal + expressFee) * (discountPct / 100)
-      : 0;
-    const taxableAmount = subtotal + expressFee - discount;
-    const tax = taxableAmount * (taxPct / 100);
-    const finalTotal = taxableAmount + tax;
-    printWindow.document.write(
-      `<html><head><title>Order #${
-        order.orderNumber || order.id.slice(0, 6)
-      }</title><style>body { font-family: monospace; padding: 20px; max-width: 400px; margin: 0 auto; } h1 { border-bottom: 2px solid black; padding-bottom: 10px; text-align: center; } .section { margin-bottom: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; } .item-row { display: flex; justify-content: space-between; } .total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2em; border-top: 2px solid black; padding-top: 10px; margin-top: 10px; } .detail-row { display: flex; justify-content: space-between; color: #555; font-size: 0.9em; } .admin-note { background: #f0f9ff; padding: 10px; border: 1px solid #bae6fd; margin-top: 10px; font-style: italic; }</style></head><body><h1>Fast Wave Laundry</h1><div class="section"><strong>Order:</strong> #${
-        order.orderNumber || order.id.slice(0, 6)
-      }<br><strong>Date:</strong> ${new Date(
-        order.createdAt
-      ).toLocaleDateString()}<br><strong>Status:</strong> ${order.status.toUpperCase()}</div><div class="section"><strong>Customer:</strong><br>${
-        order.customer.name
-      }<br>${order.customer.phone}<br>${
-        order.customer.address
-      }</div><div class="section"><strong>Schedule:</strong><br>Pickup: ${
-        order.details.pickupDate
-      } ${order.details.pickupTime}<br>Delivery: ${
-        order.details.deliveryDate
-      } ${
-        order.details.deliveryTime
-      }</div><div class="section"><strong>Items:</strong><br>${Object.entries(
-        order.items
-      )
-        .map(([id, qty]) => {
-          const s = services.find((x) => x.id === id);
-          const price = s ? s.price : 0;
-          const name = s
-            ? lang === "es"
-              ? s.name_es
-              : lang === "fr"
-              ? s.name_fr
-              : lang === "hi"
-              ? s.name_hi
-              : s.name_en
-            : id;
-          return `<div class="item-row"><span>${qty}x ${name}</span><span>$${(
-            price * qty
-          ).toFixed(2)}</span></div>`;
-        })
-        .join(
-          ""
-        )}</div><div class="section"><div class="detail-row"><span>Subtotal:</span><span>$${subtotal.toFixed(
-        2
-      )}</span></div>${
-        order.express
-          ? `<div class="detail-row"><span>Express Fee (${expressPct}%):</span><span>+$${expressFee.toFixed(
-              2
-            )}</span></div>`
-          : ""
-      }${
-        order.isMember
-          ? `<div class="detail-row"><span>Member Discount (${discountPct}%):</span><span>-$${discount.toFixed(
-              2
-            )}</span></div>`
-          : ""
-      }<div class="detail-row"><span>Tax (${taxPct}%):</span><span>+$${tax.toFixed(
-        2
-      )}</span></div></div><div class="total-row"><span>TOTAL:</span><span>$${finalTotal.toFixed(
-        2
-      )}</span></div><div class="section" style="margin-top: 20px; border: none;">${
-        order.aroma
-          ? `<strong>Aroma:</strong> ${getLabel(
-              order.aroma,
-              "aroma",
-              lang
-            )}<br>`
-          : ""
-      }${
-        order.allergies?.length
-          ? `<strong>Allergies:</strong> ${order.allergies
-              .map((a) => getLabel(a, "allergy", lang))
-              .join(", ")}<br>`
-          : ""
-      }<br><strong>Payment:</strong> ${order.details.paymentMethod.toUpperCase()} ${
-        order.paymentStatus === "paid" ? "(PAID)" : "(PENDING)"
-      }${
-        order.adminNote
-          ? `<div class="admin-note"><strong>Admin Note:</strong> ${order.adminNote}</div>`
-          : ""
-      }${
-        order.customerResponse
-          ? `<div class="admin-note" style="background: #f0fdf4; border-color: #bbf7d0;"><strong>Customer Reply:</strong> ${order.customerResponse}</div>`
-          : ""
-      }</div><script>window.onload = function() { window.print(); }; window.onafterprint = function() { window.close(); };</script></body></html>`
-    );
-    printWindow.document.close();
+  const getClientWhatsApp = (o) => {
+    if (!o) return "#";
+    const p = o.customer.phone.replace(/\D/g, "");
+    const txt = `Hola ${o.customer.name}, recibo de orden #${
+      o.orderNumber
+    }. Total: $${o.total.toFixed(2)}.`;
+    return `https://wa.me/${p}?text=${encodeURIComponent(txt)}`;
   };
+  const getClientSMS = (o) => {
+    if (!o) return "#";
+    const p = o.customer.phone.replace(/\D/g, "");
+    const txt = `Fast Wave: Orden #${o.orderNumber}. Total: $${o.total.toFixed(
+      2
+    )}.`;
+    return `sms:${p}?body=${encodeURIComponent(txt)}`;
+  };
+  const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
 
   if (!isAuth) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-        <button
-          onClick={() => setView("home")}
-          className="absolute top-4 left-4 text-gray-500 font-bold flex items-center"
-        >
-          <ArrowLeft className="mr-2" /> {t.back}
-        </button>
-        {isRecoveryMode ? (
-          <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm animate-fade-in text-center">
-            <Key className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-black text-gray-800 mb-2">
-              {t.recoverTitle}
-            </h2>
-            <p className="text-sm text-gray-500 mb-6">{t.recoverDesc}</p>
-            {recoveredCreds ? (
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-6 text-left">
-                <h3 className="text-green-800 font-bold text-sm mb-2">
-                  {t.credsTitle}
-                </h3>
-                <p className="text-sm text-green-700">
-                  <strong>{t.user}</strong> {recoveredCreds.user}
-                </p>
-                <p className="text-sm text-green-700">
-                  <strong>{t.pass}</strong> {recoveredCreds.pass}
-                </p>
-                <button
-                  onClick={() => setIsRecoveryMode(false)}
-                  className="mt-4 text-xs font-bold text-green-600 underline"
-                >
-                  Go to Login
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleRecovery} className="space-y-4">
-                <input
-                  type="text"
-                  value={recoveryInput}
-                  onChange={(e) => setRecoveryInput(e.target.value)}
-                  placeholder={t.enterPin}
-                  className="w-full p-3 border rounded-lg text-center tracking-widest font-bold text-xl"
-                />
-                <button className="w-full bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600 transition">
-                  {t.reset}
-                </button>
-              </form>
-            )}
-            <button
-              onClick={() => setIsRecoveryMode(false)}
-              className="mt-4 text-sm text-gray-400 hover:text-gray-600"
-            >
-              Cancel
+        <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm">
+          <h2 className="text-2xl font-black text-center text-gray-800 mb-6">
+            {t.login}
+          </h2>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input
+              value={authInput.user}
+              onChange={(e) =>
+                setAuthInput({ ...authInput, user: e.target.value })
+              }
+              className="w-full p-3 border rounded-lg"
+              placeholder={t.usernameLabel}
+            />
+            <input
+              type="password"
+              value={authInput.pass}
+              onChange={(e) =>
+                setAuthInput({ ...authInput, pass: e.target.value })
+              }
+              className="w-full p-3 border rounded-lg"
+              placeholder={t.passwordLabel}
+            />
+            <button className="w-full bg-cyan-900 text-white font-bold py-3 rounded-lg hover:bg-black transition">
+              {t.enter}
             </button>
-          </div>
-        ) : (
-          <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm animate-fade-in">
-            <div className="flex justify-center mb-6">
-              <div className="p-3 bg-cyan-100 rounded-full">
-                <Lock className="w-8 h-8 text-cyan-700" />
-              </div>
-            </div>
-            <h2 className="text-2xl font-black text-center text-gray-800 mb-6">
-              {t.login}
-            </h2>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">
-                  {t.usernameLabel}
-                </label>
-                <input
-                  value={authInput.user}
-                  onChange={(e) =>
-                    setAuthInput({ ...authInput, user: e.target.value })
-                  }
-                  className="w-full p-3 border rounded-lg focus:border-cyan-500 outline-none"
-                  placeholder="admin"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">
-                  {t.passwordLabel}
-                </label>
-                <input
-                  type="password"
-                  value={authInput.pass}
-                  onChange={(e) =>
-                    setAuthInput({ ...authInput, pass: e.target.value })
-                  }
-                  className="w-full p-3 border rounded-lg focus:border-cyan-500 outline-none"
-                  placeholder="••••"
-                />
-              </div>
-              {loginStatus === "error" && (
-                <p className="text-red-500 text-sm font-bold text-center animate-shake">
-                  {t.wrongPin}
-                </p>
-              )}
-              <button className="w-full bg-cyan-900 text-white font-bold py-3 rounded-lg hover:bg-black transition">
-                {t.enter}
-              </button>
-            </form>
-            <p
-              onClick={() => setIsRecoveryMode(true)}
-              className="text-center text-xs text-gray-400 mt-6 cursor-pointer hover:text-cyan-600 transition"
-            >
-              {t.forgotPass}
-            </p>
-          </div>
-        )}
+          </form>
+          <button
+            onClick={() => setView("home")}
+            className="mt-4 text-sm text-gray-400 w-full text-center"
+          >
+            {t.back}
+          </button>
+        </div>
       </div>
     );
   }
@@ -2185,8 +1291,7 @@ const AdminView = ({
     return (
       o.customer.name.toLowerCase().includes(search) ||
       o.customer.phone.includes(search) ||
-      (o.orderNumber && o.orderNumber.toLowerCase().includes(search)) ||
-      o.id.toLowerCase().includes(search)
+      (o.orderNumber && o.orderNumber.toLowerCase().includes(search))
     );
   });
 
@@ -2195,74 +1300,32 @@ const AdminView = ({
       <div className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center sticky top-0 z-30">
         <h2 className="font-black text-xl text-cyan-900 flex items-center">
           <BrandLogo customIcon={config.customIcon} />{" "}
-          <span className="ml-3 hidden md:inline text-gray-400">
-            | {t.adminTitle}
-          </span>
+          <span className="ml-3 hidden md:inline text-gray-400">| Admin</span>
         </h2>
         <div className="flex gap-4">
           <button
             onClick={() => setView("home")}
-            className="text-sm font-bold text-gray-500 hover:text-cyan-600 flex items-center"
+            className="text-sm font-bold text-gray-500"
           >
-            <ArrowLeft className="w-4 h-4 mr-1" /> {t.back}
+            {t.back}
           </button>
           <button
             onClick={() => setIsAuth(false)}
-            className="text-sm font-bold text-red-500 hover:text-red-700"
+            className="text-sm font-bold text-red-500"
           >
             Logout
           </button>
         </div>
       </div>
+
       <div className="max-w-7xl mx-auto p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
-            <div className="p-3 bg-blue-100 rounded-full mr-4">
-              <ShoppingBag className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-bold uppercase">
-                {t.totalOrders}
-              </p>
-              <p className="text-3xl font-black text-gray-800">
-                {orders.length}
-              </p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
-            <div className="p-3 bg-green-100 rounded-full mr-4">
-              <DollarSignIcon className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-bold uppercase">
-                {t.totalRevenue}
-              </p>
-              <p className="text-3xl font-black text-gray-800">
-                ${orders.reduce((acc, o) => acc + (o.total || 0), 0).toFixed(2)}
-              </p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
-            <div className="p-3 bg-purple-100 rounded-full mr-4">
-              <Star className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-bold uppercase">
-                Members
-              </p>
-              <p className="text-3xl font-black text-gray-800">
-                {orders.filter((o) => o.isMember).length}
-              </p>
-            </div>
-          </div>
-        </div>
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           <button
             onClick={() => setTab("orders")}
             className={`px-6 py-2 rounded-full font-bold transition ${
               tab === "orders"
                 ? "bg-cyan-900 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-100"
+                : "bg-white text-gray-600"
             }`}
           >
             {t.adminOrders}
@@ -2272,7 +1335,7 @@ const AdminView = ({
             className={`px-6 py-2 rounded-full font-bold transition ${
               tab === "services"
                 ? "bg-cyan-900 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-100"
+                : "bg-white text-gray-600"
             }`}
           >
             {t.adminServices}
@@ -2282,12 +1345,13 @@ const AdminView = ({
             className={`px-6 py-2 rounded-full font-bold transition ${
               tab === "settings"
                 ? "bg-cyan-900 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-100"
+                : "bg-white text-gray-600"
             }`}
           >
             {t.adminSettings}
           </button>
         </div>
+
         {tab === "orders" && (
           <div className="space-y-4">
             <div className="relative mb-4">
@@ -2297,7 +1361,7 @@ const AdminView = ({
                 placeholder={t.searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 p-3 border rounded-xl shadow-sm focus:border-cyan-500 outline-none"
+                className="w-full pl-10 p-3 border rounded-xl shadow-sm outline-none"
               />
             </div>
             {filteredOrders.map((o) => (
@@ -2310,474 +1374,301 @@ const AdminView = ({
                   setExpandedOrder(expandedOrder === o.id ? null : o.id)
                 }
               >
-                {editingOrder === o.id ? (
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono font-bold text-cyan-600 bg-cyan-50 px-2 py-1 rounded">
+                        #{o.orderNumber || o.id.slice(0, 6)}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          o.status === "pending"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                        {o.status}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-gray-800">
+                      {o.customer.name}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {new Date(o.createdAt).toLocaleString()} •{" "}
+                      {o.items
+                        ? Object.values(o.items).reduce((a, b) => a + b, 0)
+                        : 0}{" "}
+                      items
+                    </p>
+                  </div>
                   <div
-                    className="animate-fade-in bg-blue-50 p-4 rounded-lg border border-blue-200"
+                    className="flex items-center gap-3 mt-2 md:mt-0"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <h4 className="font-bold text-blue-800 mb-4 flex items-center">
-                      <Edit2 className="w-4 h-4 mr-2" /> {t.editingOrder} #
-                      {o.orderNumber || o.id.slice(0, 6)}
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500">
-                          {t.customerInfo}
-                        </label>
-                        <input
-                          className="w-full p-2 border rounded mt-1 text-sm"
-                          value={editForm.name}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, name: e.target.value })
-                          }
-                          placeholder="Name"
-                        />
-                        <input
-                          className="w-full p-2 border rounded mt-1 text-sm"
-                          value={editForm.phone}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, phone: e.target.value })
-                          }
-                          placeholder="Phone"
-                        />
-                        <div className="flex gap-2 items-center mt-1">
-                          <textarea
-                            className="w-full p-2 border rounded text-sm"
-                            rows="2"
-                            value={editForm.address}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                address: e.target.value,
-                              })
-                            }
-                            placeholder="Address"
-                          />
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                              editForm.address
-                            )}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-green-100 text-green-700 p-3 rounded-lg hover:bg-green-200 transition"
-                            title="Open in Maps"
-                          >
-                            <MapPin className="w-5 h-5" />
-                          </a>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">
-                          Options
-                        </label>
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={editForm.express}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                express: e.target.checked,
-                              })
-                            }
-                          />{" "}
-                          <span className="text-sm">Express</span>
-                        </label>
-                        <label className="flex items-center space-x-2 mt-2">
-                          <input
-                            type="checkbox"
-                            checked={editForm.isMember}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                isMember: e.target.checked,
-                              })
-                            }
-                          />{" "}
-                          <span className="text-sm">Member</span>
-                        </label>
-                        <textarea
-                          className="w-full p-2 border rounded mt-2 text-sm"
-                          value={editForm.notes}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, notes: e.target.value })
-                          }
-                          placeholder="Internal Notes"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-white p-3 rounded border border-blue-100">
-                      <div>
-                        <label className="block text-xs font-bold text-blue-600 mb-1">
-                          {t.pickupSchedule}
-                        </label>
-                        <input
-                          type="date"
-                          className="w-full p-2 border rounded text-xs mb-1"
-                          value={editForm.pickupDate}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              pickupDate: e.target.value,
-                            })
-                          }
-                        />
-                        <select
-                          className="w-full p-2 border rounded text-xs"
-                          value={editForm.pickupTime}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              pickupTime: e.target.value,
-                            })
-                          }
-                        >
-                          {TIME_SLOTS.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-green-600 mb-1">
-                          {t.deliverySchedule}
-                        </label>
-                        <input
-                          type="date"
-                          className="w-full p-2 border rounded text-xs mb-1"
-                          value={editForm.deliveryDate}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              deliveryDate: e.target.value,
-                            })
-                          }
-                        />
-                        <select
-                          className="w-full p-2 border rounded text-xs"
-                          value={editForm.deliveryTime}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              deliveryTime: e.target.value,
-                            })
-                          }
-                        >
-                          {TIME_SLOTS.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="mb-4">
-                      <label className="block text-xs font-bold text-red-500 mb-1">
-                        {t.adminNoteLabel}
-                      </label>
-                      <textarea
-                        className="w-full p-2 border-2 border-red-100 rounded text-sm focus:border-red-300 outline-none"
-                        rows="2"
-                        placeholder={t.adminNotePlaceholder}
-                        value={editForm.adminNote}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            adminNote: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => setEditingOrder(null)}
-                        className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => saveOrderChanges(o)}
-                        className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700"
-                      >
-                        Save Changes
-                      </button>
-                    </div>
+                    <select
+                      value={o.status}
+                      onChange={(e) => updateOrderStatus(o.id, e.target.value)}
+                      className="bg-white border border-gray-300 text-xs rounded p-2 font-bold focus:outline-none"
+                    >
+                      {Object.keys(t.status).map((s) => (
+                        <option key={s} value={s}>
+                          {t.status[s]}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setAdminShareData(o)}
+                      className="p-2 text-gray-400 hover:text-cyan-600 hover:bg-gray-100 rounded-full transition"
+                      title="Share"
+                    >
+                      <Share2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="p-2 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-full transition"
+                      title="Print"
+                    >
+                      <Printer className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => deleteOrder(o.id)}
+                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                    {expandedOrder === o.id ? (
+                      <ChevronUp className="w-4 h-4 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    )}
                   </div>
-                ) : (
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono font-bold text-cyan-600 bg-cyan-50 px-2 py-1 rounded">
-                            #{o.orderNumber || o.id.slice(0, 6)}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              o.status === "pending"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : o.status === "completed"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-blue-100 text-blue-700"
-                            }`}
+                </div>
+
+                {expandedOrder === o.id && (
+                  <div
+                    className="mt-6 pt-6 border-t border-dashed border-gray-200 text-sm animate-fade-in cursor-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <p className="font-bold text-gray-800 mb-3 flex items-center">
+                          <User className="w-4 h-4 mr-2 text-cyan-600" />{" "}
+                          CLIENTE
+                        </p>
+                        <p className="mb-1">
+                          <span className="font-bold">Tel:</span>{" "}
+                          <a
+                            href={`tel:${o.customer.phone}`}
+                            className="text-cyan-600 hover:underline"
                           >
-                            {t.status[o.status]}
+                            {o.customer.phone}
+                          </a>
+                        </p>
+                        <p className="mb-2">
+                          <span className="font-bold">Dir:</span>{" "}
+                          {o.customer.address}
+                        </p>
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            o.customer.address
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-cyan-600 text-xs font-bold flex items-center hover:underline"
+                        >
+                          <MapPin className="w-3 h-3 mr-1" /> Ver en Mapa
+                        </a>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <p className="font-bold text-gray-800 mb-3 flex items-center">
+                          <Clock className="w-4 h-4 mr-2 text-cyan-600" />{" "}
+                          HORARIO
+                        </p>
+                        <div className="mb-2">
+                          <span className="block text-xs text-gray-400 font-bold uppercase">
+                            Recogida
+                          </span>
+                          <span className="font-bold text-gray-700">
+                            {o.details.pickupDate}
+                          </span>{" "}
+                          <span className="text-gray-500">
+                            ({o.details.pickupTime})
                           </span>
                         </div>
-                        <h3 className="font-bold text-gray-800 flex items-center">
-                          {o.customer.name}{" "}
-                          {expandedOrder === o.id ? (
-                            <ChevronUp className="w-4 h-4 ml-2 text-gray-400" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 ml-2 text-gray-400" />
-                          )}
-                        </h3>
-                        <p className="text-xs text-gray-500">
-                          {new Date(o.createdAt).toLocaleString()} •{" "}
-                          {o.items
-                            ? Object.values(o.items).reduce((a, b) => a + b, 0)
-                            : 0}{" "}
-                          items
-                        </p>
-                        {o.adminNote && (
-                          <p className="text-xs text-red-500 mt-1 font-bold">
-                            Note: {o.adminNote}
-                          </p>
-                        )}
-                        {o.customerResponse && (
-                          <p className="text-xs text-green-600 mt-1 font-bold">
-                            Reply: {o.customerResponse}
-                          </p>
-                        )}
-                      </div>
-                      <div
-                        className="flex items-center gap-2 mt-2 md:mt-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <select
-                          value={o.status}
-                          onChange={(e) =>
-                            updateOrderStatus(o.id, e.target.value)
-                          }
-                          className="bg-gray-50 border border-gray-200 text-xs rounded p-2 font-bold outline-none cursor-pointer hover:border-cyan-500 transition"
-                        >
-                          {Object.keys(t.status).map((s) => (
-                            <option key={s} value={s}>
-                              {t.status[s]}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => shareOrder(o)}
-                          className="p-2 text-gray-500 hover:bg-gray-100 rounded"
-                          title="Share"
-                        >
-                          <Share2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => startEditing(o)}
-                          className="p-2 text-blue-500 hover:bg-blue-50 rounded"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => printOrder(o)}
-                          className="p-2 text-gray-500 hover:bg-gray-100 rounded"
-                          title="Print"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteOrder(o.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div>
+                          <span className="block text-xs text-gray-400 font-bold uppercase">
+                            Entrega
+                          </span>
+                          <span className="font-bold text-gray-700">
+                            {o.details.deliveryDate}
+                          </span>{" "}
+                          <span className="text-gray-500">
+                            ({o.details.deliveryTime})
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    {expandedOrder === o.id && (
-                      <div className="mt-4 pt-4 border-t border-gray-100 animate-fade-in">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                          <div className="bg-gray-50 p-3 rounded">
-                            <h5 className="font-bold text-gray-700 mb-2">
-                              Customer Details
-                            </h5>
-                            <p>
-                              <span className="font-bold">Phone:</span>{" "}
-                              {o.customer.phone}
-                            </p>
-                            <p>
-                              <span className="font-bold">Address:</span>{" "}
-                              {o.customer.address}
-                            </p>
-                            <a
-                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                o.customer.address
-                              )}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-cyan-600 font-bold text-xs mt-1 inline-flex items-center hover:underline"
-                            >
-                              <MapPin className="w-3 h-3 mr-1" /> View Map
-                            </a>
+
+                    <div className="bg-white border-2 border-gray-100 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between font-bold text-xs text-gray-500 uppercase">
+                        <span>Item</span>
+                        <span>Total</span>
+                      </div>
+                      <div className="p-4 space-y-2">
+                        {o.items &&
+                          Object.entries(o.items).map(([k, v]) => {
+                            const s = services.find((x) => x.id === k);
+                            const name = s ? s[`name_${lang}`] || s.name_en : k;
+                            return (
+                              <div
+                                key={k}
+                                className="flex justify-between text-sm border-b border-gray-50 last:border-0 pb-2 last:pb-0"
+                              >
+                                <span>
+                                  <span className="font-bold text-gray-800">
+                                    {v}x
+                                  </span>{" "}
+                                  {name}
+                                </span>
+                                <span className="font-bold text-gray-600">
+                                  ${((s?.price || 0) * v).toFixed(2)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                      <div className="bg-gray-50 p-4 border-t border-gray-100">
+                        <div className="space-y-1 text-sm text-gray-600">
+                          {(o.express || o.isMember) && (
+                            <div className="flex justify-between text-gray-500">
+                              <span>Subtotal</span>
+                              <span>
+                                $
+                                {(
+                                  o.total -
+                                  (o.expressFeeAmount || 0) +
+                                  (o.discountAmount || 0)
+                                ).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                          {o.express && (
+                            <div className="flex justify-between text-cyan-600">
+                              <span>Express Fee</span>
+                              <span>
+                                +${(o.expressFeeAmount || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                          {o.isMember && (
+                            <div className="flex justify-between text-yellow-600">
+                              <span>Member Discount</span>
+                              <span>
+                                -${(o.discountAmount || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center pt-3 mt-2 border-t border-gray-200">
+                            <span className="font-bold text-gray-800 text-lg">
+                              TOTAL
+                            </span>
+                            <span className="font-black text-2xl text-cyan-700">
+                              ${o.total.toFixed(2)}
+                            </span>
                           </div>
-                          <div className="bg-gray-50 p-3 rounded">
-                            <h5 className="font-bold text-gray-700 mb-2">
-                              Schedule
-                            </h5>
-                            <p>
-                              <span className="font-bold">Pickup:</span>{" "}
-                              {o.details.pickupDate} ({o.details.pickupTime})
-                            </p>
-                            <p>
-                              <span className="font-bold">Delivery:</span>{" "}
-                              {o.details.deliveryDate} ({o.details.deliveryTime}
-                              )
-                            </p>
+                          <div className="mt-2 flex justify-end">
+                            <span
+                              className={`text-xs font-bold px-2 py-1 rounded uppercase ${
+                                o.paymentStatus === "paid"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-yellow-100 text-yellow-700"
+                              }`}
+                            >
+                              {o.details.paymentMethod} - {o.paymentStatus}
+                            </span>
                           </div>
                         </div>
-                        <div className="mt-4">
-                          <h5 className="font-bold text-gray-700 mb-2 text-sm">
-                            Items & Costs
-                          </h5>
-                          <div className="space-y-1">
-                            {Object.entries(o.items).map(([id, qty]) => {
-                              const s = services.find((x) => x.id === id);
-                              return (
-                                <div
-                                  key={id}
-                                  className="flex justify-between text-sm border-b border-gray-100 pb-1"
-                                >
-                                  <span>
-                                    {qty}x{" "}
-                                    {s ? getLabel(s.name_en, "", lang) : id}
-                                  </span>
-                                  <span className="font-bold text-gray-600">
-                                    ${((s?.price || 0) * qty).toFixed(2)}
-                                  </span>
-                                </div>
-                              );
-                            })}{" "}
-                            {(() => {
-                              let subtotal = Object.entries(o.items).reduce(
-                                (acc, [id, qty]) => {
-                                  const s = services.find((x) => x.id === id);
-                                  return acc + (s?.price || 0) * qty;
-                                },
-                                0
-                              );
-                              const expressPct = config.expressPercent || 20;
-                              const discountPct = config.discountPercent || 10;
-                              const taxPct = config.taxPercent || 0;
-                              const expressFee = o.express
-                                ? subtotal * (expressPct / 100)
-                                : 0;
-                              const discount = o.isMember
-                                ? (subtotal + expressFee) * (discountPct / 100)
-                                : 0;
-                              const taxableAmount =
-                                subtotal + expressFee - discount;
-                              const tax = taxableAmount * (taxPct / 100);
-                              const finalTotal = taxableAmount + tax;
-                              return (
-                                <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
-                                  <div className="flex justify-between">
-                                    <span>Subtotal</span>
-                                    <span>${subtotal.toFixed(2)}</span>
-                                  </div>
-                                  {o.express && (
-                                    <div className="flex justify-between text-cyan-600">
-                                      <span>Express Fee</span>
-                                      <span>+${expressFee.toFixed(2)}</span>
-                                    </div>
-                                  )}
-                                  {o.isMember && (
-                                    <div className="flex justify-between text-yellow-600">
-                                      <span>Member Discount</span>
-                                      <span>-${discount.toFixed(2)}</span>
-                                    </div>
-                                  )}
-                                  {tax > 0 && (
-                                    <div className="flex justify-between">
-                                      <span>Tax ({taxPct}%)</span>
-                                      <span>+${tax.toFixed(2)}</span>
-                                    </div>
-                                  )}
-                                  <div className="flex justify-between items-center pt-2 border-t border-gray-300 mt-2">
-                                    <div>
-                                      <span className="font-bold text-gray-800 text-base">
-                                        TOTAL
-                                      </span>
-                                      <div className="text-xs font-bold text-green-600">
-                                        {o.details.paymentMethod.toUpperCase()}{" "}
-                                        {o.paymentStatus === "paid"
-                                          ? "(PAID)"
-                                          : "(PENDING)"}
-                                      </div>
-                                    </div>
-                                    <span className="font-black text-xl text-cyan-700">
-                                      ${finalTotal.toFixed(2)}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })()}{" "}
-                            <div className="mt-3 pt-2 border-t border-dashed text-xs text-gray-500">
-                              {o.aroma && (
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-purple-600 font-bold">
-                                    Aroma:
-                                  </span>
-                                  <span>
-                                    {getLabel(o.aroma, "aroma", lang)}
-                                  </span>
-                                </div>
-                              )}
-                              {o.allergies && o.allergies.length > 0 && (
-                                <div className="flex justify-between">
-                                  <span className="text-red-600 font-bold">
-                                    Allergies:
-                                  </span>
-                                  <span className="text-right max-w-[60%]">
-                                    {o.allergies
-                                      .map((a) => getLabel(a, "allergy", lang))
-                                      .join(", ")}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="mt-2 text-xs text-gray-500 flex gap-2">
+                        {(o.aroma || o.allergies?.length > 0) && (
+                          <div className="mt-4 pt-3 border-t border-gray-200 text-xs">
                             {o.aroma && (
-                              <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded">
-                                Aroma: {getLabel(o.aroma, "aroma", lang)}
-                              </span>
-                            )}{" "}
+                              <div className="flex gap-2 mb-1">
+                                <span className="font-bold text-purple-600 bg-purple-50 px-2 rounded">
+                                  Aroma: {o.aroma}
+                                </span>
+                              </div>
+                            )}
                             {o.allergies?.length > 0 && (
-                              <span className="bg-red-100 text-red-700 px-2 py-1 rounded">
-                                Allergies:{" "}
-                                {o.allergies
-                                  .map((a) => getLabel(a, "allergy", lang))
-                                  .join(", ")}
-                              </span>
+                              <div className="flex gap-2">
+                                <span className="font-bold text-red-600 bg-red-50 px-2 rounded">
+                                  Alergias: {o.allergies.join(", ")}
+                                </span>
+                              </div>
                             )}
                           </div>
+                        )}
+
+                        {/* CHAT DEL ADMIN */}
+                        <div className="mt-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">
+                            Mensajes
+                          </h4>
+                          <div className="max-h-40 overflow-y-auto space-y-2 mb-2 p-2">
+                            {o.chat ? (
+                              o.chat.map((msg, i) => (
+                                <div
+                                  key={i}
+                                  className={`flex ${
+                                    msg.sender === "admin"
+                                      ? "justify-end"
+                                      : "justify-start"
+                                  }`}
+                                >
+                                  <span
+                                    className={`px-3 py-1.5 rounded-lg text-xs max-w-[80%] ${
+                                      msg.sender === "admin"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : "bg-white border text-gray-600"
+                                    }`}
+                                  >
+                                    {msg.text}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-xs text-gray-400 italic text-center">
+                                No messages yet.
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <input
+                              className="flex-1 border rounded px-2 text-xs"
+                              placeholder="Escribe una respuesta..."
+                              value={chatInput}
+                              onChange={(e) => setChatInput(e.target.value)}
+                              onKeyDown={(e) =>
+                                e.key === "Enter" &&
+                                sendChatMessage(o.id, o.chat)
+                              }
+                            />
+                            <button
+                              onClick={() => sendChatMessage(o.id, o.chat)}
+                              className="bg-blue-600 text-white p-2 rounded"
+                            >
+                              <Send className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
-            ))}{" "}
-            {filteredOrders.length === 0 && (
-              <p className="text-center text-gray-400 py-10">
-                No matching orders found.
-              </p>
-            )}
+            ))}
           </div>
         )}
+
         {tab === "services" && (
           <ServiceEditor services={services} setServices={setServices} t={t} />
         )}
@@ -2785,28 +1676,44 @@ const AdminView = ({
           <SettingsPanel config={config} setConfig={setConfig} t={t} />
         )}
       </div>
+
+      {/* MODAL COMPARTIR ADMIN */}
+      {adminShareData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
+          <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative shadow-2xl">
+            <button
+              onClick={() => setAdminShareData(null)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 font-bold text-xl"
+            >
+              X
+            </button>
+            <h3 className="font-black text-xl mb-4 text-gray-800">
+              Enviar al Cliente
+            </h3>
+            <div className="grid grid-cols-1 gap-3">
+              <a
+                href={getClientWhatsApp(adminShareData)}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center p-4 bg-green-100 text-green-800 rounded-xl font-bold hover:bg-green-200 transition"
+              >
+                <MessageCircle className="mr-3 w-5 h-5" /> WhatsApp Cliente
+              </a>
+              <a
+                href={getClientSMS(adminShareData)}
+                className="flex items-center justify-center p-4 bg-blue-100 text-blue-800 rounded-xl font-bold hover:bg-blue-200 transition"
+              >
+                <Smartphone className="mr-3 w-5 h-5" /> SMS Cliente
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// --- ICONO DE DINERO (CORRECTO Y ÚNICO) ---
-const DollarSignIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <line x1="12" y1="1" x2="12" y2="23"></line>
-    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-  </svg>
-);
-
-// --- APP COMPONENT ---
+// --- APP COMPONENT (CLIENTE) ---
 export default function FastWaveApp() {
   const [view, setView] = useState("home");
   const [cart, setCart] = useState({});
@@ -2815,16 +1722,22 @@ export default function FastWaveApp() {
   const [lang, setLang] = useState("en");
   const [allergies, setAllergies] = useState([]);
   const [aroma, setAroma] = useState("Fresh");
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    pickupDate: "",
-    pickupTime: TIME_SLOTS[0],
-    deliveryDate: "",
-    deliveryTime: TIME_SLOTS[0],
-    paymentMethod: "cash",
+
+  const [form, setForm] = useState(() => {
+    const savedName = localStorage.getItem("fw_name");
+    const savedPhone = localStorage.getItem("fw_phone");
+    return {
+      name: savedName || "",
+      phone: savedPhone || "",
+      address: "",
+      pickupDate: "",
+      pickupTime: TIME_SLOTS[0],
+      deliveryDate: "",
+      deliveryTime: TIME_SLOTS[0],
+      paymentMethod: "cash",
+    };
   });
+
   const [formErrors, setFormErrors] = useState({});
   const [services, setServices] = useState(INITIAL_SERVICES);
   const [config, setConfig] = useState({});
@@ -2833,45 +1746,62 @@ export default function FastWaveApp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [itemAddedMsg, setItemAddedMsg] = useState(null);
   const [myOrders, setMyOrders] = useState([]);
-  const [customerReply, setCustomerReply] = useState({});
+
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [showRejoinModal, setShowRejoinModal] = useState(false);
+  const [showHomeJoinModal, setShowHomeJoinModal] = useState(false);
+  const [showCancelMemberModal, setShowCancelMemberModal] = useState(false);
+  const [showCelebrationModal, setShowCelebrationModal] = useState(false);
+  const [showLossWarning, setShowLossWarning] = useState(false);
+  const [shareData, setShareData] = useState(null);
+
   const [members, setMembers] = useState([]);
   const [pastMembers, setPastMembers] = useState([]);
   const [savingsAmount, setSavingsAmount] = useState(0);
   const [qrModal, setQRModal] = useState({ show: false, url: "" });
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [isLoadingPayment, setIsLoadingPayment] = useState(false);
-  const [cardDetails, setCardDetails] = useState({
-    number: "",
-    expiry: "",
-    cvc: "",
-    name: "",
-  });
   const [dateErrorMsg, setDateErrorMsg] = useState(null);
   const [scheduleUpdateAlert, setScheduleUpdateAlert] = useState(null);
 
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [isLoadingPayment, setIsLoadingPayment] = useState(false);
+  const [pendingMethod, setPendingMethod] = useState(null);
+
+  const [stripeObj, setStripeObj] = useState(null);
+  const [cardElement, setCardElement] = useState(null);
+  const [cardHolderName, setCardHolderName] = useState("");
+
+  // CHAT CLIENTE
+  const [chatInput, setChatInput] = useState("");
+
   useTailwind();
   useAppMode(config.customIcon);
+  const t = LANGUAGES[lang];
+
+  useEffect(() => {
+    localStorage.setItem("fw_name", form.name);
+  }, [form.name]);
+  useEffect(() => {
+    localStorage.setItem("fw_phone", form.phone);
+  }, [form.phone]);
 
   useEffect(() => {
     if (db) {
-      const unsubscribeServices = onSnapshot(
+      const unsubConfig = onSnapshot(doc(db, "settings", "general"), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          setConfig(data);
+          if (data.stripePublicKey && window.Stripe)
+            setStripeObj(window.Stripe(data.stripePublicKey));
+        }
+      });
+      const unsubServices = onSnapshot(
         doc(db, "settings", "services"),
         (snap) => {
-          if (snap.exists()) {
-            setServices(snap.data().list);
-          }
+          if (snap.exists()) setServices(snap.data().list);
         }
       );
-      const unsubscribeConfig = onSnapshot(
-        doc(db, "settings", "general"),
-        (snap) => {
-          if (snap.exists()) setConfig(snap.data());
-        }
-      );
-      const unsubscribeMembers = onSnapshot(
+      const unsubMembers = onSnapshot(
         doc(db, "settings", "members"),
         (snap) => {
           if (snap.exists()) {
@@ -2881,12 +1811,42 @@ export default function FastWaveApp() {
         }
       );
       return () => {
-        unsubscribeServices();
-        unsubscribeConfig();
-        unsubscribeMembers();
+        unsubConfig();
+        unsubServices();
+        unsubMembers();
       };
     }
   }, []);
+
+  useEffect(() => {
+    if (
+      isProcessingPayment &&
+      form.paymentMethod === "card" &&
+      stripeObj &&
+      !paymentSuccess
+    ) {
+      const timer = setTimeout(() => {
+        const mountPoint = document.getElementById("card-element");
+        if (mountPoint && !mountPoint.hasChildNodes()) {
+          const elements = stripeObj.elements();
+          const card = elements.create("card", {
+            style: {
+              base: {
+                fontSize: "16px",
+                color: "#32325d",
+                "::placeholder": { color: "#aab7c4" },
+              },
+              invalid: { color: "#fa755a", iconColor: "#fa755a" },
+            },
+            hidePostalCode: true,
+          });
+          card.mount("#card-element");
+          setCardElement(card);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isProcessingPayment, form.paymentMethod, stripeObj, paymentSuccess]);
 
   useEffect(() => {
     if (form.phone.trim().length > 7 && members.includes(form.phone.trim())) {
@@ -2897,24 +1857,19 @@ export default function FastWaveApp() {
   }, [form.phone, members]);
 
   useEffect(() => {
-    const savedOrders = JSON.parse(localStorage.getItem("myOrders") || "[]");
-    if (savedOrders.length > 0 && db) {
-      const idsToQuery = savedOrders.slice(-10);
+    const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
+    if (saved.length > 0 && db) {
       const q = query(
         collection(db, "orders"),
-        where("__name__", "in", idsToQuery)
+        where("__name__", "in", saved.slice(-10))
       );
       const unsub = onSnapshot(q, (snap) => {
-        const ordersList = snap.docs
+        const list = snap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        setMyOrders(ordersList);
-        const updatedOrder = ordersList.find(
-          (o) => o.scheduleUpdatedByAdmin === true
-        );
-        if (updatedOrder) {
-          setScheduleUpdateAlert(updatedOrder);
-        }
+        setMyOrders(list);
+        const upd = list.find((o) => o.scheduleUpdatedByAdmin === true);
+        if (upd) setScheduleUpdateAlert(upd);
       });
       return () => unsub();
     } else {
@@ -2922,8 +1877,7 @@ export default function FastWaveApp() {
     }
   }, [lastOrder]);
 
-  const t = LANGUAGES[lang];
-
+  const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
   const updateCart = (id, qty) => {
     setCart((prev) => {
       const newQty = (prev[id] || 0) + qty;
@@ -2938,30 +1892,103 @@ export default function FastWaveApp() {
       setTimeout(() => setItemAddedMsg(null), 800);
     }
   };
-
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
-
   const calculateTotals = () => {
     const subtotal = Object.entries(cart).reduce((acc, [id, qty]) => {
       const s = services.find((x) => x.id === id);
       return acc + (s?.price || 0) * qty;
     }, 0);
-    const expressPct = config.expressPercent || 20;
-    const discountPct = config.discountPercent || 10;
-    const taxPct = config.taxPercent || 0;
-    const expressFee = isExpress ? subtotal * (expressPct / 100) : 0;
-    const discount = isMember
-      ? (subtotal + expressFee) * (discountPct / 100)
+    const expressFee = isExpress
+      ? subtotal * ((config.expressPercent || 20) / 100)
       : 0;
-    const taxableAmount = subtotal + expressFee - discount;
-    const tax = taxableAmount * (taxPct / 100);
-    const finalTotal = taxableAmount + tax;
-    return { subtotal, expressFee, discount, tax, finalTotal };
+    const discount = isMember
+      ? (subtotal + expressFee) * ((config.discountPercent || 10) / 100)
+      : 0;
+    const taxable = subtotal + expressFee - discount;
+    const tax = taxable * ((config.taxPercent || 0) / 100);
+    return { subtotal, expressFee, discount, tax, finalTotal: taxable + tax };
+  };
+  const cartTotals = calculateTotals();
+  const potentialSavings =
+    (cartTotals.subtotal + cartTotals.expressFee) *
+    ((config.discountPercent || 10) / 100);
+
+  const handleHomeMemberClick = () => {
+    if (isMember) {
+      setShowCancelMemberModal(true);
+    } else {
+      setShowHomeJoinModal(true);
+    }
+  };
+  const joinFromHome = async () => {
+    if (!form.name.trim() || !form.phone.trim()) {
+      alert(
+        lang === "es"
+          ? "Nombre y teléfono requeridos."
+          : "Name and phone required."
+      );
+      return;
+    }
+    if (db)
+      await setDoc(
+        doc(db, "settings", "members"),
+        { list: arrayUnion(form.phone.trim()) },
+        { merge: true }
+      );
+    setIsMember(true);
+    setShowHomeJoinModal(false);
+    setShowCelebrationModal(true);
+  };
+  const joinMembershipFromCheckout = async () => {
+    if (db && form.phone.trim())
+      await setDoc(
+        doc(db, "settings", "members"),
+        { list: arrayUnion(form.phone.trim()) },
+        { merge: true }
+      );
+    setIsMember(true);
+    setShowMemberModal(false);
+    setShowCelebrationModal(true);
+  };
+  const continueFromCelebration = () => {
+    setShowCelebrationModal(false);
+    if (view === "cart" && pendingMethod) openPaymentModal(pendingMethod);
+  };
+  const handleNoAndContinue = () => {
+    setShowMemberModal(false);
+    setShowLossWarning(true);
+  };
+  const confirmLossAndPay = () => {
+    setShowLossWarning(false);
+    openPaymentModal(pendingMethod);
+  };
+  const goBackToOffer = () => {
+    setShowLossWarning(false);
+    setShowMemberModal(true);
+  };
+  const cancelMembership = async () => {
+    if (db && form.phone.trim())
+      await updateDoc(doc(db, "settings", "members"), {
+        list: arrayRemove(form.phone.trim()),
+      });
+    setIsMember(false);
+    setShowCancelMemberModal(false);
+    alert(lang === "es" ? "Membresía cancelada." : "Membership cancelled.");
+  };
+  const rejoinMembership = async () => {
+    if (db && form.phone.trim())
+      await updateDoc(doc(db, "settings", "members"), {
+        history: arrayRemove(form.phone.trim()),
+        list: arrayUnion(form.phone.trim()),
+      });
+    setIsMember(true);
+    setShowRejoinModal(false);
+    openPaymentModal(pendingMethod);
+  };
+  const handleJoinAndContinue = () => {
+    joinMembershipFromCheckout();
   };
 
-  const cartTotals = calculateTotals();
-
-  // --- VALIDACIÓN DEL FORMULARIO ---
   const validateForm = () => {
     let errors = {};
     if (!form.name.trim()) errors.name = true;
@@ -2970,191 +1997,115 @@ export default function FastWaveApp() {
     if (!form.pickupDate) errors.pickupDate = true;
     if (!form.deliveryDate) errors.deliveryDate = true;
     setFormErrors(errors);
-
     const logicError = validateScheduleLogic(
       form.pickupDate,
       form.pickupTime,
       form.deliveryDate,
       form.deliveryTime
     );
-
     if (logicError) {
       setDateErrorMsg(t[logicError]);
       return false;
     } else {
       setDateErrorMsg(null);
     }
-
-    if (Object.keys(errors).length > 0) {
-      return false;
-    }
+    if (Object.keys(errors).length > 0) return false;
     return true;
   };
-
-  // --- MANEJO DE CLIC EN BOTONES DE PAGO ---
   const handleMethodClick = (method) => {
-    // 1. Guardamos el método seleccionado
+    setPendingMethod(method);
     setForm((prev) => ({ ...prev, paymentMethod: method }));
-
-    // 2. Validamos que el cliente haya puesto sus datos
     if (!validateForm()) {
       alert(
         lang === "es"
-          ? "Por favor completa tu información personal antes de continuar."
-          : "Please fill in all customer details."
+          ? "Por favor completa tu información personal."
+          : "Please fill in customer details."
       );
       return;
     }
-
-    // 3. ABRIMOS EL MODAL PARA TODOS LOS MÉTODOS (INCLUIDO EFECTIVO)
-    // Esto asegura que el botón "reaccione" y el flujo sea igual para todos.
+    if (!isMember && !pastMembers.includes(form.phone.trim())) {
+      const discount =
+        (cartTotals.subtotal + cartTotals.expressFee) *
+        ((config.discountPercent || 10) / 100);
+      setSavingsAmount(discount);
+      setShowMemberModal(true);
+      return;
+    } else if (!isMember && pastMembers.includes(form.phone.trim())) {
+      setShowRejoinModal(true);
+      return;
+    }
+    openPaymentModal(method);
+  };
+  const openPaymentModal = (method) => {
     setIsProcessingPayment(true);
   };
 
-  const checkMembershipAndSubmit = (
-    isPaid = false,
-    forceRejoin = false,
-    ignoredParam = false,
-    methodOverride = null
-  ) => {
-    const phone = form.phone.trim();
-    const currentMethod = methodOverride || form.paymentMethod;
-
-    if (!isMember) {
-      if (pastMembers.includes(phone)) {
-        setShowRejoinModal(true);
-      } else {
-        const totals = calculateTotals();
-        const potentialDiscount =
-          (totals.subtotal + totals.expressFee) *
-          ((config.discountPercent || 10) / 100);
-        setSavingsAmount(potentialDiscount);
-        setShowMemberModal(true);
-      }
-    } else {
-      submitOrder(false, false, isPaid, currentMethod);
-    }
-  };
-
-  // --- PROCESAR PAGO / CONFIRMAR ORDEN ---
-  const handlePayNow = () => {
-    // 1. CASO EFECTIVO (CASH)
-    if (form.paymentMethod === "cash") {
+  const handlePayNow = async () => {
+    if (form.paymentMethod === "cash" || form.paymentMethod === "online") {
       setIsLoadingPayment(true);
-      // Pequeña simulación para dar feedback visual al cliente
       setTimeout(() => {
         setIsLoadingPayment(false);
         setPaymentSuccess(true);
       }, 1000);
       return;
     }
-
-    // 2. CASO ZELLE (ONLINE)
-    if (form.paymentMethod === "online") {
-      setPaymentSuccess(true);
-      return;
-    }
-
-    // 3. CASO TARJETA / WALLETS (STRIPE)
-    if (["card", "apple_pay", "google_pay"].includes(form.paymentMethod)) {
-      // A) Validar datos de tarjeta si aplica
-      if (form.paymentMethod === "card") {
-        if (
-          !cardDetails.number ||
-          !cardDetails.expiry ||
-          !cardDetails.cvc ||
-          !cardDetails.name
-        ) {
-          alert(
-            lang === "es"
-              ? "Llene los datos de la tarjeta."
-              : "Fill in card details."
-          );
-          return;
-        }
-      }
-
-      // B) Validar Configuración del Admin
-      const hasStripeConfig =
-        config.stripePublicKey && config.stripePublicKey.trim().length > 10;
-
-      if (!hasStripeConfig) {
-        const errorMsg =
-          lang === "es"
-            ? "Error: El sistema de pagos no está configurado (Falta API Key). Contacte al administrador."
-            : t.stripeError || "Error: Payment Config Missing.";
-        alert(errorMsg);
-        // Borrar datos si hay error
-        setCardDetails({ number: "", expiry: "", cvc: "", name: "" });
+    if (form.paymentMethod === "card") {
+      if (!stripeObj || !cardElement) {
+        alert(
+          lang === "es" ? "Error: Stripe no listo." : "Error: Stripe not ready."
+        );
         return;
       }
-
-      // C) Procesar
       setIsLoadingPayment(true);
-      setTimeout(() => {
+      const { token, error } = await stripeObj.createToken(cardElement, {
+        name: cardHolderName || form.name,
+      });
+      if (error) {
+        setIsLoadingPayment(false);
+        alert(
+          (lang === "es" ? "PAGO RECHAZADO: " : "PAYMENT DECLINED: ") +
+            error.message
+        );
+        if (cardElement) cardElement.clear();
+      } else {
         setIsLoadingPayment(false);
         setPaymentSuccess(true);
-      }, 2000);
+      }
+    } else if (["apple_pay", "google_pay"].includes(form.paymentMethod)) {
+      if (!stripeObj) return;
+      const pr = stripeObj.paymentRequest({
+        country: "US",
+        currency: "usd",
+        total: {
+          label: "Laundry Service",
+          amount: Math.round(cartTotals.finalTotal * 100),
+        },
+        requestPayerName: true,
+      });
+      const canPay = await pr.canMakePayment();
+      if (canPay) {
+        pr.show();
+        pr.on("paymentmethod", async (ev) => {
+          ev.complete("success");
+          setPaymentSuccess(true);
+        });
+      } else {
+        alert(
+          lang === "es"
+            ? "Billetera digital no disponible."
+            : "Digital wallet not available."
+        );
+      }
     }
   };
 
-  // --- FINALIZAR PROCESO ---
   const handlePaymentComplete = () => {
     setIsProcessingPayment(false);
     setPaymentSuccess(false);
-    // Borrar datos de tarjeta por seguridad
-    setCardDetails({ number: "", expiry: "", cvc: "", name: "" });
-
-    // Determinar si la orden se marca como PAGADA o PENDIENTE
-    // Si es Efectivo (cash) -> NO está pagada aún (isPaid = false)
-    // Si es Online/Tarjeta -> SÍ está pagada (isPaid = true)
+    setCardHolderName("");
+    if (cardElement) cardElement.clear();
     const isPaid = form.paymentMethod !== "cash";
-
-    // Enviar al administrador
-    checkMembershipAndSubmit(isPaid, false, false, form.paymentMethod);
-  };
-
-  const joinMembership = async () => {
-    if (db && form.phone.trim()) {
-      await setDoc(
-        doc(db, "settings", "members"),
-        { list: arrayUnion(form.phone.trim()) },
-        { merge: true }
-      );
-      setIsMember(true);
-    }
-    setShowMemberModal(false);
-    setTimeout(
-      () =>
-        submitOrder(
-          true,
-          false,
-          form.paymentMethod !== "cash",
-          form.paymentMethod
-        ),
-      100
-    );
-  };
-
-  const rejoinMembership = async () => {
-    if (db && form.phone.trim()) {
-      await updateDoc(doc(db, "settings", "members"), {
-        history: arrayRemove(form.phone.trim()),
-        list: arrayUnion(form.phone.trim()),
-      });
-      setIsMember(true);
-    }
-    setShowRejoinModal(false);
-    setTimeout(
-      () =>
-        submitOrder(
-          true,
-          true,
-          form.paymentMethod !== "cash",
-          form.paymentMethod
-        ),
-      100
-    );
+    submitOrder(false, false, isPaid, form.paymentMethod);
   };
 
   const submitOrder = async (
@@ -3166,25 +2117,21 @@ export default function FastWaveApp() {
     setIsSubmitting(true);
     const orderNum = generateShortId();
     const currentIsMember = forceMember || isMember;
-    const totals = calculateTotals();
-    const currentMethod = methodOverride || form.paymentMethod;
-
-    let finalTotal = totals.finalTotal;
-    if (forceMember) {
-      const subtotal = totals.subtotal;
-      const expressFee = totals.expressFee;
-      const discountPct = config.discountPercent || 10;
-      const discount = (subtotal + expressFee) * (discountPct / 100);
-      const taxPct = config.taxPercent || 0;
-      const taxableAmount = subtotal + expressFee - discount;
-      const tax = taxableAmount * (taxPct / 100);
-      finalTotal = taxableAmount + tax;
+    let finalTotal = cartTotals.finalTotal;
+    let finalExpressFee = cartTotals.expressFee;
+    let finalDiscount = cartTotals.discount;
+    if (forceMember || isMember) {
+      const subtotal = cartTotals.subtotal;
+      const express = subtotal * ((config.expressPercent || 20) / 100);
+      const disc =
+        (subtotal + express) * ((config.discountPercent || 10) / 100);
+      const tax =
+        (subtotal + express - disc) * ((config.taxPercent || 0) / 100);
+      finalExpressFee = express;
+      finalDiscount = disc;
+      finalTotal = subtotal + express - disc + tax;
     }
-    if (isRejoin) {
-      const rejoinFee = parseFloat(config.rejoinFee) || 10;
-      finalTotal += rejoinFee;
-    }
-
+    if (isRejoin) finalTotal += parseFloat(config.rejoinFee) || 10;
     const orderData = {
       customer: { name: form.name, phone: form.phone, address: form.address },
       items: cart,
@@ -3193,11 +2140,13 @@ export default function FastWaveApp() {
         pickupTime: form.pickupTime,
         deliveryDate: form.deliveryDate,
         deliveryTime: form.deliveryTime,
-        paymentMethod: currentMethod,
+        paymentMethod: methodOverride || form.paymentMethod,
       },
       express: isExpress,
       isMember: currentIsMember,
       wasRejoin: isRejoin,
+      expressFeeAmount: finalExpressFee,
+      discountAmount: finalDiscount,
       allergies,
       aroma,
       total: finalTotal,
@@ -3208,113 +2157,63 @@ export default function FastWaveApp() {
       customerResponse: "",
       orderNumber: orderNum,
       scheduleUpdatedByAdmin: false,
+      chat: [],
     };
     try {
       if (db) {
         const docRef = await addDoc(collection(db, "orders"), orderData);
         const finalOrder = { id: docRef.id, ...orderData };
-        const currentSaved = JSON.parse(
-          localStorage.getItem("myOrders") || "[]"
-        );
-        localStorage.setItem(
-          "myOrders",
-          JSON.stringify([...currentSaved, docRef.id])
-        );
+        const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
+        localStorage.setItem("myOrders", JSON.stringify([...saved, docRef.id]));
         setLastOrder(finalOrder);
       } else {
         setLastOrder({ id: "DEMO-123", ...orderData, orderNumber: orderNum });
       }
       setCart({});
-      setForm({
-        name: "",
-        phone: "",
+      setForm((prev) => ({
+        ...prev,
         address: "",
         pickupDate: "",
         pickupTime: TIME_SLOTS[0],
         deliveryDate: "",
         deliveryTime: TIME_SLOTS[0],
         paymentMethod: "cash",
-      });
+      }));
+      setIsExpress(false);
       setAllergies([]);
       setView("success");
     } catch (e) {
-      console.error(e);
-      alert(lang === "es" ? "Error enviando orden." : "Error sending order.");
+      alert("Error sending order.");
     }
     setIsSubmitting(false);
   };
 
-  const getOwnerWhatsApp = () => {
-    if (!lastOrder) return "#";
-    const cleanPhone = (config.phone || "").replace(/\D/g, "");
-    const itemsList = Object.entries(lastOrder.items)
-      .map(([id, qty]) => {
-        const s = services.find((x) => x.id === id);
-        const name = s ? (lang === "es" ? s.name_es : s.name_en) : id;
-        const lineTotal = s ? (s.price * qty).toFixed(2) : "0.00";
-        return `• ${qty} x ${name}..... $${lineTotal}`;
-      })
-      .join("%0a");
-    let extras = "";
-    if (lastOrder.express) extras += `%0a⚡ Express Service: Yes`;
-    if (lastOrder.isMember) extras += `%0a⭐ Member Discount: Yes`;
-    if (lastOrder.wasRejoin) extras += `%0a⚠️ Rejoin Fee Applied`;
-    const msg = `🧾 *RECEIPT #${
-      lastOrder.orderNumber || lastOrder.id.slice(0, 6)
-    }*
---------------------------------
-👤 *Customer:* ${lastOrder.customer.name}
-📞 *Phone:* ${lastOrder.customer.phone}
-📍 *Address:* ${lastOrder.customer.address}
---------------------------------
-📅 *PICKUP:*
-${lastOrder.details.pickupDate} - ${lastOrder.details.pickupTime}
-🚚 *DELIVERY:*
-${lastOrder.details.deliveryDate} - ${lastOrder.details.deliveryTime}
---------------------------------
-🧺 *ORDER DETAILS:*
-${itemsList}
---------------------------------
-${extras ? extras + "%0a--------------------------------" : ""}
-💰 *TOTAL: $${lastOrder.total?.toFixed(2)}*
-💳 *Payment:* ${lastOrder.details.paymentMethod.toUpperCase()} ${
-      lastOrder.paymentStatus === "paid" ? "(PAID)" : "(PENDING)"
-    }
---------------------------------
-📝 *Notes:* ${getLabel(lastOrder.aroma, "aroma", lang)}`;
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg.trim())}`;
+  // CHAT FUNCTION CLIENTE
+  const sendClientMessage = async (orderId, currentMessages = []) => {
+    if (!chatInput.trim() || !db) return;
+    const newMessage = {
+      text: chatInput,
+      sender: "client",
+      date: new Date().toISOString(),
+    };
+    const updatedMessages = [...(currentMessages || []), newMessage];
+    await updateDoc(doc(db, "orders", orderId), { chat: updatedMessages });
+    setChatInput("");
   };
 
-  const getOwnerSMS = () => {
-    if (!lastOrder) return "#";
-    const cleanPhone = (config.phone || "").replace(/\D/g, "");
-    const displayId = lastOrder.orderNumber || lastOrder.id.slice(0, 6);
-    const msg = `Fast Wave Order #${displayId} - Total: $${lastOrder.total?.toFixed(
-      2
-    )}. Pickup: ${lastOrder.details.pickupDate}. Check app for details.`;
-    return `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`;
+  const getOwnerWhatsApp = (o) => {
+    if (!o) return "#";
+    const p = (config.phone || "").replace(/\D/g, "");
+    return `https://wa.me/${p}?text=Order%20${o.orderNumber}`;
   };
-
-  const shareOrder = (order) => {
-    const text = `Fast Wave Receipt #${
-      order.orderNumber || order.id.slice(0, 6)
-    }\nTotal: $${order.total?.toFixed(2)}\nStatus: ${order.status}\nLink: ${
-      window.location.origin
-    }`;
-    if (navigator.share) {
-      navigator
-        .share({
-          title: "Fast Wave Receipt",
-          text: text,
-          url: window.location.href,
-        })
-        .catch(console.error);
-    } else {
-      navigator.clipboard.writeText(text);
-      alert("Receipt info copied to clipboard!");
-    }
+  const getOwnerSMS = (o) => {
+    if (!o) return "#";
+    const p = (config.phone || "").replace(/\D/g, "");
+    return `sms:${p}?body=Order%20${o.orderNumber}`;
   };
-
+  const shareOrder = (o) => {
+    setShareData(o);
+  };
   const dismissScheduleAlert = async () => {
     if (scheduleUpdateAlert && db) {
       await updateDoc(doc(db, "orders", scheduleUpdateAlert.id), {
@@ -3323,511 +2222,405 @@ ${extras ? extras + "%0a--------------------------------" : ""}
       setScheduleUpdateAlert(null);
     }
   };
+  const deleteLocalOrder = (id) => {
+    const saved = JSON.parse(localStorage.getItem("myOrders") || "[]").filter(
+      (x) => x !== id
+    );
+    localStorage.setItem("myOrders", JSON.stringify(saved));
+    setMyOrders((prev) => prev.filter((o) => o.id !== id));
+  };
 
-  if (view === "success") {
+  // --- COMPONENTE BOTÓN VENDEDOR ---
+  const MembershipPromoButton = ({ float = false }) => (
+    <button
+      onClick={handleHomeMemberClick}
+      className={`rounded-2xl flex flex-col items-center justify-center text-center font-bold shadow-xl border-4 border-white transition cursor-pointer ${
+        float
+          ? "fixed bottom-24 right-4 z-40 w-24 h-24 rounded-full rotate-0 shadow-xl"
+          : "p-6 w-full h-full"
+      } ${
+        isMember
+          ? "bg-green-500 text-white"
+          : "bg-yellow-400 text-cyan-900 animate-pulse"
+      }`}
+    >
+      {isMember ? (
+        <>
+          <CheckCircle className={`${float ? "w-5 h-5" : "w-8 h-8 mb-2"}`} />
+          <span className={float ? "text-[10px]" : "text-lg"}>
+            {lang === "es" ? "Eres Miembro" : "Member"}
+          </span>
+          <span className="text-[9px] opacity-90">
+            {lang === "es" ? "Ahorraste:" : "Saved:"}
+          </span>
+          <span
+            className={float ? "text-sm font-black" : "text-2xl font-black"}
+          >
+            ${cartTotals.discount.toFixed(2)}
+          </span>
+        </>
+      ) : (
+        <>
+          <span
+            className={float ? "text-sm font-black" : "text-2xl font-black"}
+          >
+            {config.discountPercent}% OFF
+          </span>
+          <span
+            className={
+              float ? "text-[10px] leading-tight block" : "text-xs block"
+            }
+          >
+            {lang === "es" ? "Únete" : "Join"}
+          </span>
+          <span className="text-[9px] mt-1">
+            {lang === "es" ? "Ahorra" : "Save"}
+          </span>
+          <span className={float ? "text-sm font-black" : "text-xl font-black"}>
+            ${potentialSavings.toFixed(2)}
+          </span>
+        </>
+      )}
+    </button>
+  );
+
+  // --- COMPONENTE RECIBO (CLIENTE) ---
+  const OrderCard = ({ o, showActions = true }) => {
+    const expressVal =
+      o.expressFeeAmount !== undefined
+        ? o.expressFeeAmount
+        : o.express
+        ? o.total * 0.2
+        : 0;
+    const discountVal =
+      o.discountAmount !== undefined ? o.discountAmount : o.isMember ? 5 : 0;
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 bg-cyan-50 font-sans">
-        <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-md w-full animate-fade-in">
-          <CheckCircle className="w-24 h-24 text-green-500 mx-auto mb-6 animate-bounce" />
-          <h1 className="text-3xl font-black text-gray-800 mb-2">
-            {t.successMsg}
-          </h1>
-          <p className="text-gray-500 mb-6">{t.successSub}</p>
-          <div className="bg-gray-100 p-4 rounded-xl mb-8 border-2 border-dashed border-gray-300">
-            <p className="text-sm text-gray-500 uppercase font-bold">
-              {t.orderNumberIs}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border-2 border-gray-100 mb-4 relative">
+        <div className="flex justify-between items-start mb-4 border-b border-dashed pb-4 border-gray-200">
+          <div>
+            <span className="font-mono text-xl font-black text-cyan-700">
+              #{o.orderNumber || o.id.slice(0, 6)}
+            </span>
+            <p className="text-xs text-gray-400 mt-1">
+              {new Date(o.createdAt).toLocaleDateString()}{" "}
+              {new Date(o.createdAt).toLocaleTimeString()}
             </p>
-            <p className="text-xl font-mono font-black text-cyan-600 break-all">
-              {lastOrder?.orderNumber || lastOrder?.id.slice(0, 6)}
-            </p>
-            <div
-              className={`mt-2 inline-block px-3 py-1 rounded font-bold text-xs ${
-                lastOrder?.paymentStatus === "paid"
-                  ? "bg-green-200 text-green-800"
-                  : "bg-yellow-200 text-yellow-800"
+            <span
+              className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${
+                o.status === "completed"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-blue-50 text-blue-600"
               }`}
             >
-              METHOD: {lastOrder?.details.paymentMethod.toUpperCase()}{" "}
-              {lastOrder?.paymentStatus === "paid" ? "(PAID)" : "(PENDING)"}
+              {o.status}
+            </span>
+            {o.paymentStatus === "paid" && (
+              <span className="ml-2 bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">
+                PAID
+              </span>
+            )}
+          </div>
+          <div className="text-right">
+            <button
+              onClick={() => shareOrder(o)}
+              className="text-gray-400 hover:text-cyan-600"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+        <div className="space-y-2 text-sm text-gray-600 mb-4">
+          <div className="flex items-start">
+            <MapPin className="w-4 h-4 mr-2 mt-0.5 text-cyan-500" />
+            <span>{o.customer.address}</span>
+          </div>
+          <div className="flex items-center">
+            <Calendar className="w-4 h-4 mr-2 text-cyan-500" />
+            <span>
+              Pickup: {o.details.pickupDate} ({o.details.pickupTime})
+            </span>
+          </div>
+          <div className="flex items-center">
+            <Truck className="w-4 h-4 mr-2 text-cyan-500" />
+            <span>
+              Delivery: {o.details.deliveryDate} ({o.details.deliveryTime})
+            </span>
+          </div>
+        </div>
+        <div className="bg-gray-50 p-4 rounded-xl mb-4">
+          {Object.entries(o.items).map(([id, qty]) => {
+            const s = services.find((x) => x.id === id);
+            const translatedName = s ? getServiceName(s) : id;
+            return (
+              <div
+                key={id}
+                className="flex justify-between py-1 text-sm border-b border-gray-200 last:border-0"
+              >
+                <span>
+                  {qty} x {translatedName}
+                </span>
+                <span className="font-bold">
+                  ${((s?.price || 0) * qty).toFixed(2)}
+                </span>
+              </div>
+            );
+          })}
+          <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
+            {(o.express || o.isMember) && (
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>${(o.total - expressVal + discountVal).toFixed(2)}</span>
+              </div>
+            )}
+            {o.express && (
+              <div className="flex justify-between text-cyan-600">
+                <span>Express Fee</span>
+                <span>+${expressVal.toFixed(2)}</span>
+              </div>
+            )}
+            {o.isMember && (
+              <div className="flex justify-between text-yellow-600">
+                <span>Member Discount</span>
+                <span>-${discountVal.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-2 border-t border-gray-300 mt-2">
+              <span className="font-bold text-gray-800 text-base">TOTAL</span>
+              <span className="font-black text-xl text-cyan-700">
+                ${o.total.toFixed(2)}
+              </span>
             </div>
           </div>
-          <a
-            href={getOwnerWhatsApp()}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full bg-green-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-green-600 transition flex items-center justify-center mb-4 transform hover:scale-105 animate-pulse border-4 border-green-200"
-          >
-            <MessageCircle className="w-6 h-6 mr-3" /> {t.sendWhastapp}
-          </a>
-          <a
-            href={getOwnerSMS()}
-            className="w-full bg-blue-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-blue-600 transition flex items-center justify-center mb-4 transform hover:scale-105 border-4 border-blue-200"
-          >
-            <Smartphone className="w-6 h-6 mr-3" /> {t.sendSMS}
-          </a>
-          <button
-            onClick={() => setView("track")}
-            className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-gray-900 transition flex items-center justify-center mt-4"
-          >
-            <CustomReceiptIcon className="w-5 h-5 mr-2" /> {t.trackOrder}
-          </button>
-          <button
-            onClick={() => setView("home")}
-            className="w-full bg-gray-100 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-200 transition flex items-center justify-center mt-2"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" /> {t.back}
-          </button>
+          <div className="mt-2 text-xs text-gray-400 uppercase text-center">
+            {o.details.paymentMethod} ({o.paymentStatus})
+          </div>
+          {(o.aroma || o.allergies?.length > 0) && (
+            <div className="mt-2 pt-2 border-t border-dashed text-xs text-gray-500">
+              {o.aroma && (
+                <div className="flex justify-between">
+                  <span className="text-purple-600 font-bold">Aroma:</span>
+                  <span>{getLabel(o.aroma, "aroma", lang)}</span>
+                </div>
+              )}
+              {o.allergies?.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-red-600 font-bold">Allergies:</span>
+                  <span>
+                    {o.allergies
+                      .map((a) => getLabel(a, "allergy", lang))
+                      .join(", ")}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </div>
-    );
-  }
 
-  if (view === "track") {
-    return (
-      <div className="min-h-screen bg-slate-50 p-4 font-sans pb-24">
-        <div className="flex justify-between items-center mb-6">
-          <button
-            onClick={() => setView("home")}
-            className="flex items-center text-gray-600 font-bold"
-          >
-            <ArrowLeft className="mr-2 w-5 h-5" /> {t.back}
-          </button>
-          <button
-            onClick={() =>
-              setQRModal({ show: true, url: window.location.href })
-            }
-            className="p-2 bg-white rounded-full shadow text-cyan-600 hover:bg-cyan-50"
-          >
-            <QrCode className="w-5 h-5" />
-          </button>
-        </div>
-        <h2 className="text-2xl font-black mb-6">{t.yourOrders}</h2>
-        {myOrders.length === 0 ? (
-          <p className="text-center text-gray-400 mt-10">No orders found.</p>
-        ) : (
-          <div className="space-y-6">
-            {myOrders.map((o) => (
-              <div
-                key={o.id}
-                className={`p-6 rounded-2xl shadow-lg border-2 relative overflow-hidden transition-all ${
-                  o.status === "completed"
-                    ? "bg-green-50 border-green-200"
-                    : "bg-white border-gray-100"
-                }`}
-              >
-                {o.status === "completed" && (
-                  <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
-                    {t.orderCompleted}
-                  </div>
-                )}
-                <div className="flex justify-between items-start mb-4 border-b border-dashed pb-4">
-                  <div>
-                    <span className="font-mono text-xl font-black text-cyan-700">
-                      #{o.orderNumber || o.id.slice(0, 6)}
-                    </span>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(o.createdAt).toLocaleString()}
-                    </p>
-                    <span
-                      className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${
-                        o.status === "completed"
-                          ? "bg-green-200 text-green-800"
-                          : "bg-blue-100 text-blue-700"
+        {/* CHAT DE CLIENTE EN EL RECIBO */}
+        {showActions && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">
+                Chat con Admin
+              </h4>
+              <div className="max-h-40 overflow-y-auto space-y-2 mb-2 p-2">
+                {o.chat && o.chat.length > 0 ? (
+                  o.chat.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`flex ${
+                        msg.sender === "client"
+                          ? "justify-end"
+                          : "justify-start"
                       }`}
                     >
-                      {t.status[o.status] || o.status}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <button
-                      onClick={() => shareOrder(o)}
-                      className="text-gray-400 hover:text-cyan-600 mb-2 block ml-auto"
-                    >
-                      <Share2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-2 text-sm text-gray-600 mb-4">
-                  <div className="flex items-start">
-                    <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-cyan-500" />{" "}
-                    <span>{o.customer.address}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Calendar className="w-4 h-4 mr-2 text-cyan-500" />{" "}
-                    <span>
-                      Pickup: {o.details.pickupDate} ({o.details.pickupTime})
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <Truck className="w-4 h-4 mr-2 text-cyan-500" />{" "}
-                    <span>
-                      Delivery: {o.details.deliveryDate} (
-                      {o.details.deliveryTime})
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-xl mb-4">
-                  {Object.entries(o.items).map(([k, v]) => {
-                    const s = services.find((x) => x.id === k);
-                    const totalLine = (s?.price || 0) * v;
-                    return (
-                      <div
-                        key={k}
-                        className="flex justify-between py-1 text-sm border-b border-gray-200 last:border-0"
+                      <span
+                        className={`px-3 py-1.5 rounded-lg text-xs max-w-[80%] ${
+                          msg.sender === "client"
+                            ? "bg-blue-600 text-white"
+                            : "bg-white border text-gray-600"
+                        }`}
                       >
-                        <span>
-                          {v} x{" "}
-                          {s
-                            ? lang === "es" && s.name_es
-                              ? s.name_es
-                              : lang === "fr" && s.name_fr
-                              ? s.name_fr
-                              : lang === "hi" && s.name_hi
-                              ? s.name_hi
-                              : s.name_en
-                            : k}
-                        </span>
-                        <span className="font-bold">
-                          ${totalLine.toFixed(2)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  {(() => {
-                    let subtotal = Object.entries(o.items).reduce(
-                      (acc, [id, qty]) => {
-                        const s = services.find((x) => x.id === id);
-                        return acc + (s?.price || 0) * qty;
-                      },
-                      0
-                    );
-                    const expressPct = config.expressPercent || 20;
-                    const discountPct = config.discountPercent || 10;
-                    const taxPct = config.taxPercent || 0;
-                    const expressFee = o.express
-                      ? subtotal * (expressPct / 100)
-                      : 0;
-                    const discount = o.isMember
-                      ? (subtotal + expressFee) * (discountPct / 100)
-                      : 0;
-                    const taxableAmount = subtotal + expressFee - discount;
-                    const tax = taxableAmount * (taxPct / 100);
-                    const finalTotal = taxableAmount + tax;
-                    return (
-                      <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
-                        <div className="flex justify-between">
-                          <span>Subtotal</span>
-                          <span>${subtotal.toFixed(2)}</span>
-                        </div>
-                        {o.express && (
-                          <div className="flex justify-between text-cyan-600">
-                            <span>Express Fee</span>
-                            <span>+${expressFee.toFixed(2)}</span>
-                          </div>
-                        )}
-                        {o.isMember && (
-                          <div className="flex justify-between text-yellow-600">
-                            <span>Member Discount</span>
-                            <span>-${discount.toFixed(2)}</span>
-                          </div>
-                        )}
-                        {tax > 0 && (
-                          <div className="flex justify-between">
-                            <span>Tax ({taxPct}%)</span>
-                            <span>+${tax.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <div className="mt-3 pt-2 border-t border-dashed text-xs text-gray-500">
-                          {o.aroma && (
-                            <div className="flex justify-between mb-1">
-                              <span className="text-purple-600 font-bold">
-                                Aroma:
-                              </span>
-                              <span>{getLabel(o.aroma, "aroma", lang)}</span>
-                            </div>
-                          )}
-                          {o.allergies && o.allergies.length > 0 && (
-                            <div className="flex justify-between">
-                              <span className="text-red-600 font-bold">
-                                Allergies:
-                              </span>
-                              <span className="text-right max-w-[60%]">
-                                {o.allergies
-                                  .map((a) => getLabel(a, "allergy", lang))
-                                  .join(", ")}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-300 mt-2">
-                          <div>
-                            <span className="font-bold text-gray-800 text-base">
-                              TOTAL
-                            </span>
-                            <div className="text-xs font-bold text-green-600">
-                              {o.details.paymentMethod.toUpperCase()}{" "}
-                              {o.paymentStatus === "paid"
-                                ? "(PAID)"
-                                : "(PENDING)"}
-                            </div>
-                          </div>
-                          <span className="font-black text-xl text-cyan-700">
-                            ${finalTotal.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()}{" "}
-                </div>
-                {o.adminNote && (
-                  <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 text-sm text-blue-800 rounded-r">
-                    <p className="font-bold text-xs uppercase mb-1 flex items-center">
-                      <CustomInfoIcon className="w-3 h-3 mr-1" />{" "}
-                      {t.updateFromLaundry}
-                    </p>
-                    <p>{o.adminNote}</p>
-                  </div>
-                )}
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  {o.customerResponse ? (
-                    <div className="text-sm text-green-700 bg-green-50 p-3 rounded border border-green-100">
-                      <span className="font-bold block text-xs uppercase">
-                        Your Reply:
+                        {msg.text}
                       </span>
-                      {o.customerResponse}
                     </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        className="flex-1 border rounded px-3 py-2 text-sm"
-                        placeholder="Reply to admin..."
-                        value={customerReply[o.id] || ""}
-                        onChange={(e) =>
-                          setCustomerReply({
-                            ...customerReply,
-                            [o.id]: e.target.value,
-                          })
-                        }
-                      />
-                      <button
-                        onClick={() =>
-                          sendCustomerReply(o.id, customerReply[o.id])
-                        }
-                        className="bg-cyan-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-cyan-700"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {o.status === "completed" && (
-                  <button
-                    onClick={() => deleteLocalOrder(o.id)}
-                    className="w-full mt-4 bg-gray-200 text-gray-600 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" /> {t.deleteReceipt}
-                  </button>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400 italic text-center">
+                    No messages yet.
+                  </p>
                 )}
               </div>
-            ))}
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 border rounded px-2 text-xs py-2"
+                  placeholder="Escribe tu mensaje..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && sendClientMessage(o.id, o.chat)
+                  }
+                />
+                <button
+                  onClick={() => sendClientMessage(o.id, o.chat)}
+                  className="bg-blue-600 text-white p-2 rounded"
+                >
+                  <Send className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
           </div>
+        )}
+
+        {showActions && o.status === "completed" && (
+          <button
+            onClick={() => deleteLocalOrder(o.id)}
+            className="w-full mt-4 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition"
+          >
+            <Trash2 className="w-4 h-4 mr-2" /> Delete Receipt
+          </button>
         )}
       </div>
     );
-  }
-  if (view === "admin")
-    return (
-      <AdminView
-        t={t}
-        config={config}
-        setConfig={setConfig}
-        services={services}
-        setServices={setServices}
-        setView={setView}
-        lang={lang}
-      />
-    );
-  // --- RENDERIZADO DE LA APP ---
+  };
+
+  // --- RENDERIZADO PRINCIPAL ---
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-gray-800">
-      {/* --- BARRA DE NAVEGACIÓN (NAVBAR) --- */}
       <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-cyan-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-20 items-center">
-            <div
-              className="flex items-center cursor-pointer transform hover:scale-105 transition"
-              onClick={() => setView("home")}
+        <div className="max-w-7xl mx-auto px-4 flex justify-between h-20 items-center">
+          <div
+            className="flex items-center cursor-pointer"
+            onClick={() => setView("home")}
+          >
+            <BrandLogo customIcon={config.customIcon} />
+          </div>
+          <div className="hidden md:flex items-center space-x-4">
+            <button
+              onClick={() =>
+                setQRModal({ show: true, url: window.location.href })
+              }
+              className="p-2 text-gray-600 hover:text-cyan-600"
             >
-              <BrandLogo customIcon={config.customIcon} />
+              <QrCode className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => setView("track")}
+              className="flex items-center font-bold bg-gray-100 px-3 py-2 rounded-lg"
+            >
+              <CustomPackageIcon className="w-4 h-4 mr-2" /> {t.trackOrder}
+            </button>
+            <div className="flex items-center bg-cyan-50 px-4 py-2 rounded-full text-cyan-800 font-mono text-sm">
+              <Phone className="h-4 w-4 mr-2" /> {config.phone}
             </div>
-            <div className="hidden md:flex items-center space-x-4">
-              <button
-                onClick={() =>
-                  setQRModal({ show: true, url: window.location.href })
-                }
-                className="p-2 text-gray-600 hover:text-cyan-600 transition"
-                title="Show QR Code"
-              >
-                <QrCode className="w-6 h-6" />
-              </button>
-              <button
-                onClick={() => setView("track")}
-                className="flex items-center text-gray-600 hover:text-cyan-600 font-bold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition mr-2"
-              >
-                <CustomPackageIcon className="w-4 h-4 mr-2" />
-                {t.trackOrder || "My Orders"}
-              </button>
-              <div className="flex items-center bg-cyan-50 px-4 py-2 rounded-full text-cyan-800 font-mono text-sm border border-cyan-100">
-                <Phone className="h-4 w-4 mr-2" /> {config.phone}
-              </div>
-              <div className="relative group">
-                <select
-                  value={lang}
-                  onChange={(e) => setLang(e.target.value)}
-                  className="bg-gray-100 text-sm rounded-lg pl-3 pr-8 py-2 border-none outline-none cursor-pointer font-bold text-gray-700 appearance-none hover:bg-gray-200 transition"
-                >
-                  <option value="en">🇺🇸 EN</option>
-                  <option value="es">🇪🇸 ES</option>
-                  <option value="fr">🇫🇷 FR</option>
-                  <option value="hi">🇮🇳 HI</option>
-                </select>
-              </div>
-              <button
-                onClick={() => setView("cart")}
-                className="relative p-3 text-gray-500 hover:text-cyan-600 transition bg-gray-50 rounded-full hover:bg-cyan-50"
-              >
-                <ShoppingBag className="h-6 w-6" />
-                {cartCount > 0 && (
-                  <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-red-500 rounded-full shadow-sm animate-bounce">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setView("admin")}
-                className="text-gray-400 hover:text-cyan-800 p-2"
-              >
-                <Lock className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="md:hidden flex items-center gap-3">
-              <button
-                onClick={() =>
-                  setQRModal({ show: true, url: window.location.href })
-                }
-                className="p-2 text-gray-600"
-              >
-                <QrCode className="w-6 h-6" />
-              </button>
-              <button
-                onClick={() => setView("cart")}
-                className="relative p-2 text-gray-600"
-              >
-                <ShoppingBag className="h-6 w-6" />
-                {cartCount > 0 && (
-                  <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
-                )}
-              </button>
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 text-cyan-800"
-              >
-                {mobileMenuOpen ? (
-                  <X className="w-7 h-7" />
-                ) : (
-                  <Menu className="w-7 h-7" />
-                )}
-              </button>
-            </div>
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+              className="bg-gray-100 rounded px-2 py-1 text-sm"
+            >
+              <option value="en">🇺🇸 EN</option>
+              <option value="es">🇪🇸 ES</option>
+              <option value="fr">🇫🇷 FR</option>
+              <option value="hi">🇮🇳 HI</option>
+            </select>
+            <button
+              onClick={() => setView("cart")}
+              className="relative p-3 text-gray-500"
+            >
+              <ShoppingBag className="h-6 w-6" />
+              {cartCount > 0 && (
+                <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setView("admin")}
+              className="p-2 text-gray-400"
+            >
+              <Lock className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="md:hidden flex items-center gap-3">
+            <button
+              onClick={() =>
+                setQRModal({ show: true, url: window.location.href })
+              }
+              className="p-2 text-gray-600"
+            >
+              <QrCode className="w-6 h-6" />
+            </button>
+            <button onClick={() => setView("cart")} className="relative p-2">
+              <ShoppingBag className="h-6 w-6" />
+              {cartCount > 0 && (
+                <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full"></span>
+              )}
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 text-cyan-800"
+            >
+              {mobileMenuOpen ? (
+                <X className="w-7 h-7" />
+              ) : (
+                <Menu className="w-7 h-7" />
+              )}
+            </button>
           </div>
         </div>
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-100 p-4 shadow-xl absolute w-full z-40 animate-fade-in-down">
-            <div className="space-y-4">
-              <button
-                onClick={() => {
-                  setView("home");
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left font-bold text-gray-700 py-2"
+          <div className="md:hidden bg-white border-t p-4 shadow-xl absolute w-full z-40">
+            <button
+              onClick={() => {
+                setView("home");
+                setMobileMenuOpen(false);
+              }}
+              className="block w-full text-left py-2 font-bold"
+            >
+              Home
+            </button>
+            <button
+              onClick={() => {
+                setView("track");
+                setMobileMenuOpen(false);
+              }}
+              className="block w-full text-left py-2 font-bold"
+            >
+              My Orders
+            </button>
+            <button
+              onClick={() => {
+                setView("cart");
+                setMobileMenuOpen(false);
+              }}
+              className="block w-full text-left py-2 font-bold"
+            >
+              Cart ({cartCount})
+            </button>
+            <div className="flex justify-between items-center pt-4 border-t">
+              <select
+                value={lang}
+                onChange={(e) => setLang(e.target.value)}
+                className="bg-gray-100 rounded px-2 py-1 text-sm"
               >
-                Home
-              </button>
-              <button
-                onClick={() => {
-                  setView("track");
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left font-bold text-gray-700 py-2"
-              >
-                My Orders
-              </button>
-              <button
-                onClick={() => {
-                  setView("cart");
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left font-bold text-gray-700 py-2"
-              >
-                Cart ({cartCount})
-              </button>
-              <button
-                onClick={() => {
-                  setView("admin");
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left font-bold text-gray-700 py-2"
-              >
-                Admin Login
-              </button>
-              <div className="flex justify-between items-center pt-4 border-t">
-                <select
-                  value={lang}
-                  onChange={(e) => setLang(e.target.value)}
-                  className="bg-gray-100 rounded px-2 py-1 text-sm"
-                >
-                  <option value="en">EN</option>
-                  <option value="es">ES</option>
-                  <option value="fr">FR</option>
-                  <option value="hi">HI</option>
-                </select>
-              </div>
+                <option value="en">EN</option>
+                <option value="es">ES</option>
+                <option value="fr">FR</option>
+                <option value="hi">HI</option>
+              </select>
             </div>
           </div>
         )}
       </nav>
 
-      {/* --- ALERTA DE CAMBIO DE HORARIO --- */}
       {scheduleUpdateAlert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center border-l-8 border-yellow-400">
-            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-              <BellRing className="w-8 h-8 text-yellow-600" />
-            </div>
-            <h3 className="text-xl font-black text-gray-800 mb-2">
-              {t.alertTitle}
-            </h3>
-            <p className="text-gray-600 mb-6 text-sm">
-              {t.alertMsg} (#
-              {scheduleUpdateAlert.orderNumber ||
-                scheduleUpdateAlert.id.slice(0, 6)}
-              )
-            </p>
-            <div className="bg-gray-50 p-3 rounded-lg mb-4 text-left text-sm border border-gray-200">
-              <p className="mb-1">
-                <span className="font-bold">New Pickup:</span>{" "}
-                {scheduleUpdateAlert.details.pickupDate} @{" "}
-                {scheduleUpdateAlert.details.pickupTime}
-              </p>
-              <p>
-                <span className="font-bold">New Delivery:</span>{" "}
-                {scheduleUpdateAlert.details.deliveryDate} @{" "}
-                {scheduleUpdateAlert.details.deliveryTime}
-              </p>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white p-6 rounded-xl shadow-xl text-center border-l-8 border-yellow-400">
+            <h3 className="font-black text-xl mb-2">{t.alertTitle}</h3>
+            <p className="mb-4 text-sm text-gray-600">{t.alertMsg}</p>
             <button
               onClick={dismissScheduleAlert}
-              className="w-full bg-yellow-500 text-white font-bold py-3 rounded-xl hover:bg-yellow-600 transition shadow-lg"
+              className="bg-yellow-500 text-white w-full py-3 rounded-xl font-bold"
             >
               {t.btnUnderstood}
             </button>
@@ -3835,263 +2628,105 @@ ${extras ? extras + "%0a--------------------------------" : ""}
         </div>
       )}
 
-      {/* --- MODAL DE PROCESAMIENTO DE PAGO --- */}
+      {/* MODAL PAGO */}
       {isProcessingPayment && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center transform scale-100 border-2 border-gray-100 relative">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl relative">
             <button
               onClick={() => setIsProcessingPayment(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              className="absolute top-4 right-4 text-gray-400"
             >
               <X className="w-6 h-6" />
             </button>
-
             {!paymentSuccess ? (
               <div className="py-2">
-                {/* --- ENCABEZADOS --- */}
+                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center">
+                  {form.paymentMethod === "cash"
+                    ? t.payCashLabel
+                    : form.paymentMethod === "online"
+                    ? t.payOnlineLabel
+                    : t.payCardLabel}
+                </h3>
                 {form.paymentMethod === "card" && (
-                  <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center">
-                    <CreditCard className="w-6 h-6 mr-2 text-blue-600" />{" "}
-                    {t.payCardLabel || "Card"}
-                  </h3>
-                )}
-                {(form.paymentMethod === "apple_pay" ||
-                  form.paymentMethod === "google_pay") && (
-                  <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center">
-                    <Smartphone className="w-6 h-6 mr-2 text-gray-900" /> Wallet
-                  </h3>
-                )}
-                {form.paymentMethod === "online" && (
-                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center justify-center">
-                    <ExternalLink className="w-6 h-6 mr-2 text-purple-600" />{" "}
-                    {t.payOnlineLabel}
-                  </h3>
-                )}
-                {form.paymentMethod === "cash" && (
-                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center justify-center">
-                    <DollarSign className="w-6 h-6 mr-2 text-green-600" />{" "}
-                    {t.payCashLabel}
-                  </h3>
-                )}
-
-                {/* --- FORMULARIO TARJETA --- */}
-                {form.paymentMethod === "card" && (
-                  <div className="space-y-4 text-left animate-fade-in">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">
-                        {lang === "es" ? "Número de Tarjeta" : "Card Number"}
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="0000 0000 0000 0000"
-                          className="w-full p-3 pl-10 border rounded-lg bg-gray-50 font-mono text-sm focus:border-blue-500 outline-none"
-                          value={cardDetails.number}
-                          onChange={(e) =>
-                            setCardDetails({
-                              ...cardDetails,
-                              number: e.target.value,
-                            })
-                          }
-                          maxLength="19"
-                        />
-                        <CreditCard className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
-                      </div>
+                  <div className="mb-6">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">
+                      {lang === "es" ? "Nombre en Tarjeta" : "Cardholder Name"}
+                    </label>
+                    <input
+                      className="w-full p-3 border rounded mb-3 bg-gray-50"
+                      placeholder={
+                        lang === "es" ? "Nombre Completo" : "Full Name"
+                      }
+                      value={cardHolderName}
+                      onChange={(e) => setCardHolderName(e.target.value)}
+                    />
+                    <label className="block text-xs font-bold text-gray-500 mb-1">
+                      {lang === "es" ? "Datos de Tarjeta" : "Card Details"}
+                    </label>
+                    <div className="p-3 border rounded bg-white shadow-sm">
+                      <div id="card-element"></div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">
-                          MM/YY
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="MM/YY"
-                          className="w-full p-3 border rounded-lg bg-gray-50 font-mono text-sm outline-none"
-                          value={cardDetails.expiry}
-                          onChange={(e) =>
-                            setCardDetails({
-                              ...cardDetails,
-                              expiry: e.target.value,
-                            })
-                          }
-                          maxLength="5"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">
-                          CVC
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="123"
-                          className="w-full p-3 border rounded-lg bg-gray-50 font-mono text-sm outline-none"
-                          value={cardDetails.cvc}
-                          onChange={(e) =>
-                            setCardDetails({
-                              ...cardDetails,
-                              cvc: e.target.value,
-                            })
-                          }
-                          maxLength="4"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">
-                        {lang === "es"
-                          ? "Nombre en la Tarjeta"
-                          : "Cardholder Name"}
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="JUAN PEREZ"
-                        className="w-full p-3 border rounded-lg bg-gray-50 font-bold text-sm uppercase outline-none"
-                        value={cardDetails.name}
-                        onChange={(e) =>
-                          setCardDetails({
-                            ...cardDetails,
-                            name: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* --- INFO ZELLE --- */}
-                {form.paymentMethod === "online" && (
-                  <div className="bg-purple-50 p-5 rounded-xl border-2 border-purple-100 text-left mb-6">
-                    <p className="text-xs text-purple-800 font-bold mb-2 uppercase tracking-wide border-b border-purple-200 pb-1">
-                      {lang === "es" ? "Enviar pago a:" : "Send payment to:"}
-                    </p>
-                    <div className="bg-white p-3 rounded shadow-sm mb-4 border border-purple-100">
-                      <span className="block text-xs text-gray-400 mb-1">
-                        Email / Teléfono:
-                      </span>
-                      <span className="text-xl font-black text-gray-800 break-all">
-                        {config.zelleNumber && config.zelleNumber !== ""
-                          ? config.zelleNumber
-                          : "---"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-purple-800 font-bold mb-1 uppercase tracking-wide">
-                      Instructions:
-                    </p>
-                    <p className="text-sm text-gray-600 mb-4 leading-relaxed font-medium">
-                      {config.zelleMessage && config.zelleMessage !== ""
-                        ? config.zelleMessage
-                        : "Use Zelle app."}
-                    </p>
-                    <div className="bg-white p-4 rounded-lg border-dashed border-2 border-purple-200 text-center">
-                      <span className="block text-xs text-gray-400 uppercase font-bold mb-1">
-                        Total
-                      </span>
-                      <span className="text-3xl font-black text-purple-600">
-                        ${cartTotals.finalTotal.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* --- INFO EFECTIVO --- */}
-                {form.paymentMethod === "cash" && (
-                  <div className="bg-green-50 p-5 rounded-xl border-2 border-green-100 text-center mb-6">
-                    <p className="text-sm text-green-800 font-bold mb-4">
+                    <p className="text-[10px] text-gray-400 mt-2 text-center flex justify-center items-center">
+                      <Lock className="w-3 h-3 mr-1" />{" "}
                       {lang === "es"
-                        ? "Pagarás al repartidor en el momento de la entrega."
-                        : "You will pay the driver upon delivery."}
+                        ? "Procesado seguro por Stripe"
+                        : "Secure by Stripe"}
                     </p>
-                    <div className="bg-white p-4 rounded-lg border-dashed border-2 border-green-200 inline-block">
-                      <span className="block text-xs text-gray-400 uppercase font-bold mb-1">
-                        Total a Pagar
-                      </span>
-                      <span className="text-3xl font-black text-green-600">
-                        ${cartTotals.finalTotal.toFixed(2)}
-                      </span>
-                    </div>
                   </div>
                 )}
-
-                {/* --- BOTONES CONFIRMACIÓN --- */}
-                {form.paymentMethod !== "online" ? (
-                  <button
-                    onClick={handlePayNow}
-                    disabled={isLoadingPayment}
-                    className={`w-full mt-6 text-white py-3 rounded-xl font-bold shadow-lg transition transform hover:scale-[1.02] flex items-center justify-center ${
-                      isLoadingPayment
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : form.paymentMethod === "cash"
-                        ? "bg-green-600 hover:bg-green-700"
-                        : "bg-blue-600 hover:bg-blue-700"
-                    }`}
-                  >
-                    {isLoadingPayment ? (
-                      <>
-                        <CustomLoaderIcon className="animate-spin w-5 h-5 mr-2" />{" "}
-                        ...
-                      </>
+                {form.paymentMethod === "online" && (
+                  <div className="bg-purple-50 p-4 rounded mb-4 text-sm text-center">
+                    <p className="font-bold text-purple-800">
+                      {lang === "es" ? "Enviar a:" : "Send to:"}{" "}
+                      {config.zelleNumber || "--"}
+                    </p>
+                    <p className="text-gray-600 mt-1">{config.zelleMessage}</p>
+                    <p className="text-2xl font-black mt-2 text-purple-900">
+                      ${cartTotals.finalTotal.toFixed(2)}
+                    </p>
+                  </div>
+                )}
+                {form.paymentMethod === "cash" && (
+                  <div className="bg-green-50 p-4 rounded mb-4 text-center">
+                    <p className="text-green-800 font-bold mb-2">
+                      {lang === "es" ? "Total a Pagar" : "Total Due"}
+                    </p>
+                    <span className="text-3xl font-black text-green-600">
+                      ${cartTotals.finalTotal.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={handlePayNow}
+                  disabled={isLoadingPayment}
+                  className={`w-full py-3 rounded-xl font-bold text-white shadow-lg flex justify-center items-center ${
+                    isLoadingPayment ? "bg-gray-400" : "bg-cyan-900"
+                  }`}
+                >
+                  {isLoadingPayment ? (
+                    <CustomLoaderIcon className="animate-spin w-5 h-5" />
+                  ) : form.paymentMethod === "cash" ? (
+                    lang === "es" ? (
+                      "Confirmar Orden"
                     ) : (
-                      <>
-                        {form.paymentMethod === "cash"
-                          ? lang === "es"
-                            ? "Confirmar Orden"
-                            : "Confirm Order"
-                          : lang === "es"
-                          ? "Pagar Ahora"
-                          : "Pay Now"}
-                        <CheckCircle className="w-4 h-4 ml-2" />
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handlePayNow}
-                    className="w-full mt-2 bg-purple-600 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-purple-700 transition flex items-center justify-center animate-pulse"
-                  >
-                    <CheckCircle className="w-5 h-5 mr-2" />{" "}
-                    {lang === "es" ? "Confirmar Pago" : "Confirm Payment"}
-                  </button>
-                )}
-
-                {form.paymentMethod === "card" && (
-                  <p className="text-[10px] text-gray-400 mt-4 text-center flex items-center justify-center">
-                    <Lock className="w-3 h-3 mr-1" /> Secure by Stripe
-                  </p>
-                )}
+                      "Confirm Order"
+                    )
+                  ) : lang === "es" ? (
+                    "Pagar Ahora"
+                  ) : (
+                    "Pay Now"
+                  )}
+                </button>
               </div>
             ) : (
-              /* --- PANTALLA ÉXITO --- */
-              <div className="py-4 animate-fade-in">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-10 h-10 text-green-600" />
-                </div>
+              <div className="py-4 text-center animate-fade-in">
+                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                 <h3 className="text-2xl font-black text-gray-800 mb-2">
-                  {form.paymentMethod === "cash"
-                    ? lang === "es"
-                      ? "Orden Confirmada"
-                      : "Order Confirmed"
-                    : t.paymentSuccess || "Success"}
+                  {t.paymentSuccess}
                 </h3>
-                <p className="text-gray-500 mb-6 px-4">
-                  {form.paymentMethod === "cash"
-                    ? lang === "es"
-                      ? "Tu pedido ha sido recibido. Prepara el efectivo."
-                      : "Your order has been received. Please have cash ready."
-                    : lang === "es"
-                    ? "Pago completado exitosamente."
-                    : "Payment successful."}
-                </p>
-                <div className="bg-gray-50 rounded-lg p-3 mb-6 mx-4">
-                  <p className="text-xs text-gray-400 font-bold uppercase">
-                    Ref
-                  </p>
-                  <p className="font-mono font-bold text-gray-700">
-                    #{generateShortId()}
-                  </p>
-                </div>
                 <button
                   onClick={handlePaymentComplete}
-                  className="w-full bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-green-600 transition transform hover:scale-105"
+                  className="w-full bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg"
                 >
                   {lang === "es" ? "Ver Recibo" : "View Receipt"}
                 </button>
@@ -4101,311 +2736,17 @@ ${extras ? extras + "%0a--------------------------------" : ""}
         </div>
       )}
 
-      {/* --- VISTA CARRITO --- */}
-      {view === "cart" && (
-        <div className="max-w-4xl mx-auto p-6 animate-fade-in pb-24">
-          <h2 className="text-3xl font-black text-gray-800 mb-6 flex items-center">
-            <ShoppingBag className="w-8 h-8 mr-3 text-cyan-600" /> {t.sendOrder}
-          </h2>
-          {cartCount === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl shadow-sm">
-              <ShoppingBag className="w-20 h-20 text-gray-200 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-400">{t.emptyCart}</h3>
-              <button
-                onClick={() => setView("home")}
-                className="mt-6 text-cyan-600 font-bold hover:underline"
-              >
-                {t.back}
-              </button>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-gray-700 mb-4 flex items-center">
-                    <User className="w-5 h-5 mr-2 text-cyan-500" />{" "}
-                    {t.customerInfo}
-                  </h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 block mb-1">
-                        {t.nameLabel}
-                      </label>
-                      <input
-                        value={form.name}
-                        onChange={(e) =>
-                          setForm({ ...form, name: e.target.value })
-                        }
-                        className={`w-full p-3 bg-gray-50 rounded-xl border-2 outline-none transition ${
-                          formErrors.name
-                            ? "border-red-400"
-                            : "border-transparent focus:border-cyan-200"
-                        }`}
-                        placeholder="Juan Perez"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 block mb-1">
-                        {t.phoneLabel}
-                      </label>
-                      <input
-                        value={form.phone}
-                        type="tel"
-                        onChange={(e) =>
-                          setForm({ ...form, phone: e.target.value })
-                        }
-                        className={`w-full p-3 bg-gray-50 rounded-xl border-2 outline-none transition ${
-                          formErrors.phone
-                            ? "border-red-400"
-                            : "border-transparent focus:border-cyan-200"
-                        }`}
-                        placeholder="1234567890"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 block mb-1">
-                        {t.addressLabel}
-                      </label>
-                      <textarea
-                        value={form.address}
-                        onChange={(e) =>
-                          setForm({ ...form, address: e.target.value })
-                        }
-                        className={`w-full p-3 bg-gray-50 rounded-xl border-2 outline-none transition ${
-                          formErrors.address
-                            ? "border-red-400"
-                            : "border-transparent focus:border-cyan-200"
-                        }`}
-                        placeholder="Calle Principal 123..."
-                        rows="2"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-gray-700 mb-4 flex items-center">
-                    <Calendar className="w-5 h-5 mr-2 text-cyan-500" /> Horarios
-                  </h3>
-                  {dateErrorMsg && (
-                    <div className="mb-3 p-3 bg-red-50 text-red-600 text-xs font-bold rounded border border-red-200">
-                      {dateErrorMsg}
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 block mb-1">
-                        {t.pickupDate}
-                      </label>
-                      <input
-                        type="date"
-                        value={form.pickupDate}
-                        onChange={(e) =>
-                          setForm({ ...form, pickupDate: e.target.value })
-                        }
-                        className={`w-full p-2 bg-gray-50 rounded-lg border-2 ${
-                          formErrors.pickupDate
-                            ? "border-red-400"
-                            : "border-transparent"
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 block mb-1">
-                        {t.pickupTime}
-                      </label>
-                      <select
-                        value={form.pickupTime}
-                        onChange={(e) =>
-                          setForm({ ...form, pickupTime: e.target.value })
-                        }
-                        className="w-full p-2 bg-gray-50 rounded-lg border-transparent border-2"
-                      >
-                        {TIME_SLOTS.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 block mb-1">
-                        {t.deliveryDate}
-                      </label>
-                      <input
-                        type="date"
-                        value={form.deliveryDate}
-                        onChange={(e) =>
-                          setForm({ ...form, deliveryDate: e.target.value })
-                        }
-                        className={`w-full p-2 bg-gray-50 rounded-lg border-2 ${
-                          formErrors.deliveryDate
-                            ? "border-red-400"
-                            : "border-transparent"
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 block mb-1">
-                        {t.deliveryTime}
-                      </label>
-                      <select
-                        value={form.deliveryTime}
-                        onChange={(e) =>
-                          setForm({ ...form, deliveryTime: e.target.value })
-                        }
-                        className="w-full p-2 bg-gray-50 rounded-lg border-transparent border-2"
-                      >
-                        {TIME_SLOTS.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-gray-700 mb-4">{t.details}</h3>
-                  <div className="space-y-2">
-                    {Object.entries(cart).map(([id, qty]) => {
-                      const s = services.find((x) => x.id === id);
-                      return (
-                        <div
-                          key={id}
-                          className="flex justify-between items-center text-sm"
-                        >
-                          <span>
-                            {qty} x{" "}
-                            {s ? (lang === "es" ? s.name_es : s.name_en) : id}
-                          </span>
-                          <div className="flex items-center">
-                            <span className="font-bold mr-3">
-                              ${((s?.price || 0) * qty).toFixed(2)}
-                            </span>
-                            <button
-                              onClick={() => updateCart(id, -1)}
-                              className="text-red-400 hover:text-red-600"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="border-t border-dashed my-4 pt-4 space-y-2 text-sm">
-                    <div className="flex justify-between text-gray-500">
-                      <span>Subtotal</span>
-                      <span>${cartTotals.subtotal.toFixed(2)}</span>
-                    </div>
-                    {isExpress && (
-                      <div className="flex justify-between text-cyan-600">
-                        <span>Express ({config.expressPercent || 20}%)</span>
-                        <span>+${cartTotals.expressFee.toFixed(2)}</span>
-                      </div>
-                    )}
-                    {isMember && (
-                      <div className="flex justify-between text-yellow-500">
-                        <span>
-                          Member Discount ({config.discountPercent || 10}%)
-                        </span>
-                        <span>-${cartTotals.discount.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-gray-500">
-                      <span>{t.taxLabel}</span>
-                      <span>+${cartTotals.tax.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-black text-xl text-gray-800 pt-2 border-t">
-                      <span>{t.total}</span>
-                      <span>${cartTotals.finalTotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-gray-700 mb-4 flex items-center">
-                    <CreditCard className="w-5 h-5 mr-2 text-cyan-500" />{" "}
-                    {t.payment}
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => handleMethodClick("cash")}
-                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition hover:bg-green-50 hover:border-green-200 border-gray-100 ${
-                        form.paymentMethod === "cash"
-                          ? "bg-green-50 border-green-200"
-                          : ""
-                      }`}
-                    >
-                      <DollarSign className="w-6 h-6 mb-1 text-green-600" />{" "}
-                      <span className="text-xs font-bold">
-                        {t.payCashLabel}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => handleMethodClick("card")}
-                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition hover:bg-blue-50 hover:border-blue-200 border-gray-100 ${
-                        form.paymentMethod === "card"
-                          ? "bg-blue-50 border-blue-200"
-                          : ""
-                      }`}
-                    >
-                      <CreditCard className="w-6 h-6 mb-1 text-blue-600" />{" "}
-                      <span className="text-xs font-bold">
-                        {t.payCardLabel}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => handleMethodClick("online")}
-                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition hover:bg-purple-50 hover:border-purple-200 border-gray-100 ${
-                        form.paymentMethod === "online"
-                          ? "bg-purple-50 border-purple-200"
-                          : ""
-                      }`}
-                    >
-                      <ExternalLink className="w-6 h-6 mb-1 text-purple-600" />{" "}
-                      <span className="text-xs font-bold">Zelle / Online</span>
-                    </button>
-                    <button
-                      onClick={() => handleMethodClick("apple_pay")}
-                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center transition hover:bg-gray-100 hover:border-gray-300 border-gray-100 ${
-                        form.paymentMethod === "apple_pay"
-                          ? "bg-gray-100 border-gray-300"
-                          : ""
-                      }`}
-                    >
-                      <Smartphone className="w-6 h-6 mb-1 text-gray-800" />{" "}
-                      <span className="text-xs font-bold">Apple Pay</span>
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setView("home")}
-                  className="w-full text-gray-400 font-bold text-sm hover:text-gray-600 mt-4"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* --- VISTA HOME (PRINCIPAL) --- */}
+      {/* VISTA HOME */}
       {view === "home" && (
         <div className="animate-fade-in">
-          <div className="relative h-[550px] flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center">
-              <div className="absolute inset-0 bg-cyan-900/50 mix-blend-multiply"></div>
-            </div>
-            <div className="relative z-20 text-center px-4 max-w-4xl mx-auto">
-              <h1 className="text-5xl md:text-7xl font-black text-white drop-shadow-lg mb-4 tracking-tight leading-tight">
+          <div className="relative h-[550px] flex items-center justify-center bg-cyan-900 text-white text-center px-4 overflow-hidden">
+            <div className="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-40"></div>
+            <div className="relative z-10 max-w-4xl">
+              <h1 className="text-5xl md:text-7xl font-black mb-4 drop-shadow-lg">
                 {t.title}
               </h1>
-              <p className="text-xl md:text-2xl text-cyan-50 font-light mb-10 italic max-w-3xl mx-auto leading-relaxed">
-                "{t.heroSubtitle}"
+              <p className="text-xl md:text-2xl mb-8 font-light">
+                {t.heroSubtitle}
               </p>
               <div className="flex flex-col md:flex-row gap-4 justify-center">
                 <button
@@ -4414,121 +2755,81 @@ ${extras ? extras + "%0a--------------------------------" : ""}
                       .getElementById("services")
                       ?.scrollIntoView({ behavior: "smooth" })
                   }
-                  className="group bg-white text-cyan-700 text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center"
+                  className="bg-white text-cyan-900 px-8 py-4 rounded-full font-bold shadow-xl hover:scale-105 transition"
                 >
-                  <span className="mr-2">{t.orderNow}</span>
+                  {t.orderNow}
                 </button>
                 <button
                   onClick={() => setView("cart")}
-                  className="group bg-cyan-500 text-white text-xl font-bold py-4 px-10 rounded-full shadow-2xl hover:scale-105 hover:bg-cyan-400 transition-all duration-300 flex items-center justify-center border-2 border-white/30"
+                  className="bg-cyan-500 text-white px-8 py-4 rounded-full font-bold shadow-xl hover:scale-105 transition border-2 border-white/20 flex items-center justify-center"
                 >
-                  <ShoppingBag className="w-6 h-6 mr-2" /> {t.sendOrder}
-                </button>
-              </div>
-              <div className="flex justify-center mt-4 md:mt-0 md:ml-4 relative z-20">
-                <button
-                  onClick={() =>
-                    setQRModal({ show: true, url: window.location.href })
-                  }
-                  className="group bg-gray-800 text-white text-lg font-bold py-3 px-8 rounded-full shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center border-2 border-white/30"
-                >
-                  <QrCode className="w-5 h-5 mr-2" />{" "}
-                  {t.shareApp || "Share App"}
+                  <ShoppingBag className="mr-2 w-5 h-5" /> {t.sendOrder}
                 </button>
               </div>
             </div>
-            <div className="absolute top-10 right-10 bg-yellow-400 text-cyan-900 w-24 h-24 rounded-full flex items-center justify-center text-center font-bold text-xs shadow-xl border-4 border-white rotate-12 z-30 animate-pulse">
-              {config.discountPercent}% OFF
-              <br />
-              Member
+            <div className="absolute top-10 right-10 z-20 hidden md:block">
+              <MembershipPromoButton />
             </div>
           </div>
+
           <div id="services" className="max-w-7xl mx-auto px-4 py-16">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-black text-gray-900">
-                {t.services}
-              </h2>
-              <div className="w-24 h-1.5 bg-cyan-500 mx-auto mt-4 rounded-full"></div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-16">
+            <h2 className="text-3xl font-black text-center mb-12 text-gray-900">
+              {t.services}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
               {services.map((s) => (
                 <div
                   key={s.id}
-                  className="bg-white rounded-2xl shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 flex flex-col overflow-hidden group relative"
+                  className="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 overflow-hidden group transition relative"
                 >
                   {itemAddedMsg === s.id && (
                     <div className="absolute inset-0 bg-cyan-600/80 z-20 flex items-center justify-center animate-fade-in">
                       <CheckCircle className="text-white w-12 h-12" />
                     </div>
                   )}
-                  <div className="h-40 overflow-hidden relative bg-white flex items-center justify-center">
-                    {s.image && s.image !== "" ? (
+                  <div className="h-40 bg-gray-100 flex items-center justify-center overflow-hidden">
+                    {s.image ? (
                       <img
                         src={s.image}
+                        className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                         alt={s.name_en}
-                        className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500"
-                        onError={(e) => {
-                          e.target.src =
-                            "https://placehold.co/400?text=" + s.name_en;
-                        }}
                       />
-                    ) : s.type === "component" &&
-                      s.componentName === "CustomIronIcon" ? (
+                    ) : (
                       <div className="w-20 h-20">
                         <CustomIronIcon />
                       </div>
-                    ) : (
-                      <img
-                        src={s.image}
-                        alt={s.name_en}
-                        className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500"
-                        onError={(e) => {
-                          e.target.src =
-                            "https://placehold.co/400?text=" + s.name_en;
-                        }}
-                      />
                     )}
                   </div>
-                  <div className="p-6 flex flex-col justify-between flex-grow bg-white">
-                    <div>
-                      <h3 className="font-bold text-lg mb-1 leading-tight">
-                        {lang === "es" && s.name_es
-                          ? s.name_es
-                          : lang === "fr" && s.name_fr
-                          ? s.name_fr
-                          : lang === "hi" && s.name_hi
-                          ? s.name_hi
-                          : s.name_en}
-                      </h3>
-                      <p className="text-2xl font-bold text-cyan-600">
-                        ${s.price?.toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between bg-gray-50 p-2 rounded-xl mt-4">
-                      <button
-                        onClick={() => updateCart(s.id, -1)}
-                        className="w-10 h-10 rounded-full bg-white shadow text-gray-400 hover:text-red-500 font-bold text-xl transition"
-                      >
-                        -
-                      </button>
-                      <span className="font-bold text-xl">
-                        {cart[s.id] || 0}
+                  <div className="p-4">
+                    <h3 className="font-bold mb-1">{getServiceName(s)}</h3>
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-cyan-600 text-lg">
+                        ${s.price}
                       </span>
-                      <button
-                        onClick={() => updateCart(s.id, 1)}
-                        className="w-10 h-10 rounded-full bg-cyan-600 shadow text-white hover:bg-cyan-700 font-bold text-xl transition"
-                      >
-                        +
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateCart(s.id, -1)}
+                          className="w-8 h-8 bg-gray-200 rounded-full font-bold text-gray-600"
+                        >
+                          -
+                        </button>
+                        <span className="font-bold">{cart[s.id] || 0}</span>
+                        <button
+                          onClick={() => updateCart(s.id, 1)}
+                          className="w-8 h-8 bg-cyan-600 text-white rounded-full font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="grid md:grid-cols-2 gap-8 mb-12">
+            <div className="grid md:grid-cols-2 gap-8 mb-24">
               <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-xl text-gray-800 mb-6 flex items-center">
-                  <Droplet className="w-6 h-6 text-purple-500 mr-2" />{" "}
+                <h3 className="font-bold text-xl mb-4 flex items-center">
+                  <Droplet className="mr-2 text-purple-500" />{" "}
                   {t.preferredAroma}
                 </h3>
                 <div className="flex flex-wrap gap-3">
@@ -4536,37 +2837,27 @@ ${extras ? extras + "%0a--------------------------------" : ""}
                     <button
                       key={a.id}
                       onClick={() => setAroma(a.id)}
-                      className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${
+                      className={`px-4 py-2 rounded-full text-sm font-bold ${
                         aroma === a.id
-                          ? "bg-purple-600 text-white shadow-lg scale-105"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          ? "bg-purple-600 text-white"
+                          : "bg-gray-100"
                       }`}
                     >
-                      {lang === "es"
-                        ? a.es
-                        : lang === "fr"
-                        ? a.fr
-                        : lang === "hi"
-                        ? a.hi
-                        : a.en}
+                      {a[lang] || a.en}
                     </button>
                   ))}
                 </div>
               </div>
               <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-xl text-gray-800 mb-6 flex items-center">
-                  <AlertCircle className="w-6 h-6 text-red-500 mr-2" />{" "}
+                <h3 className="font-bold text-xl mb-4 flex items-center">
+                  <AlertCircle className="mr-2 text-red-500" />{" "}
                   {t.productsToAvoid}
                 </h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   {AVOID_PRODUCTS.map((p) => (
                     <label
                       key={p.id}
-                      className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                        allergies.includes(p.id)
-                          ? "border-red-400 bg-red-50"
-                          : "border-transparent bg-gray-50 hover:bg-gray-100"
-                      }`}
+                      className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
                     >
                       <input
                         type="checkbox"
@@ -4578,407 +2869,334 @@ ${extras ? extras + "%0a--------------------------------" : ""}
                               : [...x, p.id]
                           )
                         }
-                        className="w-5 h-5 accent-red-500 mr-3"
+                        className="mr-2"
                       />
-                      <span className="text-sm font-medium text-gray-700">
-                        {lang === "es"
-                          ? p.label_es
-                          : lang === "fr"
-                          ? p.label_fr
-                          : lang === "hi"
-                          ? p.label_hi
-                          : p.label_en}
+                      <span className="text-sm">
+                        {lang === "es" ? p.label_es : p.label_en}
                       </span>
                     </label>
                   ))}
                 </div>
               </div>
             </div>
-            <div className="flex flex-col md:flex-row justify-center gap-6 mb-32">
+
+            {/* OPCIONES EXPRESS */}
+            <div className="flex flex-col md:flex-row justify-center gap-6 mb-32 items-stretch">
               <label
-                className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${
-                  isExpress
-                    ? "border-cyan-500 bg-cyan-50 ring-2 ring-cyan-200"
-                    : "border-gray-200 bg-white"
+                className={`p-6 border-2 rounded-2xl flex items-center cursor-pointer transition-all hover:shadow-md ${
+                  isExpress ? "border-cyan-500 bg-cyan-50" : ""
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={isExpress}
                   onChange={() => setIsExpress(!isExpress)}
-                  className="w-6 h-6 accent-cyan-600 mr-4"
+                  className="w-6 h-6 mr-4 accent-cyan-600"
                 />
                 <div>
-                  <span className="font-bold text-lg block text-gray-800">
-                    {t.express} ({config.expressText || "24h"})
-                  </span>
-                  <span className="text-sm text-cyan-700 font-bold">
-                    {cartCount > 0
-                      ? `+ $${cartTotals.expressFee.toFixed(2)}`
-                      : `+${config.expressPercent || 20}%`}{" "}
-                    {t.fee}
+                  <span className="font-bold text-lg block">{t.express}</span>
+                  <span className="text-sm text-cyan-700">
+                    +{config.expressPercent}% Fee
                   </span>
                 </div>
               </label>
-              <label
-                className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${
-                  isMember
-                    ? "border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200"
-                    : "border-gray-200 bg-white"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={isMember}
-                  onChange={() => setIsMember(!isMember)}
-                  className="w-6 h-6 accent-yellow-500 mr-4"
-                />
-                <div>
-                  <span className="font-bold text-lg block text-gray-800">
-                    {t.member}
+              <MembershipPromoButton />
+            </div>
+
+            {cartCount > 0 && (
+              <div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 animate-bounce-slow">
+                <button
+                  onClick={() => setView("cart")}
+                  className="bg-gray-900 text-white w-full max-w-md py-4 px-8 rounded-full shadow-2xl flex justify-between items-center border-4 border-white/20 backdrop-blur-lg"
+                >
+                  <div className="flex items-center">
+                    <span className="bg-cyan-500 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg">
+                      {cartCount}
+                    </span>
+                    <span className="font-bold text-lg">{t.sendOrder}</span>
+                  </div>
+                  <span className="font-mono text-2xl font-black">
+                    ${cartTotals.finalTotal.toFixed(2)}
                   </span>
-                  <span className="text-sm text-yellow-600 font-bold">
-                    {cartCount > 0
-                      ? `- $${cartTotals.discount.toFixed(2)}`
-                      : `${config.discountPercent}% ${t.off}`}
-                  </span>
-                </div>
-                <Star className="w-8 h-8 text-yellow-400 ml-4 fill-current" />
-              </label>
+                </button>
+              </div>
+            )}
+            <div className="md:hidden">
+              <MembershipPromoButton float={true} />
             </div>
           </div>
-          {cartCount > 0 && (
-            <div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 animate-bounce-slow">
+        </div>
+      )}
+
+      {/* VISTA: CARRITO */}
+      {view === "cart" && (
+        <div className="max-w-4xl mx-auto p-6 pb-24 animate-fade-in">
+          <h2 className="text-3xl font-black mb-6">{t.sendOrder}</h2>
+          {cartCount === 0 ? (
+            <div className="text-center py-20 bg-white rounded-xl">
+              <p className="text-gray-400">{t.emptyCart}</p>
               <button
-                onClick={() => setView("cart")}
-                className="bg-gray-900 text-white w-full max-w-md py-4 px-8 rounded-full shadow-2xl flex justify-between items-center hover:scale-105 transition transform border-4 border-white/20 backdrop-blur-lg"
+                onClick={() => setView("home")}
+                className="mt-4 text-cyan-600 font-bold"
               >
-                <div className="flex items-center">
-                  <span className="bg-cyan-500 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg">
-                    {cartCount}
-                  </span>
-                  <span className="font-bold text-lg">{t.sendOrder}</span>
-                </div>
-                <span className="font-mono text-2xl font-black tracking-tight">
-                  ${cartTotals.finalTotal.toFixed(2)}
-                </span>
+                {t.back}
               </button>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* --- VISTA SUCCESS --- */}
-      {view === "success" && (
-        <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 bg-cyan-50 font-sans">
-          <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-md w-full animate-fade-in">
-            <CheckCircle className="w-24 h-24 text-green-500 mx-auto mb-6 animate-bounce" />
-            <h1 className="text-3xl font-black text-gray-800 mb-2">
-              {t.successMsg}
-            </h1>
-            <p className="text-gray-500 mb-6">{t.successSub}</p>
-            <div className="bg-gray-100 p-4 rounded-xl mb-8 border-2 border-dashed border-gray-300">
-              <p className="text-sm text-gray-500 uppercase font-bold">
-                {t.orderNumberIs}
-              </p>
-              <p className="text-xl font-mono font-black text-cyan-600 break-all">
-                {lastOrder?.orderNumber || lastOrder?.id.slice(0, 6)}
-              </p>
-              <div
-                className={`mt-2 inline-block px-3 py-1 rounded font-bold text-xs ${
-                  lastOrder?.paymentStatus === "paid"
-                    ? "bg-green-200 text-green-800"
-                    : "bg-yellow-200 text-yellow-800"
-                }`}
-              >
-                METHOD: {lastOrder?.details.paymentMethod.toUpperCase()}{" "}
-                {lastOrder?.paymentStatus === "paid" ? "(PAID)" : "(PENDING)"}
+          ) : (
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-700 mb-4">
+                    {t.customerInfo}
+                  </h3>
+                  <div className="space-y-3">
+                    <input
+                      value={form.name}
+                      onChange={(e) =>
+                        setForm({ ...form, name: e.target.value })
+                      }
+                      className="w-full p-3 border rounded"
+                      placeholder={t.nameLabel}
+                    />
+                    <input
+                      value={form.phone}
+                      onChange={(e) =>
+                        setForm({ ...form, phone: e.target.value })
+                      }
+                      className="w-full p-3 border rounded"
+                      placeholder={t.phoneLabel}
+                    />
+                    <textarea
+                      value={form.address}
+                      onChange={(e) =>
+                        setForm({ ...form, address: e.target.value })
+                      }
+                      className="w-full p-3 border rounded"
+                      placeholder={t.addressLabel}
+                    />
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-700 mb-4">
+                    {t.pickupInfo || "Schedule"}
+                  </h3>
+                  {dateErrorMsg && (
+                    <div className="text-red-500 text-xs mb-2">
+                      {dateErrorMsg}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs mb-1 block">
+                        {t.pickupDate}
+                      </label>
+                      <input
+                        type="date"
+                        value={form.pickupDate}
+                        onChange={(e) =>
+                          setForm({ ...form, pickupDate: e.target.value })
+                        }
+                        className="w-full p-2 border rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs mb-1 block">
+                        {t.pickupTime}
+                      </label>
+                      <select
+                        value={form.pickupTime}
+                        onChange={(e) =>
+                          setForm({ ...form, pickupTime: e.target.value })
+                        }
+                        className="w-full p-2 border rounded"
+                      >
+                        {TIME_SLOTS.map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs mb-1 block">
+                        {t.deliveryDate}
+                      </label>
+                      <input
+                        type="date"
+                        value={form.deliveryDate}
+                        onChange={(e) =>
+                          setForm({ ...form, deliveryDate: e.target.value })
+                        }
+                        className="w-full p-2 border rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs mb-1 block">
+                        {t.deliveryTime}
+                      </label>
+                      <select
+                        value={form.deliveryTime}
+                        onChange={(e) =>
+                          setForm({ ...form, deliveryTime: e.target.value })
+                        }
+                        className="w-full p-2 border rounded"
+                      >
+                        {TIME_SLOTS.map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-700 mb-4">{t.details}</h3>
+                  {Object.entries(cart).map(([id, qty]) => {
+                    const s = services.find((x) => x.id === id);
+                    return (
+                      <div
+                        key={id}
+                        className="flex justify-between text-sm mb-2"
+                      >
+                        <span>
+                          {qty}x {getServiceName(s)}
+                        </span>
+                        <span>${(s?.price * qty).toFixed(2)}</span>
+                      </div>
+                    );
+                  })}
+                  <div className="border-t mt-4 pt-4 flex justify-between font-black text-xl">
+                    <span>Total</span>
+                    <span>${cartTotals.finalTotal.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-700 mb-4">{t.payment}</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleMethodClick("cash")}
+                      className={`p-3 border rounded flex flex-col items-center ${
+                        form.paymentMethod === "cash"
+                          ? "bg-green-50 border-green-500"
+                          : ""
+                      }`}
+                    >
+                      <DollarSign className="mb-1 text-green-600" />{" "}
+                      {t.payCashLabel}
+                    </button>
+                    <button
+                      onClick={() => handleMethodClick("card")}
+                      className={`p-3 border rounded flex flex-col items-center ${
+                        form.paymentMethod === "card"
+                          ? "bg-blue-50 border-blue-500"
+                          : ""
+                      }`}
+                    >
+                      <CreditCard className="mb-1 text-blue-600" />{" "}
+                      {t.payCardLabel}
+                    </button>
+                    <button
+                      onClick={() => handleMethodClick("online")}
+                      className={`p-3 border rounded flex flex-col items-center ${
+                        form.paymentMethod === "online"
+                          ? "bg-purple-50 border-purple-500"
+                          : ""
+                      }`}
+                    >
+                      <ExternalLink className="mb-1 text-purple-600" /> Zelle
+                    </button>
+                    <button
+                      onClick={() => handleMethodClick("apple_pay")}
+                      className={`p-3 border rounded flex flex-col items-center ${
+                        form.paymentMethod === "apple_pay"
+                          ? "bg-gray-100 border-gray-500"
+                          : ""
+                      }`}
+                    >
+                      <Smartphone className="mb-1 text-gray-800" /> Apple Pay
+                    </button>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setView("home")}
+                  className="w-full text-center text-gray-400 text-sm"
+                >
+                  Cancelar
+                </button>
               </div>
             </div>
-            <a
-              href={getOwnerWhatsApp()}
-              target="_blank"
-              rel="noreferrer"
-              className="w-full bg-green-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-green-600 transition flex items-center justify-center mb-4 transform hover:scale-105 animate-pulse border-4 border-green-200"
-            >
-              <MessageCircle className="w-6 h-6 mr-3" /> {t.sendWhastapp}
-            </a>
-            <a
-              href={getOwnerSMS()}
-              className="w-full bg-blue-500 text-white py-4 px-6 rounded-xl font-black text-lg shadow-xl hover:bg-blue-600 transition flex items-center justify-center mb-4 transform hover:scale-105 border-4 border-blue-200"
-            >
-              <Smartphone className="w-6 h-6 mr-3" /> {t.sendSMS}
-            </a>
-            <button
-              onClick={() => setView("track")}
-              className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-gray-900 transition flex items-center justify-center mt-4"
-            >
-              <CustomReceiptIcon className="w-5 h-5 mr-2" /> {t.trackOrder}
-            </button>
-            <button
-              onClick={() => setView("home")}
-              className="w-full bg-gray-100 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-200 transition flex items-center justify-center mt-2"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" /> {t.back}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* --- VISTA TRACK --- */}
-      {view === "track" && (
-        <div className="min-h-screen bg-slate-50 p-4 font-sans pb-24">
-          <div className="flex justify-between items-center mb-6">
-            <button
-              onClick={() => setView("home")}
-              className="flex items-center text-gray-600 font-bold"
-            >
-              <ArrowLeft className="mr-2 w-5 h-5" /> {t.back}
-            </button>
-            <button
-              onClick={() =>
-                setQRModal({ show: true, url: window.location.href })
-              }
-              className="p-2 bg-white rounded-full shadow text-cyan-600 hover:bg-cyan-50"
-            >
-              <QrCode className="w-5 h-5" />
-            </button>
-          </div>
-          <h2 className="text-2xl font-black mb-6">{t.yourOrders}</h2>
-          {myOrders.length === 0 ? (
-            <p className="text-center text-gray-400 mt-10">No orders found.</p>
-          ) : (
-            <div className="space-y-6">
-              {myOrders.map((o) => (
-                <div
-                  key={o.id}
-                  className={`p-6 rounded-2xl shadow-lg border-2 relative overflow-hidden transition-all ${
-                    o.status === "completed"
-                      ? "bg-green-50 border-green-200"
-                      : "bg-white border-gray-100"
-                  }`}
-                >
-                  {o.status === "completed" && (
-                    <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
-                      {t.orderCompleted}
-                    </div>
-                  )}
-                  <div className="flex justify-between items-start mb-4 border-b border-dashed pb-4">
-                    <div>
-                      <span className="font-mono text-xl font-black text-cyan-700">
-                        #{o.orderNumber || o.id.slice(0, 6)}
-                      </span>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(o.createdAt).toLocaleString()}
-                      </p>
-                      <span
-                        className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${
-                          o.status === "completed"
-                            ? "bg-green-200 text-green-800"
-                            : "bg-blue-100 text-blue-700"
-                        }`}
-                      >
-                        {t.status[o.status] || o.status}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <button
-                        onClick={() => shareOrder(o)}
-                        className="text-gray-400 hover:text-cyan-600 mb-2 block ml-auto"
-                      >
-                        <Share2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-2 text-sm text-gray-600 mb-4">
-                    <div className="flex items-start">
-                      <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-cyan-500" />{" "}
-                      <span>{o.customer.address}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-2 text-cyan-500" />{" "}
-                      <span>
-                        Pickup: {o.details.pickupDate} ({o.details.pickupTime})
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      <Truck className="w-4 h-4 mr-2 text-cyan-500" />{" "}
-                      <span>
-                        Delivery: {o.details.deliveryDate} (
-                        {o.details.deliveryTime})
-                      </span>
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-xl mb-4">
-                    {Object.entries(o.items).map(([k, v]) => {
-                      const s = services.find((x) => x.id === k);
-                      const totalLine = (s?.price || 0) * v;
-                      return (
-                        <div
-                          key={k}
-                          className="flex justify-between py-1 text-sm border-b border-gray-200 last:border-0"
-                        >
-                          <span>
-                            {v} x{" "}
-                            {s
-                              ? lang === "es" && s.name_es
-                                ? s.name_es
-                                : lang === "fr" && s.name_fr
-                                ? s.name_fr
-                                : lang === "hi" && s.name_hi
-                                ? s.name_hi
-                                : s.name_en
-                              : k}
-                          </span>
-                          <span className="font-bold">
-                            ${totalLine.toFixed(2)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {(() => {
-                      let subtotal = Object.entries(o.items).reduce(
-                        (acc, [id, qty]) => {
-                          const s = services.find((x) => x.id === id);
-                          return acc + (s?.price || 0) * qty;
-                        },
-                        0
-                      );
-                      const expressPct = config.expressPercent || 20;
-                      const discountPct = config.discountPercent || 10;
-                      const taxPct = config.taxPercent || 0;
-                      const expressFee = o.express
-                        ? subtotal * (expressPct / 100)
-                        : 0;
-                      const discount = o.isMember
-                        ? (subtotal + expressFee) * (discountPct / 100)
-                        : 0;
-                      const taxableAmount = subtotal + expressFee - discount;
-                      const tax = taxableAmount * (taxPct / 100);
-                      const finalTotal = taxableAmount + tax;
-                      return (
-                        <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
-                          <div className="flex justify-between">
-                            <span>Subtotal</span>
-                            <span>${subtotal.toFixed(2)}</span>
-                          </div>
-                          {o.express && (
-                            <div className="flex justify-between text-cyan-600">
-                              <span>Express Fee</span>
-                              <span>+${expressFee.toFixed(2)}</span>
-                            </div>
-                          )}
-                          {o.isMember && (
-                            <div className="flex justify-between text-yellow-600">
-                              <span>Member Discount</span>
-                              <span>-${discount.toFixed(2)}</span>
-                            </div>
-                          )}
-                          {tax > 0 && (
-                            <div className="flex justify-between">
-                              <span>Tax ({taxPct}%)</span>
-                              <span>+${tax.toFixed(2)}</span>
-                            </div>
-                          )}
-                          <div className="mt-3 pt-2 border-t border-dashed text-xs text-gray-500">
-                            {o.aroma && (
-                              <div className="flex justify-between mb-1">
-                                <span className="text-purple-600 font-bold">
-                                  Aroma:
-                                </span>
-                                <span>{getLabel(o.aroma, "aroma", lang)}</span>
-                              </div>
-                            )}
-                            {o.allergies && o.allergies.length > 0 && (
-                              <div className="flex justify-between">
-                                <span className="text-red-600 font-bold">
-                                  Allergies:
-                                </span>
-                                <span className="text-right max-w-[60%]">
-                                  {o.allergies
-                                    .map((a) => getLabel(a, "allergy", lang))
-                                    .join(", ")}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex justify-between items-center pt-3 border-t border-gray-300 mt-2">
-                            <div>
-                              <span className="font-bold text-gray-800 text-base">
-                                TOTAL
-                              </span>
-                              <div className="text-xs font-bold text-green-600">
-                                {o.details.paymentMethod.toUpperCase()}{" "}
-                                {o.paymentStatus === "paid"
-                                  ? "(PAID)"
-                                  : "(PENDING)"}
-                              </div>
-                            </div>
-                            <span className="font-black text-xl text-cyan-700">
-                              ${finalTotal.toFixed(2)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}{" "}
-                  </div>
-                  {o.adminNote && (
-                    <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 text-sm text-blue-800 rounded-r">
-                      <p className="font-bold text-xs uppercase mb-1 flex items-center">
-                        <CustomInfoIcon className="w-3 h-3 mr-1" />{" "}
-                        {t.updateFromLaundry}
-                      </p>
-                      <p>{o.adminNote}</p>
-                    </div>
-                  )}
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    {o.customerResponse ? (
-                      <div className="text-sm text-green-700 bg-green-50 p-3 rounded border border-green-100">
-                        <span className="font-bold block text-xs uppercase">
-                          Your Reply:
-                        </span>
-                        {o.customerResponse}
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <input
-                          className="flex-1 border rounded px-3 py-2 text-sm"
-                          placeholder="Reply to admin..."
-                          value={customerReply[o.id] || ""}
-                          onChange={(e) =>
-                            setCustomerReply({
-                              ...customerReply,
-                              [o.id]: e.target.value,
-                            })
-                          }
-                        />
-                        <button
-                          onClick={() =>
-                            sendCustomerReply(o.id, customerReply[o.id])
-                          }
-                          className="bg-cyan-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-cyan-700"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  {o.status === "completed" && (
-                    <button
-                      onClick={() => deleteLocalOrder(o.id)}
-                      className="w-full mt-4 bg-gray-200 text-gray-600 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" /> {t.deleteReceipt}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
           )}
         </div>
       )}
 
-      {/* --- VISTA ADMIN --- */}
+      {/* VISTA: SUCCESS */}
+      {view === "success" && (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-cyan-50">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full animate-fade-in my-4">
+            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-black text-gray-800 mb-1">
+              {t.successMsg}
+            </h1>
+            <p className="text-gray-500 mb-6 text-sm">{t.successSub}</p>
+
+            {lastOrder && <OrderCard o={lastOrder} showActions={false} />}
+
+            <div className="space-y-3 mt-4">
+              <a
+                href={getOwnerWhatsApp(lastOrder)}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full bg-green-500 text-white py-3 px-4 rounded-xl font-bold shadow-md hover:bg-green-600 transition flex items-center justify-center"
+              >
+                <MessageCircle className="w-5 h-5 mr-2" />
+                {lang === "es"
+                  ? `Notificar a ${config.title || "Fast Wave"}`
+                  : `Notify ${config.title || "Fast Wave"}`}
+              </a>
+              <a
+                href={getOwnerSMS(lastOrder)}
+                className="w-full bg-blue-500 text-white py-3 px-4 rounded-xl font-bold shadow-md hover:bg-blue-600 transition flex items-center justify-center"
+              >
+                <Smartphone className="w-5 h-5 mr-2" />
+                {lang === "es"
+                  ? "Enviar SMS de Confirmación"
+                  : "Send Confirmation SMS"}
+              </a>
+            </div>
+            <button
+              onClick={() => setView("track")}
+              className="w-full text-cyan-600 font-bold mt-4 hover:underline"
+            >
+              {t.trackOrder}
+            </button>
+            <button
+              onClick={() => setView("home")}
+              className="w-full text-gray-400 text-sm mt-4"
+            >
+              {t.back}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {view === "track" && (
+        <div className="min-h-screen bg-slate-50 p-4 pb-24">
+          <div className="flex justify-between mb-6">
+            <button
+              onClick={() => setView("home")}
+              className="font-bold text-gray-600"
+            >
+              <ArrowLeft className="inline mr-2" /> {t.back}
+            </button>
+            <h2 className="text-2xl font-black">{t.yourOrders}</h2>
+          </div>
+          <div className="space-y-4">
+            {myOrders.map((o) => (
+              <OrderCard key={o.id} o={o} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {view === "admin" && (
         <AdminView
           t={t}
@@ -4991,158 +3209,248 @@ ${extras ? extras + "%0a--------------------------------" : ""}
         />
       )}
 
-      {/* --- MODALES --- */}
       {showMemberModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center border-4 border-yellow-300 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 to-yellow-200"></div>
-            <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
-              <Star className="w-10 h-10 text-yellow-500 fill-current animate-pulse-slow" />
-            </div>
-            <h3 className="text-2xl font-black text-gray-800 mb-2">
-              {t.joinMemberTitle}
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-xl text-center max-w-sm w-full">
+            <h3 className="font-black text-2xl mb-2 text-cyan-900">
+              {lang === "es" ? "¡Espera! Ahorra Dinero" : "Wait! Save Money"}
             </h3>
-            <p className="text-gray-600 mb-2">{t.joinMemberDesc}</p>
-            <div className="bg-green-100 text-green-800 font-bold rounded-lg p-2 mb-6 inline-block transform rotate-2">
-              {t.saveAmount} ${savingsAmount.toFixed(2)}!
-            </div>
-            <div className="space-y-3">
-              <button
-                onClick={joinMembership}
-                className="w-full bg-yellow-400 text-yellow-900 font-black py-3 rounded-xl hover:bg-yellow-500 transition shadow-lg transform hover:scale-105"
-              >
-                {t.joinYes}
-              </button>
-              <button
-                onClick={() => {
-                  setShowMemberModal(false);
-                  submitOrder(
-                    false,
-                    false,
-                    form.paymentMethod !== "cash",
-                    form.paymentMethod
-                  );
-                }}
-                className="w-full text-gray-400 font-bold text-sm hover:text-gray-600"
-              >
-                {t.joinNo}
-              </button>
-            </div>
-            <div className="mt-6 text-[10px] text-gray-400 bg-gray-50 p-2 rounded">
-              <p>
-                {t.rulesText1}{" "}
-                <span className="font-bold">{config.minVisits || 2}</span>{" "}
-                {t.rulesText2}
-              </p>
-              <p className="mt-1">
-                {t.rulesText3}{" "}
-                <span className="font-bold">${config.rejoinFee || 10}</span>.
-              </p>
-            </div>
+            <p className="text-gray-600 mb-4">
+              {lang === "es"
+                ? `Puedes ahorrar $${savingsAmount.toFixed(
+                    2
+                  )} en esta orden si te unes ahora.`
+                : `You can save $${savingsAmount.toFixed(
+                    2
+                  )} on this order if you join now.`}
+            </p>
+            <button
+              onClick={handleJoinAndContinue}
+              className="w-full bg-green-500 text-white py-3 rounded-xl font-bold mb-2 shadow-md"
+            >
+              {lang === "es" ? "Sí, Unirme y Ahorrar" : "Yes, Join & Save"}
+            </button>
+            <button
+              onClick={handleNoAndContinue}
+              className="w-full text-gray-400 font-bold py-2"
+            >
+              {lang === "es"
+                ? "No, pagar precio completo"
+                : "No, pay full price"}
+            </button>
+          </div>
+        </div>
+      )}
+      {showLossWarning && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-xl text-center max-w-sm w-full">
+            <h3 className="font-black text-xl mb-2 text-red-600">
+              {lang === "es" ? "¿Estás seguro?" : "Are you sure?"}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {lang === "es"
+                ? `Estás a punto de perder un ahorro de $${savingsAmount.toFixed(
+                    2
+                  )}.`
+                : `You are about to lose a saving of $${savingsAmount.toFixed(
+                    2
+                  )}.`}
+            </p>
+            <button
+              onClick={confirmLossAndPay}
+              className="w-full bg-gray-200 text-gray-700 font-bold py-3 rounded-xl mb-2"
+            >
+              {lang === "es" ? "Sí, perder ahorro" : "Yes, lose savings"}
+            </button>
+            <button
+              onClick={goBackToOffer}
+              className="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-md"
+            >
+              {lang === "es" ? "¡No! Quiero ahorrar" : "No! I want to save"}
+            </button>
           </div>
         </div>
       )}
       {showRejoinModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center border-l-8 border-red-400">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <RotateCcw className="w-8 h-8 text-red-500" />
-            </div>
-            <h3 className="text-xl font-black text-gray-800 mb-2">
-              {t.rejoinTitle}
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-xl text-center">
+            <h3 className="font-black text-2xl mb-4">{t.rejoinTitle}</h3>
+            <button
+              onClick={rejoinMembership}
+              className="w-full bg-red-500 text-white py-3 rounded-xl font-bold mb-2"
+            >
+              {t.rejoinYes}
+            </button>
+            <button
+              onClick={() => {
+                setShowRejoinModal(false);
+                openPaymentModal(pendingMethod);
+              }}
+              className="w-full text-gray-500"
+            >
+              {t.joinNo}
+            </button>
+          </div>
+        </div>
+      )}
+      {showHomeJoinModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-xl w-full max-w-sm relative shadow-2xl">
+            <button
+              onClick={() => setShowHomeJoinModal(false)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 font-bold text-xl"
+            >
+              ×
+            </button>
+            <h3 className="font-black text-xl mb-4 text-center text-cyan-900">
+              {lang === "es" ? "Únete al Club" : "Join the Club"}
             </h3>
-            <p className="text-gray-600 mb-6 text-sm">{t.rejoinDesc}</p>
-            <div className="bg-red-50 p-4 rounded-xl mb-6 border border-red-100">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-600 font-bold">
-                  {t.rejoinFeeLabel}
-                </span>
-                <span className="text-red-500 font-black">
-                  ${config.rejoinFee || 10}
-                </span>
-              </div>
-              <div className="text-xs text-red-400 italic">
-                {t.rulesText4} {config.rejoinDuration || "2 months"}.
-              </div>
-            </div>
-            <div className="space-y-3">
+            <p className="text-sm text-gray-500 mb-4 text-center">
+              {lang === "es"
+                ? "Ingresa tus datos para activar tu descuento."
+                : "Enter your details to unlock your discount."}
+            </p>
+            <input
+              className="w-full p-3 border rounded mb-3"
+              placeholder={t.nameLabel}
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+            <input
+              className="w-full p-3 border rounded mb-4"
+              placeholder={t.phoneLabel}
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+            <button
+              onClick={joinFromHome}
+              className="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-md hover:bg-green-600 transition"
+            >
+              {lang === "es" ? "Activar Membresía" : "Activate Membership"}
+            </button>
+          </div>
+        </div>
+      )}
+      {showCancelMemberModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-xl w-full max-w-sm text-center shadow-2xl">
+            <h3 className="font-black text-xl mb-2 text-red-600">
+              {lang === "es" ? "¿Cancelar Membresía?" : "Cancel Membership?"}
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              {lang === "es"
+                ? "Perderás tus descuentos acumulados."
+                : "You will lose your accumulated discounts."}
+            </p>
+            <button
+              onClick={cancelMembership}
+              className="w-full bg-red-100 text-red-600 font-bold py-3 rounded-xl mb-2 hover:bg-red-200"
+            >
+              {lang === "es" ? "Sí, Cancelar" : "Yes, Cancel"}
+            </button>
+            <button
+              onClick={() => setShowCancelMemberModal(false)}
+              className="w-full text-gray-400 py-2 hover:text-gray-600"
+            >
+              {lang === "es" ? "Volver" : "Back"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showCelebrationModal && (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-yellow-50 opacity-50 z-0"></div>
+            <div className="relative z-10">
+              <div className="text-6xl mb-4 animate-bounce">🎉</div>
+              <h3 className="font-black text-3xl mb-2 text-cyan-900 leading-tight">
+                {lang === "es" ? "¡YA ERES MIEMBRO!" : "YOU ARE NOW A MEMBER!"}
+              </h3>
+              <p className="text-lg text-gray-600 mb-6 font-bold">
+                {lang === "es"
+                  ? "¡Prepárate para ahorrar en grande!"
+                  : "Get ready for big savings!"}
+              </p>
               <button
-                onClick={rejoinMembership}
-                className="w-full bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition shadow-lg"
+                onClick={continueFromCelebration}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black py-4 rounded-2xl shadow-lg hover:scale-105 transition text-xl"
               >
-                {t.rejoinYes}
-              </button>
-              <button
-                onClick={() => {
-                  setShowRejoinModal(false);
-                  submitOrder(
-                    false,
-                    false,
-                    form.paymentMethod !== "cash",
-                    form.paymentMethod
-                  );
-                }}
-                className="w-full text-gray-400 font-bold text-sm hover:text-gray-600"
-              >
-                {t.joinNo}
+                {lang === "es" ? "CONTINUAR" : "CONTINUE"}
               </button>
             </div>
           </div>
         </div>
       )}
-      {qrModal.show && (
+
+      {shareData && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center relative">
+          <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative">
+            <button
+              onClick={() => setShareData(null)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 font-bold"
+            >
+              X
+            </button>
+            <h3 className="font-black text-xl mb-4">
+              {lang === "es" ? "Compartir Recibo" : "Share Receipt"}
+            </h3>
+            <div className="grid grid-cols-1 gap-3">
+              <a
+                href={getOwnerWhatsApp(shareData)}
+                target="_blank"
+                className="flex items-center justify-center p-3 bg-green-100 text-green-800 rounded-lg font-bold hover:bg-green-200"
+              >
+                <MessageCircle className="mr-2" /> WhatsApp
+              </a>
+              <a
+                href={getOwnerSMS(shareData)}
+                className="flex items-center justify-center p-3 bg-blue-100 text-blue-800 rounded-lg font-bold hover:bg-blue-200"
+              >
+                <Smartphone className="mr-2" /> SMS
+              </a>
+              <a
+                href={`mailto:?subject=Receipt&body=Order%20${shareData.orderNumber}`}
+                className="flex items-center justify-center p-3 bg-gray-100 text-gray-800 rounded-lg font-bold hover:bg-gray-200"
+              >
+                <ExternalLink className="mr-2" /> Email
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {qrModal.show && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative">
             <button
               onClick={() => setQRModal({ show: false, url: "" })}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              className="absolute top-2 right-2"
             >
-              <X className="w-6 h-6" />
+              X
             </button>
-            <h3 className="text-xl font-black text-gray-800 mb-2">
-              {t.qrCode}
-            </h3>
-            <p className="text-gray-500 text-sm mb-6">{t.shareApp}</p>
-            <div className="bg-gray-100 p-4 rounded-xl inline-block mb-4">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                  qrModal.url
-                )}`}
-                alt="QR Code"
-                className="w-48 h-48 object-contain mix-blend-multiply"
-              />
-            </div>
-            <button
-              onClick={() =>
-                navigator.clipboard
-                  .writeText(qrModal.url)
-                  .then(() => alert("Link copied!"))
-              }
-              className="flex items-center justify-center w-full py-2 bg-cyan-50 text-cyan-700 rounded-lg font-bold text-sm hover:bg-cyan-100 transition"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" /> {t.copyLink}
-            </button>
-
-            <div className="grid grid-cols-3 gap-2 mt-4">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?data=${qrModal.url}`}
+              className="mx-auto mb-4"
+            />
+            <div className="flex justify-center gap-4">
               <a
-                href={`mailto:?body=${qrModal.url}`}
-                className="flex flex-col items-center p-2 bg-gray-50 rounded hover:bg-gray-100 text-xs font-bold text-gray-600"
+                href={`https://wa.me/?text=${qrModal.url}`}
+                className="bg-green-100 p-2 rounded"
               >
-                <span className="mb-1">📧</span> Email
+                Whatsapp
               </a>
               <a
                 href={`sms:?body=${qrModal.url}`}
-                className="flex flex-col items-center p-2 bg-gray-50 rounded hover:bg-gray-100 text-xs font-bold text-gray-600"
+                className="bg-blue-100 p-2 rounded"
               >
-                <span className="mb-1">💬</span> SMS
+                SMS
               </a>
               <a
-                href={`https://wa.me/?text=${qrModal.url}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex flex-col items-center p-2 bg-gray-50 rounded hover:bg-gray-100 text-xs font-bold text-gray-600"
+                href={`mailto:?body=${qrModal.url}`}
+                className="bg-gray-100 p-2 rounded"
               >
-                <span className="mb-1">📱</span> Whatsapp
+                Email
               </a>
             </div>
           </div>
