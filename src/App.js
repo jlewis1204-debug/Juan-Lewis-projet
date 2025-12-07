@@ -255,6 +255,7 @@ const LANGUAGES = {
     deliveryDate: "Delivery Date",
     deliveryTime: "Delivery Time",
     customerInfo: "Customer Info",
+    payWallet: "Pay with Wallet",
   },
   es: {
     title: "Fast Wave Lavandería",
@@ -323,6 +324,7 @@ const LANGUAGES = {
     deliveryDate: "Fecha de Entrega",
     deliveryTime: "Hora de Entrega",
     customerInfo: "Info del Cliente",
+    payWallet: "Pagar con Billetera (Google/Apple)",
   },
   fr: {
     title: "Fast Wave Pressing",
@@ -391,6 +393,7 @@ const LANGUAGES = {
     deliveryDate: "Date Livraison",
     deliveryTime: "Heure Livraison",
     customerInfo: "Info Client",
+    payWallet: "Payer avec Wallet",
   },
   hi: {
     title: "फास्ट वेव लॉन्ड्री",
@@ -459,6 +462,7 @@ const LANGUAGES = {
     deliveryDate: "डिलीवरी तिथि",
     deliveryTime: "डिलीवरी समय",
     customerInfo: "ग्राहक जानकारी",
+    payWallet: "वॉलेट से भुगतान करें",
   },
 };
 
@@ -1712,7 +1716,6 @@ const AdminView = ({
     </div>
   );
 };
-
 // --- APP COMPONENT (CLIENTE) ---
 export default function FastWaveApp() {
   const [view, setView] = useState("home");
@@ -1747,6 +1750,7 @@ export default function FastWaveApp() {
   const [itemAddedMsg, setItemAddedMsg] = useState(null);
   const [myOrders, setMyOrders] = useState([]);
 
+  // Estados para Modales y Promociones
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [showRejoinModal, setShowRejoinModal] = useState(false);
   const [showHomeJoinModal, setShowHomeJoinModal] = useState(false);
@@ -1762,14 +1766,17 @@ export default function FastWaveApp() {
   const [dateErrorMsg, setDateErrorMsg] = useState(null);
   const [scheduleUpdateAlert, setScheduleUpdateAlert] = useState(null);
 
+  // --- ESTADOS DE PAGO (STRIPE & UI) ---
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isLoadingPayment, setIsLoadingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState(null); // Para mostrar error bonito sin alert()
   const [pendingMethod, setPendingMethod] = useState(null);
 
   const [stripeObj, setStripeObj] = useState(null);
   const [cardElement, setCardElement] = useState(null);
   const [cardHolderName, setCardHolderName] = useState("");
+  const [paymentRequest, setPaymentRequest] = useState(null); // Para Google/Apple Pay
 
   // CHAT CLIENTE
   const [chatInput, setChatInput] = useState("");
@@ -1778,6 +1785,7 @@ export default function FastWaveApp() {
   useAppMode(config.customIcon);
   const t = LANGUAGES[lang];
 
+  // Persistencia local
   useEffect(() => {
     localStorage.setItem("fw_name", form.name);
   }, [form.name]);
@@ -1785,14 +1793,34 @@ export default function FastWaveApp() {
     localStorage.setItem("fw_phone", form.phone);
   }, [form.phone]);
 
+  // Cargar datos de Firebase y Stripe
   useEffect(() => {
     if (db) {
       const unsubConfig = onSnapshot(doc(db, "settings", "general"), (snap) => {
         if (snap.exists()) {
           const data = snap.data();
           setConfig(data);
-          if (data.stripePublicKey && window.Stripe)
-            setStripeObj(window.Stripe(data.stripePublicKey));
+          // Inicializar Stripe solo si hay clave pública
+          if (data.stripePublicKey && window.Stripe) {
+            const stripe = window.Stripe(data.stripePublicKey);
+            setStripeObj(stripe);
+
+            // Configurar Google Pay / Apple Pay (Payment Request)
+            const pr = stripe.paymentRequest({
+              country: "US",
+              currency: "usd",
+              total: {
+                label: "Laundry Service",
+                amount: 0, // Se actualizará al pagar
+              },
+              requestPayerName: true,
+              requestPayerEmail: true,
+            });
+            // Verificar si el navegador soporta Wallet
+            pr.canMakePayment().then((result) => {
+              if (result) setPaymentRequest(pr);
+            });
+          }
         }
       });
       const unsubServices = onSnapshot(
@@ -1818,6 +1846,7 @@ export default function FastWaveApp() {
     }
   }, []);
 
+  // Montar elemento de tarjeta de Stripe
   useEffect(() => {
     if (
       isProcessingPayment &&
@@ -1836,7 +1865,7 @@ export default function FastWaveApp() {
                 color: "#32325d",
                 "::placeholder": { color: "#aab7c4" },
               },
-              invalid: { color: "#fa755a", iconColor: "#fa755a" },
+              invalid: { color: "#ef4444", iconColor: "#ef4444" },
             },
             hidePostalCode: true,
           });
@@ -1848,6 +1877,7 @@ export default function FastWaveApp() {
     }
   }, [isProcessingPayment, form.paymentMethod, stripeObj, paymentSuccess]);
 
+  // Chequeo de Membresía
   useEffect(() => {
     if (form.phone.trim().length > 7 && members.includes(form.phone.trim())) {
       setIsMember(true);
@@ -1856,6 +1886,7 @@ export default function FastWaveApp() {
     }
   }, [form.phone, members]);
 
+  // Cargar mis órdenes
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
     if (saved.length > 0 && db) {
@@ -1893,6 +1924,8 @@ export default function FastWaveApp() {
     }
   };
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
+
+  // Cálculos de Totales
   const calculateTotals = () => {
     const subtotal = Object.entries(cart).reduce((acc, [id, qty]) => {
       const s = services.find((x) => x.id === id);
@@ -1913,6 +1946,7 @@ export default function FastWaveApp() {
     (cartTotals.subtotal + cartTotals.expressFee) *
     ((config.discountPercent || 10) / 100);
 
+  // --- LÓGICA DE MEMBRESÍA ---
   const handleHomeMemberClick = () => {
     if (isMember) {
       setShowCancelMemberModal(true);
@@ -2012,17 +2046,19 @@ export default function FastWaveApp() {
     if (Object.keys(errors).length > 0) return false;
     return true;
   };
+
   const handleMethodClick = (method) => {
     setPendingMethod(method);
     setForm((prev) => ({ ...prev, paymentMethod: method }));
     if (!validateForm()) {
       alert(
         lang === "es"
-          ? "Por favor completa tu información personal."
-          : "Please fill in customer details."
+          ? "Por favor completa tu información."
+          : "Please fill in details."
       );
       return;
     }
+    // Lógica de upsell de membresía
     if (!isMember && !pastMembers.includes(form.phone.trim())) {
       const discount =
         (cartTotals.subtotal + cartTotals.expressFee) *
@@ -2036,11 +2072,17 @@ export default function FastWaveApp() {
     }
     openPaymentModal(method);
   };
+
   const openPaymentModal = (method) => {
+    setPaymentError(null);
     setIsProcessingPayment(true);
   };
 
+  // --- LÓGICA DE PAGO REAL (INTEGRADA) ---
   const handlePayNow = async () => {
+    setPaymentError(null); // Limpiar errores previos
+
+    // 1. Pago en Efectivo / Online (Zelle)
     if (form.paymentMethod === "cash" || form.paymentMethod === "online") {
       setIsLoadingPayment(true);
       setTimeout(() => {
@@ -2049,53 +2091,133 @@ export default function FastWaveApp() {
       }, 1000);
       return;
     }
+
+    // 2. Pago con Tarjeta (Stripe PaymentIntent)
     if (form.paymentMethod === "card") {
       if (!stripeObj || !cardElement) {
-        alert(
-          lang === "es" ? "Error: Stripe no listo." : "Error: Stripe not ready."
-        );
+        setPaymentError("Error: Stripe no está listo.");
         return;
       }
-      setIsLoadingPayment(true);
-      const { token, error } = await stripeObj.createToken(cardElement, {
-        name: cardHolderName || form.name,
-      });
-      if (error) {
-        setIsLoadingPayment(false);
-        alert(
-          (lang === "es" ? "PAGO RECHAZADO: " : "PAYMENT DECLINED: ") +
-            error.message
+
+      try {
+        setIsLoadingPayment(true);
+
+        // A) Crear PaymentIntent en Firebase (Backend)
+        // NOTA: Multiplicamos por 100 en el backend o aquí, asegurate que tu cloud function espere centavos o dolares.
+        // Asumo que tu función espera el monto normal y ella lo convierte, o le enviamos el monto.
+        // El código que me diste pasaba `cartTotals.finalTotal`.
+
+        const res = await fetch(
+          "https://createpaymentintent-sjtw6tdx4q-uc.a.run.app",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              amount: cartTotals.finalTotal, // Tu cloud function debe manejar esto
+              currency: "usd",
+            }),
+          }
         );
-        if (cardElement) cardElement.clear();
-      } else {
-        setIsLoadingPayment(false);
-        setPaymentSuccess(true);
-      }
-    } else if (["apple_pay", "google_pay"].includes(form.paymentMethod)) {
-      if (!stripeObj) return;
-      const pr = stripeObj.paymentRequest({
-        country: "US",
-        currency: "usd",
-        total: {
-          label: "Laundry Service",
-          amount: Math.round(cartTotals.finalTotal * 100),
-        },
-        requestPayerName: true,
-      });
-      const canPay = await pr.canMakePayment();
-      if (canPay) {
-        pr.show();
-        pr.on("paymentmethod", async (ev) => {
-          ev.complete("success");
+
+        const data = await res.json();
+
+        if (!data?.clientSecret) {
+          throw new Error("No se pudo iniciar el pago (Sin ClientSecret).");
+        }
+
+        const clientSecret = data.clientSecret;
+
+        // B) Confirmar Pago con Stripe.js (Cliente)
+        const { error, paymentIntent } = await stripeObj.confirmCardPayment(
+          clientSecret,
+          {
+            payment_method: {
+              card: cardElement,
+              billing_details: {
+                name: cardHolderName || form.name,
+                phone: form.phone,
+              },
+            },
+          }
+        );
+
+        if (error) {
+          // Error de Stripe (ej: fondos insuficientes)
+          setPaymentError(error.message);
+          setIsLoadingPayment(false);
+          return;
+        }
+
+        if (paymentIntent.status === "succeeded") {
+          // C) Pago Exitoso
           setPaymentSuccess(true);
-        });
-      } else {
-        alert(
-          lang === "es"
-            ? "Billetera digital no disponible."
-            : "Digital wallet not available."
-        );
+          // La orden se guardará cuando el usuario de click en "Ver Recibo" o automáticamente
+        }
+      } catch (err) {
+        console.error(err);
+        setPaymentError(err.message || "Error procesando el pago.");
+      } finally {
+        setIsLoadingPayment(false);
       }
+    }
+
+    // 3. Google Pay / Apple Pay (Wallet)
+    else if (["apple_pay", "google_pay"].includes(form.paymentMethod)) {
+      if (!paymentRequest) {
+        setPaymentError("Billetera digital no disponible en este dispositivo.");
+        return;
+      }
+
+      // Actualizar el monto en el objeto de pago
+      paymentRequest.update({
+        total: {
+          label: "Fast Wave Laundry",
+          amount: Math.round(cartTotals.finalTotal * 100), // En centavos
+        },
+      });
+
+      // Mostrar la hoja de pago nativa
+      paymentRequest.show();
+
+      // Escuchar el evento de pago
+      paymentRequest.on("paymentmethod", async (ev) => {
+        try {
+          // A) Crear Intent en Backend
+          const res = await fetch(
+            "https://createpaymentintent-sjtw6tdx4q-uc.a.run.app",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ amount: cartTotals.finalTotal }),
+            }
+          );
+          const data = await res.json();
+
+          if (!data?.clientSecret) {
+            ev.complete("fail");
+            setPaymentError("Error del servidor al iniciar pago.");
+            return;
+          }
+
+          // B) Confirmar con el método de la Wallet
+          const { error: confirmError } = await stripeObj.confirmCardPayment(
+            data.clientSecret,
+            { payment_method: ev.paymentMethod.id },
+            { handleActions: false } // Importante para wallets
+          );
+
+          if (confirmError) {
+            ev.complete("fail");
+            setPaymentError(confirmError.message);
+          } else {
+            ev.complete("success");
+            setPaymentSuccess(true);
+          }
+        } catch (e) {
+          ev.complete("fail");
+          setPaymentError("Error de conexión.");
+        }
+      });
     }
   };
 
@@ -2183,7 +2305,7 @@ export default function FastWaveApp() {
       setAllergies([]);
       setView("success");
     } catch (e) {
-      alert("Error sending order.");
+      alert("Error sending order to database.");
     }
     setIsSubmitting(false);
   };
@@ -2645,8 +2767,19 @@ export default function FastWaveApp() {
                     ? t.payCashLabel
                     : form.paymentMethod === "online"
                     ? t.payOnlineLabel
-                    : t.payCardLabel}
+                    : form.paymentMethod === "card"
+                    ? t.payCardLabel
+                    : t.payWallet}
                 </h3>
+
+                {/* MENSAJE DE ERROR EN ROJO (NO ALERT) */}
+                {paymentError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs font-bold flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                    {paymentError}
+                  </div>
+                )}
+
                 {form.paymentMethod === "card" && (
                   <div className="mb-6">
                     <label className="block text-xs font-bold text-gray-500 mb-1">
@@ -2696,11 +2829,15 @@ export default function FastWaveApp() {
                     </span>
                   </div>
                 )}
+
+                {/* BOTÓN PRINCIPAL DE PAGO */}
                 <button
                   onClick={handlePayNow}
                   disabled={isLoadingPayment}
                   className={`w-full py-3 rounded-xl font-bold text-white shadow-lg flex justify-center items-center ${
-                    isLoadingPayment ? "bg-gray-400" : "bg-cyan-900"
+                    isLoadingPayment
+                      ? "bg-gray-400 cursor-wait"
+                      : "bg-cyan-900 hover:bg-black"
                   }`}
                 >
                   {isLoadingPayment ? (
@@ -2710,6 +2847,14 @@ export default function FastWaveApp() {
                       "Confirmar Orden"
                     ) : (
                       "Confirm Order"
+                    )
+                  ) : ["apple_pay", "google_pay"].includes(
+                      form.paymentMethod
+                    ) ? (
+                    lang === "es" ? (
+                      "Pagar con Billetera"
+                    ) : (
+                      "Pay with Wallet"
                     )
                   ) : lang === "es" ? (
                     "Pagar Ahora"
@@ -3104,6 +3249,8 @@ export default function FastWaveApp() {
                     >
                       <ExternalLink className="mb-1 text-purple-600" /> Zelle
                     </button>
+
+                    {/* BOTONES DE WALLET (Google/Apple) */}
                     <button
                       onClick={() => handleMethodClick("apple_pay")}
                       className={`p-3 border rounded flex flex-col items-center ${
@@ -3113,6 +3260,16 @@ export default function FastWaveApp() {
                       }`}
                     >
                       <Smartphone className="mb-1 text-gray-800" /> Apple Pay
+                    </button>
+                    <button
+                      onClick={() => handleMethodClick("google_pay")}
+                      className={`p-3 border rounded flex flex-col items-center ${
+                        form.paymentMethod === "google_pay"
+                          ? "bg-gray-100 border-gray-500"
+                          : ""
+                      }`}
+                    >
+                      <Smartphone className="mb-1 text-blue-500" /> Google Pay
                     </button>
                   </div>
                 </div>
@@ -3209,6 +3366,7 @@ export default function FastWaveApp() {
         />
       )}
 
+      {/* MODALES EXTRAS (MEMBRESIA, PROMOS) */}
       {showMemberModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-xl text-center max-w-sm w-full">
@@ -3399,6 +3557,7 @@ export default function FastWaveApp() {
               <a
                 href={getOwnerWhatsApp(shareData)}
                 target="_blank"
+                rel="noreferrer"
                 className="flex items-center justify-center p-3 bg-green-100 text-green-800 rounded-lg font-bold hover:bg-green-200"
               >
                 <MessageCircle className="mr-2" /> WhatsApp
