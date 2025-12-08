@@ -112,22 +112,41 @@ const useAppMode = (customIcon) => {
   }, [customIcon]);
 };
 
-// IMPRESIÓN INDIVIDUAL
+// --- IMPRESIÓN "VENTANA LIMPIA" (SOLUCIÓN DEFINITIVA) ---
 const printSpecificOrder = (orderId) => {
-  const style = document.createElement("style");
-  style.innerHTML = `
-    @media print {
-      @page { size: auto; margin: 0mm; }
-      body, html { width: 100%; height: 100%; overflow: hidden; background: #fff; margin: 0 !important; padding: 0 !important; }
-      body * { visibility: hidden; height: 0; }
-      #order-card-${orderId}, #order-card-${orderId} * { visibility: visible; height: auto; overflow: visible; }
-      #order-card-${orderId} { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; background: white; z-index: 9999; border: none; box-shadow: none; }
-      .no-print { display: none !important; }
-    }
-  `;
-  document.head.appendChild(style);
+  // 1. Encontrar el elemento del ticket
+  const ticketElement = document.getElementById(`order-card-${orderId}`);
+
+  if (ticketElement) {
+    // 2. Abrir una ventana nueva vacía
+    const printWindow = window.open("", "", "height=600,width=800");
+
+    // 3. Escribir el HTML del ticket en la nueva ventana
+    printWindow.document.write("<html><head><title>Print Ticket</title>");
+    // Importante: Volver a cargar Tailwind para que se vea bonito
+    printWindow.document.write(
+      '<script src="https://cdn.tailwindcss.com"></script>'
+    );
+    printWindow.document.write('</head><body class="p-4">');
+    printWindow.document.write(ticketElement.outerHTML);
+    printWindow.document.write("</body></html>");
+
+    // 4. Cerrar el documento para que cargue
+    printWindow.document.close();
+    printWindow.focus();
+
+    // 5. Esperar un momento a que carguen los estilos y luego imprimir
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  } else {
+    alert("Error: No se pudo encontrar el ticket para imprimir.");
+  }
+};
+
+const printAllOrders = () => {
   window.print();
-  document.head.removeChild(style);
 };
 
 const generateShortId = () =>
@@ -210,8 +229,6 @@ const AROMAS = [
   { id: "Woody", en: "Woody", es: "Amaderado" },
   { id: "Unscented", en: "Unscented", es: "Sin Olor" },
 ];
-
-// --- DICCIONARIO DE IDIOMAS (ACTUALIZADO CON AJUSTES) ---
 const LANGUAGES = {
   en: {
     title: "Fast Wave Laundry",
@@ -317,7 +334,6 @@ const LANGUAGES = {
     map: "Map",
     chat: "Chat",
     deleteReceipt: "Delete Receipt",
-    // SETTINGS TRANSLATIONS
     whatsappNum: "WhatsApp Number",
     customIcon: "Custom App Icon",
     heroImage: "Hero Image (Main)",
@@ -328,6 +344,7 @@ const LANGUAGES = {
     taxPercent: "Tax (%)",
     paymentGateway: "Payment Gateway (Stripe)",
     publishableKey: "Publishable API Key",
+    secretKey: "Secret API Key",
     zelleConfig: "Zelle Configuration",
     zellePlace: "Zelle Number/Email",
     payInstPlace: "Payment Instructions...",
@@ -344,6 +361,7 @@ const LANGUAGES = {
     newUserPlace: "New Username (Leave empty to keep)",
     newPassPlace: "New Password (Leave empty to keep)",
     newPinPlace: "New PIN (Leave empty to keep)",
+    printAll: "Print All",
   },
   es: {
     title: "Fast Wave Lavandería",
@@ -413,7 +431,7 @@ const LANGUAGES = {
     deliveryTime: "Hora de Entrega",
     customerInfo: "Info del Cliente",
     payWallet: "Pagar con Billetera",
-    stripeLocked: "Clave Protegida (Click para Editar)",
+    stripeLocked: "Claves Protegidas (Click para Editar)",
     unlock: "Desbloquear",
     pinLabel: "PIN de Recuperación (6 dígitos)",
     forgotPass: "¿Olvidaste tu contraseña?",
@@ -449,7 +467,6 @@ const LANGUAGES = {
     map: "Mapa",
     chat: "Chat",
     deleteReceipt: "Borrar Recibo",
-    // SETTINGS TRANSLATIONS
     whatsappNum: "Número WhatsApp",
     customIcon: "Icono de App",
     heroImage: "Imagen Principal",
@@ -460,6 +477,7 @@ const LANGUAGES = {
     taxPercent: "Impuesto (%)",
     paymentGateway: "Pasarela de Pago (Stripe)",
     publishableKey: "Clave API Pública",
+    secretKey: "Clave API Secreta",
     zelleConfig: "Configuración Zelle",
     zellePlace: "Número/Email Zelle",
     payInstPlace: "Instrucciones de Pago...",
@@ -476,6 +494,7 @@ const LANGUAGES = {
     newUserPlace: "Nuevo Usuario (Vacío para mantener)",
     newPassPlace: "Nueva Contraseña (Vacío para mantener)",
     newPinPlace: "Nuevo PIN (Vacío para mantener)",
+    printAll: "Imprimir Todo",
   },
   fr: {
     title: "Fast Wave Pressing",
@@ -581,7 +600,6 @@ const LANGUAGES = {
     map: "Carte",
     chat: "Chat",
     deleteReceipt: "Supprimer Reçu",
-    // SETTINGS TRANSLATIONS
     whatsappNum: "Numéro WhatsApp",
     customIcon: "Icône de l'application",
     heroImage: "Image principale",
@@ -592,6 +610,7 @@ const LANGUAGES = {
     taxPercent: "Taxe (%)",
     paymentGateway: "Passerelle de paiement (Stripe)",
     publishableKey: "Clé API publique",
+    secretKey: "Clé API secrète",
     zelleConfig: "Configuration Zelle",
     zellePlace: "Numéro/Email Zelle",
     payInstPlace: "Instructions de paiement...",
@@ -608,6 +627,7 @@ const LANGUAGES = {
     newUserPlace: "Nouveau nom (Laisser vide pour garder)",
     newPassPlace: "Nouveau mot de passe (Laisser vide pour garder)",
     newPinPlace: "Nouveau PIN (Laisser vide pour garder)",
+    printAll: "Imprimer tout",
   },
   hi: {
     title: "फास्ट वेव लॉन्ड्री",
@@ -713,7 +733,6 @@ const LANGUAGES = {
     map: "नक्शा",
     chat: "चैट",
     deleteReceipt: "रसीद हटाएं",
-    // SETTINGS TRANSLATIONS
     whatsappNum: "व्हाट्सएप नंबर",
     customIcon: "ऐप आइकन",
     heroImage: "मुख्य छवि",
@@ -724,6 +743,7 @@ const LANGUAGES = {
     taxPercent: "कर (%)",
     paymentGateway: "भुगतान गेटवे (Stripe)",
     publishableKey: "सार्वजनिक एपीआई कुंजी",
+    secretKey: "गुप्त एपीआई कुंजी",
     zelleConfig: "Zelle कॉन्फ़िगरेशन",
     zellePlace: "Zelle नंबर/ईमेल",
     payInstPlace: "भुगतान निर्देश...",
@@ -740,6 +760,7 @@ const LANGUAGES = {
     newUserPlace: "नया उपयोगकर्ता (रखने के लिए खाली छोड़ें)",
     newPassPlace: "नया पासवर्ड (रखने के लिए खाली छोड़ें)",
     newPinPlace: "नया पिन (रखने के लिए खाली छोड़ें)",
+    printAll: "सभी प्रिंट करें",
   },
 };
 
@@ -1087,6 +1108,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
   );
 };
 
+// --- SETTINGS PANEL (CON CLAVE STRIPE PUBLICA Y SECRETA) ---
 const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
   const [localConfig, setLocalConfig] = useState(config);
   const [membersList, setMembersList] = useState([]);
@@ -1094,6 +1116,8 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newPin, setNewPin] = useState("");
+
+  // Estado para bloquear/desbloquear las claves de Stripe
   const [stripeLocked, setStripeLocked] = useState(true);
   const [unlockPass, setUnlockPass] = useState("");
 
@@ -1139,6 +1163,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
       });
     }
   };
+
   const handleUnlockStripe = () => {
     if (unlockPass === (config.adminPassword || "1234")) {
       setStripeLocked(false);
@@ -1173,7 +1198,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
           />
         </div>
 
-        {/* LOGO Y HERO IMAGE UPLOADER */}
+        {/* LOGO Y HERO IMAGE */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-cyan-50 border-2 border-cyan-100 p-6 rounded-2xl flex items-center gap-4">
             <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-sm border overflow-hidden">
@@ -1288,50 +1313,83 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
           </div>
         </div>
 
+        {/* STRIPE KEY PROTEGIDA (PUBLICA Y SECRETA) */}
         <div className="bg-blue-50 border-2 border-blue-100 p-6 rounded-2xl">
           <label className="flex items-center text-blue-900 font-bold mb-3">
             <CreditCard className="w-5 h-5 mr-2" /> {t.paymentGateway}
           </label>
-          <div className="bg-white p-4 rounded-xl border border-blue-200 relative">
-            <label className="block text-xs font-bold text-blue-400 mb-1 uppercase">
-              {t.publishableKey}
-            </label>
-            {stripeLocked ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center text-gray-400 gap-2 bg-gray-100 px-3 py-2 rounded-lg w-full mr-2">
+          <div className="bg-white p-4 rounded-xl border border-blue-200 relative space-y-4">
+            {/* Campo Clave Pública */}
+            <div>
+              <label className="block text-xs font-bold text-blue-400 mb-1 uppercase">
+                {t.publishableKey}
+              </label>
+              {stripeLocked ? (
+                <div className="flex items-center text-gray-400 gap-2 bg-gray-100 px-3 py-2 rounded-lg w-full">
                   <Lock className="w-4 h-4" />
                   <span className="font-mono text-sm">
                     ••••••••••••••••••••••••••
                   </span>
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    placeholder="Admin Pass"
-                    className="border rounded p-2 text-sm w-24"
-                    value={unlockPass}
-                    onChange={(e) => setUnlockPass(e.target.value)}
-                  />
-                  <button
-                    onClick={handleUnlockStripe}
-                    className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
-                  >
-                    <Unlock className="w-4 h-4" />
-                  </button>
+              ) : (
+                <input
+                  className="w-full p-2 font-mono text-sm bg-transparent outline-none text-gray-700 border-b border-blue-300"
+                  value={localConfig.stripePublicKey || ""}
+                  onChange={(e) =>
+                    setLocalConfig({
+                      ...localConfig,
+                      stripePublicKey: e.target.value,
+                    })
+                  }
+                  placeholder="pk_live_..."
+                />
+              )}
+            </div>
+
+            {/* Campo Clave Secreta */}
+            <div>
+              <label className="block text-xs font-bold text-blue-400 mb-1 uppercase">
+                {t.secretKey}
+              </label>
+              {stripeLocked ? (
+                <div className="flex items-center text-gray-400 gap-2 bg-gray-100 px-3 py-2 rounded-lg w-full">
+                  <Lock className="w-4 h-4" />
+                  <span className="font-mono text-sm">
+                    ••••••••••••••••••••••••••
+                  </span>
                 </div>
+              ) : (
+                <input
+                  className="w-full p-2 font-mono text-sm bg-transparent outline-none text-gray-700 border-b border-blue-300"
+                  value={localConfig.stripeSecretKey || ""}
+                  onChange={(e) =>
+                    setLocalConfig({
+                      ...localConfig,
+                      stripeSecretKey: e.target.value,
+                    })
+                  }
+                  placeholder="sk_live_..."
+                />
+              )}
+            </div>
+
+            {/* Desbloqueo */}
+            {stripeLocked && (
+              <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-blue-100">
+                <input
+                  type="password"
+                  placeholder="Admin Pass"
+                  className="border rounded p-2 text-sm w-32"
+                  value={unlockPass}
+                  onChange={(e) => setUnlockPass(e.target.value)}
+                />
+                <button
+                  onClick={handleUnlockStripe}
+                  className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 flex items-center"
+                >
+                  <Unlock className="w-4 h-4 mr-1" /> {t.unlock}
+                </button>
               </div>
-            ) : (
-              <input
-                className="w-full p-2 font-mono text-sm bg-transparent outline-none text-gray-700 border-b border-blue-300"
-                value={localConfig.stripePublicKey || ""}
-                onChange={(e) =>
-                  setLocalConfig({
-                    ...localConfig,
-                    stripePublicKey: e.target.value,
-                  })
-                }
-                placeholder="pk_live_..."
-              />
             )}
           </div>
           <p className="text-xs text-blue-400 mt-2 ml-1 flex items-center">
@@ -1481,7 +1539,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
             </div>
             <div>
               <label className="text-xs font-bold text-red-700">
-                {t.changePin}
+                {t.pinLabel}
               </label>
               <input
                 className="w-full p-3 rounded-xl border border-red-200"
@@ -1537,6 +1595,13 @@ const AdminView = ({
     }
     return () => unsub();
   }, [isAuth]);
+
+  // IMPRESIÓN "PRINT ALL"
+  const printAllOrders = () => {
+    const oldStyle = document.getElementById("print-style-single");
+    if (oldStyle) oldStyle.remove();
+    window.print();
+  };
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -1758,38 +1823,50 @@ const AdminView = ({
         </div>
       </div>
       <div className="max-w-7xl mx-auto p-6">
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 no-print">
-          <button
-            onClick={() => setTab("orders")}
-            className={`px-6 py-2 rounded-full font-bold transition ${
-              tab === "orders"
-                ? "bg-cyan-900 text-white"
-                : "bg-white text-gray-600"
-            }`}
-          >
-            {t.adminOrders}
-          </button>
-          <button
-            onClick={() => setTab("services")}
-            className={`px-6 py-2 rounded-full font-bold transition ${
-              tab === "services"
-                ? "bg-cyan-900 text-white"
-                : "bg-white text-gray-600"
-            }`}
-          >
-            {t.adminServices}
-          </button>
-          <button
-            onClick={() => setTab("settings")}
-            className={`px-6 py-2 rounded-full font-bold transition ${
-              tab === "settings"
-                ? "bg-cyan-900 text-white"
-                : "bg-white text-gray-600"
-            }`}
-          >
-            {t.adminSettings}
-          </button>
+        <div className="flex justify-between items-center mb-6 no-print">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            <button
+              onClick={() => setTab("orders")}
+              className={`px-6 py-2 rounded-full font-bold transition ${
+                tab === "orders"
+                  ? "bg-cyan-900 text-white"
+                  : "bg-white text-gray-600"
+              }`}
+            >
+              {t.adminOrders}
+            </button>
+            <button
+              onClick={() => setTab("services")}
+              className={`px-6 py-2 rounded-full font-bold transition ${
+                tab === "services"
+                  ? "bg-cyan-900 text-white"
+                  : "bg-white text-gray-600"
+              }`}
+            >
+              {t.adminServices}
+            </button>
+            <button
+              onClick={() => setTab("settings")}
+              className={`px-6 py-2 rounded-full font-bold transition ${
+                tab === "settings"
+                  ? "bg-cyan-900 text-white"
+                  : "bg-white text-gray-600"
+              }`}
+            >
+              {t.adminSettings}
+            </button>
+          </div>
+          {/* BOTÓN PRINT ALL */}
+          {tab === "orders" && (
+            <button
+              onClick={printAllOrders}
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold flex items-center hover:bg-gray-200 transition"
+            >
+              <Printer className="w-5 h-5 mr-2" /> {t.printAll}
+            </button>
+          )}
         </div>
+
         {tab === "orders" && (
           <div className="space-y-4">
             <div className="relative mb-4 no-print">
@@ -2173,7 +2250,7 @@ const AdminView = ({
         )}
       </div>
 
-      {/* MODAL COMPARTIR ADMIN (ARREGLADO Z-INDEX) */}
+      {/* MODAL COMPARTIR ADMIN */}
       {adminShareData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative shadow-2xl">
@@ -2208,7 +2285,6 @@ const AdminView = ({
     </div>
   );
 };
-
 // --- COMPONENTE ORDER CARD EXTERNO ---
 const OrderCard = ({
   o,
@@ -2221,7 +2297,6 @@ const OrderCard = ({
   onChatSend,
 }) => {
   const [localChatInput, setLocalChatInput] = useState("");
-
   const handleSend = () => {
     if (localChatInput.trim()) {
       onChatSend(o.id, localChatInput);
@@ -2510,6 +2585,7 @@ export default function FastWaveApp() {
   const [aroma, setAroma] = useState("Fresh");
 
   const [toast, setToast] = useState({ message: null, type: "success" });
+  // CORRECCIÓN PANTALLA ROJA (AQUÍ ESTABA EL ERROR)
   const [formErrors, setFormErrors] = useState({});
 
   const showAlert = (msg, type = "success") => setToast({ message: msg, type });
@@ -2804,6 +2880,7 @@ export default function FastWaveApp() {
     joinMembershipFromCheckout();
   };
 
+  // VALIDACIÓN DE FORMULARIO
   const validateForm = () => {
     let errors = {};
     if (!form.name.trim()) errors.name = true;
@@ -3207,6 +3284,18 @@ export default function FastWaveApp() {
             >
               Cart ({cartCount})
             </button>
+
+            {/* BOTÓN ADMIN EN MÓVIL AÑADIDO AQUÍ */}
+            <button
+              onClick={() => {
+                setView("admin");
+                setMobileMenuOpen(false);
+              }}
+              className="block w-full text-left py-2 font-bold flex items-center text-gray-500"
+            >
+              <Lock className="w-4 h-4 mr-2" /> {t.login}
+            </button>
+
             <div className="flex justify-between items-center pt-4 border-t">
               <select
                 value={lang}
