@@ -4110,7 +4110,7 @@ export default function FastWaveApp() {
                   ) : (
                     "Pay Now"
                   )}
-                </button>        
+                </button>
               </div>
             ) : (
               <div className="py-4 text-center animate-fade-in">
