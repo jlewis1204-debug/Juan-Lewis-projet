@@ -113,56 +113,44 @@ const useAppMode = (customIcon) => {
   }, [customIcon]);
 };
 
-// --- 3. FUNCIONES DE IMPRESIÓN (ARREGLADAS PARA MÓVIL) ---
+// --- AYUDA VISUAL (REEMPLAZO DE ALERT) ---
+const showNativeNotification = (msg, isError = false) => {
+  const div = document.createElement("div");
+  div.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-[120] px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-fade-in ${
+    isError ? "bg-red-500" : "bg-cyan-900"
+  }`;
+  div.innerHTML = `<span class="text-white font-bold text-sm">${msg}</span>`;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 3000);
+};
+
+// --- 3. FUNCIONES DE IMPRESIÓN (ARREGLADA PARA MÓVIL Y SIN ALERTS FEOS) ---
 const printSpecificOrder = (orderId) => {
   const ticketElement = document.getElementById(`order-card-${orderId}`);
   if (!ticketElement) {
-    alert("Error: Ticket no encontrado.");
+    showNativeNotification("Error: Ticket no encontrado.", true);
     return;
   }
 
-  // Usamos un IFRAME invisible. Esto evita que el celular abra una ventana nueva y crashee.
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0px";
-  iframe.style.height = "0px";
-  iframe.style.border = "none";
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentWindow.document;
-
-  doc.open();
-  doc.write("<html><head><title>Print Ticket</title>");
-  doc.write('<script src="https://cdn.tailwindcss.com"></script>'); // Cargar estilos
-  doc.write(`
-    <style>
-      body { font-family: sans-serif; padding: 10px; background: white; color: black; }
+  // Técnica CSS Invisible (Mejor para móviles)
+  const style = document.createElement("style");
+  style.id = "print-style-temp";
+  style.innerHTML = `
+    @media print {
+      body * { visibility: hidden; }
+      #order-card-${orderId}, #order-card-${orderId} * { visibility: visible; }
+      #order-card-${orderId} {
+        position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 10px; background: white; z-index: 9999;
+      }
       .no-print { display: none !important; }
-      .shadow-sm, .shadow-md, .shadow-lg { box-shadow: none !important; }
-      .border, .border-2 { border: 1px solid #000 !important; }
-      * { color: black !important; } /* Forzar tinta negra */
-    </style>
-  `);
-  doc.write("</head><body>");
-  doc.write(ticketElement.outerHTML);
-  doc.write("</body></html>");
-  doc.close();
-
-  // Esperar a que cargue el contenido y Tailwind antes de imprimir
-  iframe.onload = () => {
-    setTimeout(() => {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-      // Eliminar el iframe después de 2 segundos para limpiar memoria
-      setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 2000);
-    }, 1000);
-  };
+    }
+  `;
+  document.head.appendChild(style);
+  window.print();
+  setTimeout(() => {
+    const s = document.getElementById("print-style-temp");
+    if (s) s.remove();
+  }, 1000);
 };
 
 const printAllOrders = () => {
@@ -172,7 +160,7 @@ const printAllOrders = () => {
 const generateShortId = () =>
   Math.random().toString(36).substring(2, 8).toUpperCase();
 
-// --- 4. COMPONENTES GLOBALES (PARA EVITAR ERRORES DE REFERENCIA) ---
+// --- 4. COMPONENTES GLOBALES ---
 
 const CustomToast = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -192,6 +180,36 @@ const CustomToast = ({ message, type, onClose }) => {
       className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] flex items-center gap-3 px-6 py-3 rounded-full shadow-2xl animate-fade-in ${bgClass}`}
     >
       {icon} <span className="text-white font-bold text-sm">{message}</span>
+    </div>
+  );
+};
+
+// NUEVO COMPONENTE: MODAL DE CONFIRMACIÓN (Reemplaza window.confirm)
+const ConfirmationModal = ({ show, title, message, onConfirm, onCancel }) => {
+  if (!show) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
+      <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-xs w-full text-center transform scale-100 transition-all">
+        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle className="w-6 h-6 text-red-500" />
+        </div>
+        <h3 className="text-xl font-black text-gray-800 mb-2">{title}</h3>
+        <p className="text-gray-500 mb-6 text-sm">{message}</p>
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 rounded-xl font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-3 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 transition shadow-lg shadow-red-200"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -667,15 +685,18 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
     price: 0,
     image: "",
   });
+  const [itemToDelete, setItemToDelete] = useState(null);
+
   const handleServiceChange = (id, field, value) => {
     const updated = services.map((s) =>
       s.id === id ? { ...s, [field]: value } : s
     );
     setServices(updated);
   };
-  const handleDeleteService = (id) => {
-    if (window.confirm(t.deleteConfirm)) {
-      setServices(services.filter((s) => s.id !== id));
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      setServices(services.filter((s) => s.id !== itemToDelete));
+      setItemToDelete(null);
     }
   };
   const handleAddService = () => {
@@ -704,6 +725,13 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      <ConfirmationModal
+        show={!!itemToDelete}
+        title={t.deleteConfirm}
+        message={t.areYouSure}
+        onConfirm={confirmDelete}
+        onCancel={() => setItemToDelete(null)}
+      />
       <div className="flex justify-between items-center">
         <h3 className="text-2xl font-bold text-cyan-900 flex items-center">
           <Edit2 className="w-6 h-6 mr-2" /> {t.editServices}
@@ -797,7 +825,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
               </div>
             </div>
             <button
-              onClick={() => handleDeleteService(s.id)}
+              onClick={() => setItemToDelete(s.id)}
               className="absolute -top-2 -right-2 bg-red-100 text-red-500 p-2 rounded-full shadow hover:bg-red-500 hover:text-white transition"
             >
               <Trash2 className="w-4 h-4" />
@@ -882,6 +910,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
   const [newPin, setNewPin] = useState("");
   const [stripeLocked, setStripeLocked] = useState(true);
   const [unlockPass, setUnlockPass] = useState("");
+  const [memberToDelete, setMemberToDelete] = useState(null);
 
   useEffect(() => {
     setLocalConfig(config);
@@ -918,11 +947,12 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
       showAlert(t.memberAdded, "success");
     }
   };
-  const removeMember = async (phone) => {
-    if (db && window.confirm(`${t.deleteConfirm} ${phone}?`)) {
+  const confirmMemberDelete = async () => {
+    if (db && memberToDelete) {
       await updateDoc(doc(db, "settings", "members"), {
-        list: arrayRemove(phone),
+        list: arrayRemove(memberToDelete),
       });
+      setMemberToDelete(null);
     }
   };
   const handleUnlockStripe = () => {
@@ -936,6 +966,13 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in pb-10">
+      <ConfirmationModal
+        show={!!memberToDelete}
+        title={t.deleteConfirm}
+        message={`${memberToDelete}?`}
+        onConfirm={confirmMemberDelete}
+        onCancel={() => setMemberToDelete(null)}
+      />
       <div className="flex justify-between items-center mb-8">
         <h3 className="text-2xl font-black text-gray-800">{t.genSettings}</h3>
         <button
@@ -1296,7 +1333,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                 >
                   <span className="font-mono text-sm text-gray-600">{m}</span>
                   <button
-                    onClick={() => removeMember(m)}
+                    onClick={() => setMemberToDelete(m)}
                     className="text-red-400 hover:text-red-600"
                   >
                     <XCircle className="w-4 h-4" />
@@ -1351,7 +1388,6 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
     </div>
   );
 };
-
 // --- ADMIN VIEW (CORREGIDO LAYOUT MOVIL) ---
 const AdminView = ({
   t,
@@ -1376,6 +1412,7 @@ const AdminView = ({
   const [isEditingOrder, setIsEditingOrder] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [chatInput, setChatInput] = useState("");
+  const [orderToDelete, setOrderToDelete] = useState(null);
 
   useEffect(() => {
     if (!isAuth) return;
@@ -1434,9 +1471,10 @@ const AdminView = ({
   const updateOrderStatus = async (id, status) => {
     if (db) await updateDoc(doc(db, "orders", id), { status });
   };
-  const deleteOrder = async (id) => {
-    if (window.confirm(t.deleteConfirm)) {
-      if (db) await deleteDoc(doc(db, "orders", id));
+  const confirmOrderDelete = async () => {
+    if (db && orderToDelete) {
+      await deleteDoc(doc(db, "orders", orderToDelete));
+      setOrderToDelete(null);
     }
   };
   const startEditing = (order) => {
@@ -1596,6 +1634,13 @@ const AdminView = ({
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
+      <ConfirmationModal
+        show={!!orderToDelete}
+        title={t.deleteOrder}
+        message={t.areYouSure}
+        onConfirm={confirmOrderDelete}
+        onCancel={() => setOrderToDelete(null)}
+      />
       <div className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center sticky top-0 z-30 no-print">
         <h2 className="font-black text-xl text-cyan-900 flex items-center">
           <BrandLogo customIcon={config.customIcon} />{" "}
@@ -1741,7 +1786,7 @@ const AdminView = ({
                       <Printer className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => deleteOrder(o.id)}
+                      onClick={() => setOrderToDelete(o.id)}
                       className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition"
                       title="Delete"
                     >
@@ -2368,6 +2413,7 @@ const MembershipPromoButton = ({
     </button>
   );
 };
+
 // --- APP COMPONENT ---
 // CORREGIDO: Se llama FastWaveApp, no const LANGUAGES
 export default function FastWaveApp() {
@@ -2942,9 +2988,13 @@ export default function FastWaveApp() {
   const shareOrder = (o) => {
     setShareData(o);
   };
-  // Este función no se usaba pero la dejo por integridad
   const dismissScheduleAlert = async () => {
-    /* (AdminUpdateAlert se maneja con otro estado ahora) */
+    if (scheduleUpdateAlert && db) {
+      await updateDoc(doc(db, "orders", scheduleUpdateAlert.id), {
+        scheduleUpdatedByAdmin: false,
+      });
+      setScheduleUpdateAlert(null);
+    }
   };
   const deleteLocalOrder = (id) => {
     const saved = JSON.parse(localStorage.getItem("myOrders") || "[]").filter(
@@ -3074,6 +3124,7 @@ export default function FastWaveApp() {
               Cart ({cartCount})
             </button>
 
+            {/* BOTÓN ADMIN EN MÓVIL AÑADIDO AQUÍ */}
             <button
               onClick={() => {
                 setView("admin");
@@ -4059,7 +4110,7 @@ export default function FastWaveApp() {
                   ) : (
                     "Pay Now"
                   )}
-                </button>
+                </button>        
               </div>
             ) : (
               <div className="py-4 text-center animate-fade-in">
