@@ -110,10 +110,60 @@ const useAppMode = (customIcon) => {
       script.async = true;
       document.head.appendChild(script);
     }
+  }, []);
+  useEffect(() => {
+    if (customIcon) {
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.getElementsByTagName("head")[0].appendChild(link);
+      }
+      link.href = customIcon;
+      let appleLink = document.querySelector("link[rel~='apple-touch-icon']");
+      if (!appleLink) {
+        appleLink = document.createElement("link");
+        appleLink.rel = "apple-touch-icon";
+        document.getElementsByTagName("head")[0].appendChild(appleLink);
+      }
+      appleLink.href = customIcon;
+    }
   }, [customIcon]);
 };
 
-// --- AYUDA VISUAL (REEMPLAZO DE ALERT) ---
+// --- 3. FUNCIONES GLOBALES (SOLUCIÓN AL ERROR DE REFERENCE) ---
+// Estas funciones ahora viven fuera para que cualquiera las pueda usar sin error.
+
+const getClientWhatsApp = (o) => {
+  if (!o) return "#";
+  const p = o.customer.phone.replace(/\D/g, "");
+  const txt = `Hola ${o.customer.name}, recibo de orden #${
+    o.orderNumber
+  }. Total: $${o.total.toFixed(2)}.`;
+  return `https://wa.me/${p}?text=${encodeURIComponent(txt)}`;
+};
+
+const getClientSMS = (o) => {
+  if (!o) return "#";
+  const p = o.customer.phone.replace(/\D/g, "");
+  const txt = `Fast Wave: Orden #${o.orderNumber}. Total: $${o.total.toFixed(
+    2
+  )}.`;
+  return `sms:${p}?body=${encodeURIComponent(txt)}`;
+};
+
+const getOwnerWhatsApp = (o, phoneConfig) => {
+  if (!o) return "#";
+  const p = (phoneConfig || "").replace(/\D/g, "");
+  return `https://wa.me/${p}?text=Order%20${o.orderNumber}`;
+};
+
+const getOwnerSMS = (o, phoneConfig) => {
+  if (!o) return "#";
+  const p = (phoneConfig || "").replace(/\D/g, "");
+  return `sms:${p}?body=Order%20${o.orderNumber}`;
+};
+
 const showNativeNotification = (msg, isError = false) => {
   const div = document.createElement("div");
   div.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-[120] px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-fade-in ${
@@ -124,15 +174,12 @@ const showNativeNotification = (msg, isError = false) => {
   setTimeout(() => div.remove(), 3000);
 };
 
-// --- 3. FUNCIONES DE IMPRESIÓN (ARREGLADA PARA MÓVIL Y SIN ALERTS FEOS) ---
 const printSpecificOrder = (orderId) => {
   const ticketElement = document.getElementById(`order-card-${orderId}`);
   if (!ticketElement) {
     showNativeNotification("Error: Ticket no encontrado.", true);
     return;
   }
-
-  // Técnica CSS Invisible (Mejor para móviles)
   const style = document.createElement("style");
   style.id = "print-style-temp";
   style.innerHTML = `
@@ -160,136 +207,7 @@ const printAllOrders = () => {
 const generateShortId = () =>
   Math.random().toString(36).substring(2, 8).toUpperCase();
 
-// --- 4. COMPONENTES GLOBALES ---
-
-const CustomToast = ({ message, type, onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-  if (!message) return null;
-  const bgClass = type === "error" ? "bg-red-500" : "bg-cyan-900";
-  const icon =
-    type === "error" ? (
-      <AlertTriangle className="w-5 h-5 text-white" />
-    ) : (
-      <Check className="w-5 h-5 text-white" />
-    );
-  return (
-    <div
-      className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] flex items-center gap-3 px-6 py-3 rounded-full shadow-2xl animate-fade-in ${bgClass}`}
-    >
-      {icon} <span className="text-white font-bold text-sm">{message}</span>
-    </div>
-  );
-};
-
-// NUEVO COMPONENTE: MODAL DE CONFIRMACIÓN (Reemplaza window.confirm)
-const ConfirmationModal = ({ show, title, message, onConfirm, onCancel }) => {
-  if (!show) return null;
-  return (
-    <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
-      <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-xs w-full text-center transform scale-100 transition-all">
-        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <AlertTriangle className="w-6 h-6 text-red-500" />
-        </div>
-        <h3 className="text-xl font-black text-gray-800 mb-2">{title}</h3>
-        <p className="text-gray-500 mb-6 text-sm">{message}</p>
-        <div className="flex gap-3 justify-center">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-3 rounded-xl font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 py-3 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 transition shadow-lg shadow-red-200"
-          >
-            Confirm
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const BrandLogo = ({ customIcon }) => (
-  <div className="relative flex items-center justify-center px-5 py-2 overflow-hidden rounded-full border-2 border-cyan-100 shadow-sm group hover:shadow-md transition-all cursor-pointer bg-white">
-    <div className="relative z-10 flex items-center">
-      {customIcon && (
-        <img
-          src={customIcon}
-          alt="Icon"
-          className="w-6 h-6 mr-2 object-contain rounded-full"
-        />
-      )}
-      <div className="flex flex-col items-center">
-        <span className="font-black text-xl text-cyan-900 leading-none tracking-tight">
-          Fast Wave
-        </span>
-        <span className="text-[9px] font-bold text-cyan-700 uppercase tracking-widest">
-          Laundry Service
-        </span>
-      </div>
-    </div>
-  </div>
-);
-
-const CustomIronIcon = () => (
-  <svg
-    viewBox="0 0 64 64"
-    className="w-full h-full p-4"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      fill="#475569"
-      d="M4 46h56c2.2 0 4 1.8 4 4s-1.8 4-4 4H4c-2.2 0-4-1.8-4-4s1.8-4 4-4z"
-    />
-    <path fill="#0891b2" d="M8 46h48c0-14-10-26-26-26h-4c-10 0-16 8-16 26z" />
-    <path
-      fill="none"
-      stroke="#155e75"
-      strokeWidth="6"
-      strokeLinecap="round"
-      d="M22 20V12c0-4.4 4.4-8 8.8-8h10.4c8.8 0 12.8 7.2 12.8 16v12"
-    />
-    <circle cx="34" cy="34" r="2" fill="#155e75" />
-  </svg>
-);
-const CustomPackageIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
-    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-    <line x1="12" y1="22.08" x2="12" y2="12"></line>
-  </svg>
-);
-const CustomLoaderIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-  </svg>
-);
-
-// --- 5. DATOS Y DICCIONARIOS ---
+// --- 4. CONSTANTES Y DATOS ---
 const TIME_SLOTS = [
   "08:00 AM - 10:00 AM",
   "10:00 AM - 12:00 PM",
@@ -298,6 +216,7 @@ const TIME_SLOTS = [
   "04:00 PM - 06:00 PM",
   "06:00 PM - 08:00 PM",
 ];
+
 const INITIAL_SERVICES = [
   {
     id: "wash_fold",
@@ -354,11 +273,13 @@ const INITIAL_SERVICES = [
     type: "image",
   },
 ];
+
 const AVOID_PRODUCTS = [
   { id: "softener", label_en: "No Softener", label_es: "Sin Suavizante" },
   { id: "bleach", label_en: "No Bleach", label_es: "Sin Cloro" },
   { id: "scented", label_en: "No Scent", label_es: "Sin Perfume" },
 ];
+
 const AROMAS = [
   { id: "Floral", en: "Floral", es: "Floral" },
   { id: "Fresh", en: "Fresh", es: "Fresco" },
@@ -367,145 +288,182 @@ const AROMAS = [
   { id: "Unscented", en: "Unscented", es: "Sin Olor" },
 ];
 
-const LANGUAGES = {
-  en: {
-    title: "Fast Wave Laundry",
-    heroSubtitle:
-      "We are Professionals. We Pick Up, Wash & Deliver Right to Your Door!",
-    orderNow: "Schedule Pickup",
-    sendOrder: "View Basket",
-    services: "Our Premium Services",
-    productsToAvoid: "Allergies / Preferences",
-    preferredAroma: "Select Your Scent",
-    details: "Order Details",
-    pickupInfo: "Pickup Info",
-    deliveryInfo: "Delivery Info",
-    payment: "Payment Method",
-    total: "Total",
-    submit: "Review Order",
-    status: {
-      pending: "Pending",
-      confirmed: "Confirmed",
-      picked_up: "Picked Up",
-      cleaning: "Washing",
-      delivering: "Delivering",
-      completed: "Completed",
-    },
-    express: "Express Wash",
-    member: "I am a Member",
-    successMsg: "Order Received!",
-    successSub: "To confirm, please send details via WhatsApp or SMS below.",
-    orderNumberIs: "Order #",
-    back: "Back",
-    adminTitle: "Admin Dashboard",
-    adminOrders: "Orders",
-    adminServices: "Services",
-    adminSettings: "Settings",
-    deleteOrder: "Delete Order",
-    editServices: "Edit Services",
-    genSettings: "General Settings",
-    save: "Save Changes",
-    login: "Admin Login",
-    enter: "Enter",
-    wrongPin: "Wrong Credentials",
-    payCashLabel: "Pay Cash",
-    payCardLabel: "Credit/Debit Card",
-    payOnlineLabel: "Pay Online",
-    nameLabel: "Full Name",
-    phoneLabel: "Phone Number",
-    addressLabel: "Address",
-    emptyCart: "Your cart is empty",
-    usernameLabel: "Username",
-    passwordLabel: "Password",
-    trackOrder: "Track Order",
-    yourOrders: "Your Orders",
-    joinMemberTitle: "Join Membership?",
-    joinYes: "Yes, Join & Save",
-    joinNo: "No, Continue",
-    rejoinTitle: "Rejoin Membership",
-    rejoinYes: "Pay Fee & Rejoin",
-    qrCode: "App QR Code",
-    shareApp: "Share App",
-    copyLink: "Copy Link",
-    paymentSuccess: "Payment Successful",
-    alertTitle: "Order Updated!",
-    alertMsg: "The admin has modified your order details.",
-    btnUnderstood: "Understood",
-    pickupDate: "Pickup Date",
-    pickupTime: "Pickup Time",
-    deliveryDate: "Delivery Date",
-    deliveryTime: "Delivery Time",
-    customerInfo: "Customer Info",
-    payWallet: "Pay with Wallet",
-    stripeLocked: "Locked (Click to Edit)",
-    unlock: "Unlock",
-    pinLabel: "Recovery PIN (6 digits)",
-    forgotPass: "Forgot Password?",
-    recover: "Recover Access",
-    newPass: "New Password",
-    enterPin: "Enter 6-digit PIN",
-    fillDetails: "Please fill in all details.",
-    memberAdded: "Member Added!",
-    deleteConfirm: "Delete this item?",
-    idRequired: "ID Required",
-    saved: "Saved!",
-    passResetSuccess: "Password Reset Successful! Login now.",
-    enterNewPass: "Enter a new password",
-    invalidPin: "Invalid Recovery PIN",
-    orderUpdated: "Order Updated & Client Notified",
-    savingsToday: "Savings TODAY:",
-    ifYouUse: "If you use our service",
-    timesIn: "times in",
-    couldSave: "you could save:",
-    cost: "Cost",
-    for: "for",
-    noThanks: "No thanks, I'll pay full price",
-    areYouSure: "Are you sure?",
-    loseSavings: "You are about to lose a saving of",
-    yesLose: "Yes, lose savings",
-    yesJoin: "Yes, Join & Save",
-    activateMembership: "Activate Membership",
-    joinClub: "Join the VIP Club & Save!",
-    enterDetails:
-      "Unlock exclusive discounts, priority delivery, and special offers just for members.",
-    cancelMembership: "Cancel Membership?",
-    loseDiscounts: "You will lose your accumulated discounts.",
-    yesCancel: "Yes, Cancel",
-    map: "Map",
-    chat: "Chat",
-    deleteReceipt: "Delete Receipt",
-    whatsappNum: "WhatsApp Number",
-    customIcon: "Custom App Icon",
-    heroImage: "Hero Image (Main)",
-    chooseFile: "Choose File",
-    choosePhoto: "Choose Photo",
-    discountPercent: "Discount (Member %)",
-    expressFee: "Express Fee (%)",
-    taxPercent: "Tax (%)",
-    paymentGateway: "Payment Gateway (Stripe)",
-    publishableKey: "Publishable API Key",
-    secretKey: "Secret API Key",
-    zelleConfig: "Zelle Configuration",
-    zellePlace: "Zelle Number/Email",
-    payInstPlace: "Payment Instructions...",
-    membershipRules: "Membership Rules",
-    memCost: "Membership Cost ($)",
-    memDuration: "Duration (Text)",
-    estUses: "Est. Uses (for Calc)",
-    manageMembers: "Manage Members",
-    addMember: "Add Member",
-    secSettings: "Security Settings",
-    changeUser: "Change Admin Username",
-    changePass: "Change Admin Password",
-    changePin: "Change Recovery PIN",
-    newUserPlace: "New Username (Leave empty to keep)",
-    newPassPlace: "New Password (Leave empty to keep)",
-    newPinPlace: "New PIN (Leave empty to keep)",
-    printAll: "Print All",
-    enableApple: "Enable Apple Pay",
-    enableGoogle: "Enable Google Pay",
+// --- IDIOMAS ---
+const ENGLISH_CONTENT = {
+  brandName: "Fast Wave",
+  brandSubtitle: "Laundry Service",
+  title: "Fast Wave Laundry",
+  heroSubtitle:
+    "We are Professionals. We Pick Up, Wash & Deliver Right to Your Door!",
+  orderNow: "Schedule Pickup",
+  sendOrder: "View Basket",
+  services: "Our Premium Services",
+  productsToAvoid: "Allergies / Preferences",
+  preferredAroma: "Select Your Scent",
+  details: "Order Details",
+  pickupInfo: "Pickup Info",
+  deliveryInfo: "Delivery Info",
+  payment: "Payment Method",
+  total: "Total",
+  submit: "Review Order",
+  status: {
+    pending: "Pending",
+    confirmed: "Confirmed",
+    picked_up: "Picked Up",
+    cleaning: "Washing",
+    delivering: "Delivering",
+    completed: "Completed",
   },
+  express: "Express Wash",
+  member: "I am a Member",
+  successMsg: "Order Received!",
+  successSub: "To confirm, please send details via WhatsApp or SMS below.",
+  orderNumberIs: "Order #",
+  back: "Back",
+  adminTitle: "Admin Dashboard",
+  adminOrders: "Orders",
+  adminServices: "Services",
+  adminSettings: "Settings",
+  deleteOrder: "Delete Order",
+  editServices: "Edit Services",
+  genSettings: "General Settings",
+  save: "Save Changes",
+  login: "Admin Login",
+  enter: "Enter",
+  wrongPin: "Wrong Credentials",
+  payCashLabel: "Pay Cash",
+  payCardLabel: "Credit/Debit Card",
+  payOnlineLabel: "Pay Online",
+  nameLabel: "Full Name",
+  phoneLabel: "Phone Number",
+  addressLabel: "Address",
+  emptyCart: "Your cart is empty",
+  usernameLabel: "Username",
+  passwordLabel: "Password",
+  trackOrder: "Track Order",
+  yourOrders: "Your Orders",
+  joinMemberTitle: "Join Membership?",
+  joinYes: "Yes, Join & Save",
+  joinNo: "No, Continue",
+  rejoinTitle: "Rejoin Membership",
+  rejoinYes: "Pay Fee & Rejoin",
+  qrCode: "App QR Code",
+  shareApp: "Share App",
+  copyLink: "Copy Link",
+  paymentSuccess: "Payment Successful",
+  alertTitle: "Order Updated!",
+  alertMsg: "The admin has modified your order details.",
+  btnUnderstood: "Understood",
+  pickupDate: "Pickup Date",
+  pickupTime: "Pickup Time",
+  deliveryDate: "Delivery Date",
+  deliveryTime: "Delivery Time",
+  customerInfo: "Customer Info",
+  payWallet: "Pay with Wallet",
+  stripeLocked: "Locked (Click to Edit)",
+  unlock: "Unlock",
+  pinLabel: "Recovery PIN (6 digits)",
+  forgotPass: "Forgot Password?",
+  recover: "Recover Access",
+  newPass: "New Password",
+  enterPin: "Enter 6-digit PIN",
+  fillDetails: "Please fill in all details.",
+  memberAdded: "Member Added!",
+  deleteConfirm: "Delete this item?",
+  idRequired: "ID Required",
+  saved: "Saved!",
+  passResetSuccess: "Password Reset Successful! Login now.",
+  enterNewPass: "Enter a new password",
+  invalidPin: "Invalid Recovery PIN",
+  orderUpdated: "Order Updated & Client Notified",
+  savingsToday: "Savings TODAY:",
+  ifYouUse: "If you use our service",
+  timesIn: "times in",
+  couldSave: "you could save:",
+  cost: "Cost",
+  for: "for",
+  noThanks: "No thanks, I'll pay full price",
+  areYouSure: "Are you sure?",
+  loseSavings: "You are about to lose a saving of",
+  yesLose: "Yes, lose savings",
+  yesJoin: "Yes, Join & Save",
+  activateMembership: "Activate Membership",
+  joinClub: "Join the VIP Club & Save!",
+  enterDetails:
+    "Unlock exclusive discounts, priority delivery, and special offers just for members.",
+  cancelMembership: "Cancel Membership?",
+  loseDiscounts: "You will lose your accumulated discounts.",
+  yesCancel: "Yes, Cancel",
+  map: "Map",
+  chat: "Chat",
+  deleteReceipt: "Delete Receipt",
+  whatsappNum: "WhatsApp Number",
+  customIcon: "Custom App Icon",
+  heroImage: "Hero Image (Main)",
+  chooseFile: "Choose File",
+  choosePhoto: "Choose Photo",
+  discountPercent: "Discount (Member %)",
+  expressFee: "Express Fee (%)",
+  taxPercent: "Tax (%)",
+  paymentGateway: "Payment Gateway (Stripe)",
+  publishableKey: "Publishable API Key",
+  secretKey: "Secret API Key",
+  zelleConfig: "Zelle Configuration",
+  zellePlace: "Zelle Number/Email",
+  payInstPlace: "Payment Instructions...",
+  membershipRules: "Membership Rules",
+  memCost: "Membership Cost ($)",
+  memDuration: "Duration (Text)",
+  estUses: "Est. Uses (for Calc)",
+  manageMembers: "Manage Members",
+  addMember: "Add Member",
+  secSettings: "Security Settings",
+  changeUser: "Change Admin Username",
+  changePass: "Change Admin Password",
+  changePin: "Change Recovery PIN",
+  newUserPlace: "New Username (Leave empty to keep)",
+  newPassPlace: "New Password (Leave empty to keep)",
+  newPinPlace: "New PIN (Leave empty to keep)",
+  printAll: "Print All",
+  enableApple: "Enable Apple Pay",
+  enableGoogle: "Enable Google Pay",
+  subtotal: "Subtotal",
+  expressFeeLabel: "Express Fee",
+  memberDiscountLabel: "Member Discount",
+  messages: "Messages",
+  writeReply: "Write a reply...",
+  client: "CLIENT",
+  schedule: "SCHEDULE",
+  item: "Item",
+  cancel: "Cancel",
+  saveChanges: "Save Changes",
+  resetPassword: "Reset Password",
+  enterPinInstruction: "Enter your 6-digit PIN to reset password.",
+  noMessages: "No messages yet.",
+  cardHolderLabel: "Cardholder Name",
+  cardDetailsLabel: "Card Details",
+  secureStripe: "Secure by Stripe",
+  payNow: "Pay Now",
+  confirmOrderBtn: "Confirm Order",
+  viewReceipt: "View Receipt",
+  notifyOwner: "Notify",
+  sendSMS: "Send Confirmation SMS",
+  totalDue: "Total Due",
+  sendTo: "Send to:",
+  searchPlaceholder: "Search...",
+  cash: "Cash",
+  card: "Credit Card",
+  online: "Zelle/Online",
+  apple_pay: "Apple Pay",
+  google_pay: "Google Pay",
+};
+
+const LANGUAGES = {
+  en: ENGLISH_CONTENT,
   es: {
+    ...ENGLISH_CONTENT,
+    brandName: "Fast Wave",
+    brandSubtitle: "Servicio de Lavandería",
     title: "Fast Wave Lavandería",
     heroSubtitle:
       "Somos Profesionales. Recogemos, Lavamos y Entregamos su Ropa en su Puerta.",
@@ -641,8 +599,126 @@ const LANGUAGES = {
     printAll: "Imprimir Todo",
     enableApple: "Activar Apple Pay",
     enableGoogle: "Activar Google Pay",
+    subtotal: "Subtotal",
+    expressFeeLabel: "Tarifa Express",
+    memberDiscountLabel: "Descuento Miembro",
+    messages: "Mensajes",
+    writeReply: "Escribe una respuesta...",
+    client: "CLIENTE",
+    schedule: "HORARIO",
+    item: "Artículo",
+    cancel: "Cancelar",
+    saveChanges: "Guardar Cambios",
+    resetPassword: "Restablecer Contraseña",
+    enterPinInstruction: "Ingresa tu PIN de 6 dígitos para restablecer.",
+    noMessages: "No hay mensajes aún.",
+    cardHolderLabel: "Nombre en Tarjeta",
+    cardDetailsLabel: "Datos de Tarjeta",
+    secureStripe: "Procesado seguro por Stripe",
+    payNow: "Pagar Ahora",
+    confirmOrderBtn: "Confirmar Orden",
+    viewReceipt: "Ver Recibo",
+    notifyOwner: "Notificar",
+    sendSMS: "Enviar SMS de Confirmación",
+    totalDue: "Total a Pagar",
+    sendTo: "Enviar a:",
+    searchPlaceholder: "Buscar...",
+    cash: "Efectivo",
+    card: "Tarjeta Crédito",
+    online: "Zelle/Online",
+    apple_pay: "Apple Pay",
+    google_pay: "Google Pay",
   },
-  // (fr y hi se mantienen igual, usando el valor 'en' si faltan)
+  fr: {
+    ...ENGLISH_CONTENT,
+    brandSubtitle: "Service de Blanchisserie",
+    title: "Fast Wave Blanchisserie",
+    heroSubtitle:
+      "Nous sommes des professionnels. Nous ramassons, lavons et livrons à votre porte !",
+    orderNow: "Planifier le ramassage",
+    sendOrder: "Voir le panier",
+    services: "Nos Services Premium",
+    productsToAvoid: "Allergies / Préférences",
+    preferredAroma: "Choisissez votre parfum",
+    details: "Détails de la commande",
+    pickupInfo: "Info ramassage",
+    deliveryInfo: "Info livraison",
+    payment: "Méthode de paiement",
+    total: "Total",
+    submit: "Commander",
+    status: {
+      pending: "En attente",
+      confirmed: "Confirmé",
+      picked_up: "Ramassé",
+      cleaning: "Lavage",
+      delivering: "Livraison",
+      completed: "Terminé",
+    },
+    payCashLabel: "Espèces",
+    payCardLabel: "Carte de Crédit",
+    payOnlineLabel: "Payer en ligne",
+    subtotal: "Sous-total",
+    expressFeeLabel: "Frais Express",
+    memberDiscountLabel: "Remise Membre",
+    messages: "Messages",
+    client: "CLIENT",
+    schedule: "HORAIRE",
+    item: "Article",
+    cancel: "Annuler",
+    saveChanges: "Sauvegarder",
+    payNow: "Payer maintenant",
+    confirmOrderBtn: "Confirmer",
+    totalDue: "Total à payer",
+    viewReceipt: "Voir le reçu",
+    notifyOwner: "Notifier",
+    cash: "Espèces",
+    card: "Carte Crédit",
+    online: "En Ligne",
+    apple_pay: "Apple Pay",
+    google_pay: "Google Pay",
+  },
+  hi: {
+    ...ENGLISH_CONTENT,
+    brandSubtitle: "लॉन्ड्री सेवा",
+    title: "फास्ट वेव लॉन्ड्री",
+    heroSubtitle:
+      "हम पेशेवर हैं। हम आपके दरवाजे से कपड़े उठाते हैं, धोते हैं और पहुँचाते हैं!",
+    orderNow: "पिकअप शेड्यूल करें",
+    sendOrder: "टोकरी देखें",
+    services: "हमारी प्रीमियम सेवाएँ",
+    status: {
+      pending: "लंबित",
+      confirmed: "पुष्टि",
+      picked_up: "पिक अप",
+      cleaning: "धुलाई",
+      delivering: "वितरण",
+      completed: "पूर्ण",
+    },
+    payCashLabel: "नकद भुगतान",
+    payCardLabel: "क्रेडिट कार्ड",
+    payOnlineLabel: "ऑनलाइन भुगतान",
+    total: "कुल",
+    submit: "ऑर्डर दें",
+    subtotal: "उपयोग",
+    expressFeeLabel: "एक्सप्रेस शुल्क",
+    memberDiscountLabel: "सदस्य छूट",
+    messages: "संदेश",
+    client: "ग्राहक",
+    schedule: "अनुसूची",
+    item: "वस्तु",
+    cancel: "रद्द करें",
+    saveChanges: "परिवर्तन सहेजें",
+    payNow: "अभी भुगतान करें",
+    confirmOrderBtn: "ऑर्डर की पुष्टि करें",
+    totalDue: "देय कुल",
+    viewReceipt: "रसीद देखें",
+    notifyOwner: "सूचित करें",
+    cash: "नकद",
+    card: "कार्ड",
+    online: "ऑनलाइन",
+    apple_pay: "Apple Pay",
+    google_pay: "Google Pay",
+  },
 };
 
 const getLabel = (id, type, lang) => {
@@ -674,7 +750,136 @@ const handleImageUpload = (e, callback) => {
   }
 };
 
-// --- ADMIN COMPONENTS ---
+const CustomToast = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  if (!message) return null;
+  const bgClass = type === "error" ? "bg-red-500" : "bg-cyan-900";
+  return (
+    <div
+      className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] flex items-center gap-3 px-6 py-3 rounded-full shadow-2xl animate-fade-in ${bgClass}`}
+    >
+      {" "}
+      {type === "error" ? (
+        <AlertTriangle className="w-5 h-5 text-white" />
+      ) : (
+        <Check className="w-5 h-5 text-white" />
+      )}{" "}
+      <span className="text-white font-bold text-sm">{message}</span>{" "}
+    </div>
+  );
+};
+const ConfirmationModal = ({ show, title, message, onConfirm, onCancel }) => {
+  if (!show) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
+      {" "}
+      <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-xs w-full text-center transform scale-100 transition-all">
+        {" "}
+        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          {" "}
+          <AlertTriangle className="w-6 h-6 text-red-500" />{" "}
+        </div>{" "}
+        <h3 className="text-xl font-black text-gray-800 mb-2">{title}</h3>{" "}
+        <p className="text-gray-500 mb-6 text-sm">{message}</p>{" "}
+        <div className="flex gap-3 justify-center">
+          {" "}
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 rounded-xl font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+          >
+            Cancel
+          </button>{" "}
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-3 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 transition shadow-lg shadow-red-200"
+          >
+            Confirm
+          </button>{" "}
+        </div>{" "}
+      </div>{" "}
+    </div>
+  );
+};
+const BrandLogo = ({ customIcon, t }) => (
+  <div className="relative flex items-center justify-center px-5 py-2 overflow-hidden rounded-full border-2 border-cyan-100 shadow-sm group hover:shadow-md transition-all cursor-pointer bg-white">
+    {" "}
+    <div className="relative z-10 flex items-center">
+      {" "}
+      {customIcon && (
+        <img
+          src={customIcon}
+          alt="Icon"
+          className="w-6 h-6 mr-2 object-contain rounded-full"
+        />
+      )}{" "}
+      <div className="flex flex-col items-center">
+        {" "}
+        <span className="font-black text-xl text-cyan-900 leading-none tracking-tight">
+          {t ? t.brandName : "Fast Wave"}
+        </span>{" "}
+        <span className="text-[9px] font-bold text-cyan-700 uppercase tracking-widest">
+          {t ? t.brandSubtitle : "Laundry Service"}
+        </span>{" "}
+      </div>{" "}
+    </div>{" "}
+  </div>
+);
+const CustomIronIcon = () => (
+  <svg
+    viewBox="0 0 64 64"
+    className="w-full h-full p-4"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      fill="#475569"
+      d="M4 46h56c2.2 0 4 1.8 4 4s-1.8 4-4 4H4c-2.2 0-4-1.8-4-4s1.8-4 4-4z"
+    />
+    <path fill="#0891b2" d="M8 46h48c0-14-10-26-26-26h-4c-10 0-16 8-16 26z" />
+    <path
+      fill="none"
+      stroke="#155e75"
+      strokeWidth="6"
+      strokeLinecap="round"
+      d="M22 20V12c0-4.4 4.4-8 8.8-8h10.4c8.8 0 12.8 7.2 12.8 16v12"
+    />
+    <circle cx="34" cy="34" r="2" fill="#155e75" />
+  </svg>
+);
+const CustomPackageIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+  </svg>
+);
+const CustomLoaderIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+  </svg>
+);
+
 const ServiceEditor = ({ services, setServices, t, showAlert }) => {
   const [newService, setNewService] = useState({
     id: "",
@@ -686,7 +891,6 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
     image: "",
   });
   const [itemToDelete, setItemToDelete] = useState(null);
-
   const handleServiceChange = (id, field, value) => {
     const updated = services.map((s) =>
       s.id === id ? { ...s, [field]: value } : s
@@ -722,7 +926,6 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
       showAlert(t.saved, "success");
     }
   };
-
   return (
     <div className="space-y-8 animate-fade-in">
       <ConfirmationModal
@@ -749,12 +952,16 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
             key={s.id}
             className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-12 gap-4 items-center relative group"
           >
+            {" "}
             <div className="col-span-12 md:col-span-1 flex justify-center">
+              {" "}
               <label className="cursor-pointer relative">
+                {" "}
                 <img
                   src={s.image || "https://via.placeholder.com/60"}
                   className="w-16 h-16 rounded-lg object-cover border-2 border-gray-100 shadow-sm hover:opacity-70"
-                />
+                  alt={s.name_en}
+                />{" "}
                 <input
                   type="file"
                   accept="image/*"
@@ -764,13 +971,14 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
                       handleServiceChange(s.id, "image", url)
                     )
                   }
-                />
+                />{" "}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/30 rounded-lg">
                   <Camera className="text-white w-6 h-6" />
-                </div>
-              </label>
-            </div>
+                </div>{" "}
+              </label>{" "}
+            </div>{" "}
             <div className="col-span-12 md:col-span-9 grid grid-cols-2 md:grid-cols-4 gap-3">
+              {" "}
               <input
                 className="p-2 border rounded text-sm"
                 placeholder="Spanish"
@@ -778,7 +986,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
                 onChange={(e) =>
                   handleServiceChange(s.id, "name_es", e.target.value)
                 }
-              />
+              />{" "}
               <input
                 className="p-2 border rounded text-sm"
                 placeholder="English"
@@ -786,7 +994,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
                 onChange={(e) =>
                   handleServiceChange(s.id, "name_en", e.target.value)
                 }
-              />
+              />{" "}
               <input
                 className="p-2 border rounded text-sm"
                 placeholder="French"
@@ -794,7 +1002,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
                 onChange={(e) =>
                   handleServiceChange(s.id, "name_fr", e.target.value)
                 }
-              />
+              />{" "}
               <input
                 className="p-2 border rounded text-sm"
                 placeholder="Hindi"
@@ -802,13 +1010,15 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
                 onChange={(e) =>
                   handleServiceChange(s.id, "name_hi", e.target.value)
                 }
-              />
-            </div>
+              />{" "}
+            </div>{" "}
             <div className="col-span-12 md:col-span-2 flex flex-col gap-2">
+              {" "}
               <div className="relative">
+                {" "}
                 <span className="absolute left-3 top-2 text-green-600 font-bold">
                   $
-                </span>
+                </span>{" "}
                 <input
                   type="number"
                   step="0.01"
@@ -821,20 +1031,24 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
                       parseFloat(e.target.value)
                     )
                   }
-                />
-              </div>
-            </div>
+                />{" "}
+              </div>{" "}
+            </div>{" "}
             <button
               onClick={() => setItemToDelete(s.id)}
               className="absolute -top-2 -right-2 bg-red-100 text-red-500 p-2 rounded-full shadow hover:bg-red-500 hover:text-white transition"
             >
               <Trash2 className="w-4 h-4" />
-            </button>
+            </button>{" "}
           </div>
         ))}
         <div className="bg-gray-50 p-4 rounded-xl border-2 border-dashed border-gray-300 flex flex-col gap-4">
-          <p className="font-bold text-gray-500 text-sm">Add New Service</p>
+          {" "}
+          <p className="font-bold text-gray-500 text-sm">
+            Add New Service
+          </p>{" "}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            {" "}
             <input
               className="p-2 border rounded"
               placeholder="ID"
@@ -842,7 +1056,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
               onChange={(e) =>
                 setNewService({ ...newService, id: e.target.value })
               }
-            />
+            />{" "}
             <input
               className="p-2 border rounded"
               placeholder="ES"
@@ -850,7 +1064,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
               onChange={(e) =>
                 setNewService({ ...newService, name_es: e.target.value })
               }
-            />
+            />{" "}
             <input
               className="p-2 border rounded"
               placeholder="EN"
@@ -858,7 +1072,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
               onChange={(e) =>
                 setNewService({ ...newService, name_en: e.target.value })
               }
-            />
+            />{" "}
             <input
               className="p-2 border rounded"
               placeholder="FR"
@@ -866,7 +1080,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
               onChange={(e) =>
                 setNewService({ ...newService, name_fr: e.target.value })
               }
-            />
+            />{" "}
             <input
               className="p-2 border rounded"
               placeholder="HI"
@@ -874,7 +1088,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
               onChange={(e) =>
                 setNewService({ ...newService, name_hi: e.target.value })
               }
-            />
+            />{" "}
             <input
               type="number"
               className="p-2 border rounded"
@@ -886,21 +1100,19 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
                   price: parseFloat(e.target.value),
                 })
               }
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <button
             onClick={handleAddService}
             className="bg-gray-800 text-white py-2 rounded font-bold flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" /> Add Service
-          </button>
+          </button>{" "}
         </div>
       </div>
     </div>
   );
 };
-
-// --- SETTINGS PANEL (CON BOTONES PAY SEPARADOS) ---
 const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
   const [localConfig, setLocalConfig] = useState(config);
   const [membersList, setMembersList] = useState([]);
@@ -911,7 +1123,6 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
   const [stripeLocked, setStripeLocked] = useState(true);
   const [unlockPass, setUnlockPass] = useState("");
   const [memberToDelete, setMemberToDelete] = useState(null);
-
   useEffect(() => {
     setLocalConfig(config);
     if (db) {
@@ -920,13 +1131,11 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
       });
     }
   }, [config]);
-
   const handleSave = async () => {
     let updates = { ...localConfig };
     if (newUsername.trim()) updates.adminUsername = newUsername;
     if (newPassword.trim()) updates.adminPassword = newPassword;
     if (newPin.trim()) updates.recoveryPin = newPin;
-
     if (db) {
       await setDoc(doc(db, "settings", "general"), updates, { merge: true });
       setConfig(updates);
@@ -963,7 +1172,6 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
       showAlert(t.wrongPin, "error");
     }
   };
-
   return (
     <div className="max-w-4xl mx-auto animate-fade-in pb-10">
       <ConfirmationModal
@@ -995,7 +1203,6 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
             }
           />
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-cyan-50 border-2 border-cyan-100 p-6 rounded-2xl flex items-center gap-4">
             <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-sm border overflow-hidden">
@@ -1058,8 +1265,8 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
             </div>
           </div>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {" "}
           <div className="bg-white p-4 rounded-2xl border shadow-sm">
             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
               {t.discountPercent}
@@ -1075,7 +1282,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                 })
               }
             />
-          </div>
+          </div>{" "}
           <div className="bg-white p-4 rounded-2xl border shadow-sm">
             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
               {t.expressFee}
@@ -1091,7 +1298,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                 })
               }
             />
-          </div>
+          </div>{" "}
           <div className="bg-white p-4 rounded-2xl border shadow-sm">
             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
               {t.taxPercent}
@@ -1107,15 +1314,15 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                 })
               }
             />
-          </div>
+          </div>{" "}
         </div>
-
-        {/* STRIPE KEY PROTEGIDA */}
         <div className="bg-blue-50 border-2 border-blue-100 p-6 rounded-2xl">
+          {" "}
           <label className="flex items-center text-blue-900 font-bold mb-3">
             <CreditCard className="w-5 h-5 mr-2" /> {t.paymentGateway}
-          </label>
+          </label>{" "}
           <div className="bg-white p-4 rounded-xl border border-blue-200 relative space-y-4">
+            {" "}
             <div>
               <label className="block text-xs font-bold text-blue-400 mb-1 uppercase">
                 {t.publishableKey}
@@ -1140,8 +1347,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                   placeholder="pk_live_..."
                 />
               )}
-            </div>
-
+            </div>{" "}
             <div>
               <label className="block text-xs font-bold text-blue-400 mb-1 uppercase">
                 {t.secretKey}
@@ -1166,10 +1372,9 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                   placeholder="sk_live_..."
                 />
               )}
-            </div>
-
-            {/* ACTIVAR APPLE PAY Y GOOGLE PAY (SEPARADOS) */}
+            </div>{" "}
             <div className="grid grid-cols-2 gap-4 pt-2">
+              {" "}
               <div className="flex items-center justify-between bg-blue-50 p-2 rounded-lg">
                 <label className="text-sm font-bold text-gray-700 flex items-center">
                   <Wallet className="w-4 h-4 mr-2 text-blue-600" />{" "}
@@ -1187,7 +1392,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                   }
                   className="w-5 h-5 accent-blue-600 disabled:opacity-50"
                 />
-              </div>
+              </div>{" "}
               <div className="flex items-center justify-between bg-blue-50 p-2 rounded-lg">
                 <label className="text-sm font-bold text-gray-700 flex items-center">
                   <Wallet className="w-4 h-4 mr-2 text-blue-600" />{" "}
@@ -1205,9 +1410,8 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                   }
                   className="w-5 h-5 accent-blue-600 disabled:opacity-50"
                 />
-              </div>
-            </div>
-
+              </div>{" "}
+            </div>{" "}
             {stripeLocked && (
               <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-blue-100">
                 <input
@@ -1224,18 +1428,17 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                   <Unlock className="w-4 h-4 mr-1" /> {t.unlock}
                 </button>
               </div>
-            )}
-          </div>
+            )}{" "}
+          </div>{" "}
           <p className="text-xs text-blue-400 mt-2 ml-1 flex items-center">
             {stripeLocked ? t.stripeLocked : "Unlocked"}
-          </p>
+          </p>{" "}
         </div>
-
-        {/* ... Resto de ajustes ... */}
         <div className="bg-purple-50 border-2 border-purple-100 p-6 rounded-2xl">
+          {" "}
           <label className="flex items-center text-purple-900 font-bold mb-3">
             <ExternalLink className="w-5 h-5 mr-2" /> {t.zelleConfig}
-          </label>
+          </label>{" "}
           <input
             className="w-full p-3 mb-3 rounded-xl border border-purple-200 font-bold text-lg"
             value={localConfig.zelleNumber || ""}
@@ -1243,7 +1446,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
               setLocalConfig({ ...localConfig, zelleNumber: e.target.value })
             }
             placeholder={t.zellePlace}
-          />
+          />{" "}
           <textarea
             className="w-full p-3 rounded-xl border border-purple-200 text-sm h-20"
             value={localConfig.zelleMessage || ""}
@@ -1251,13 +1454,15 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
               setLocalConfig({ ...localConfig, zelleMessage: e.target.value })
             }
             placeholder={t.payInstPlace}
-          />
+          />{" "}
         </div>
         <div className="bg-yellow-50 border-2 border-yellow-100 p-6 rounded-2xl">
+          {" "}
           <h4 className="font-bold text-yellow-800 flex items-center mb-4">
             <Star className="w-5 h-5 mr-2" /> {t.membershipRules}
-          </h4>
+          </h4>{" "}
           <div className="grid grid-cols-3 gap-4 mb-6">
+            {" "}
             <div>
               <label className="text-xs font-bold text-yellow-700">
                 {t.memCost}
@@ -1273,7 +1478,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                   })
                 }
               />
-            </div>
+            </div>{" "}
             <div>
               <label className="text-xs font-bold text-yellow-700">
                 {t.memDuration}
@@ -1289,7 +1494,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                   })
                 }
               />
-            </div>
+            </div>{" "}
             <div>
               <label className="text-xs font-bold text-yellow-700">
                 {t.estUses}
@@ -1305,12 +1510,13 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                   })
                 }
               />
-            </div>
-          </div>
+            </div>{" "}
+          </div>{" "}
           <div className="bg-white rounded-xl p-4 border border-yellow-200">
+            {" "}
             <h5 className="font-bold text-gray-700 mb-3 text-sm">
               {t.manageMembers} ({membersList.length})
-            </h5>
+            </h5>{" "}
             <div className="flex gap-2 mb-3">
               <input
                 className="flex-1 p-2 border rounded-lg bg-gray-50"
@@ -1324,7 +1530,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
               >
                 {t.addMember}
               </button>
-            </div>
+            </div>{" "}
             <div className="max-h-40 overflow-y-auto space-y-1">
               {membersList.map((m) => (
                 <div
@@ -1340,14 +1546,16 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                   </button>
                 </div>
               ))}
-            </div>
-          </div>
+            </div>{" "}
+          </div>{" "}
         </div>
         <div className="bg-red-50 border-2 border-red-100 p-6 rounded-2xl">
+          {" "}
           <h4 className="font-bold text-red-800 flex items-center mb-4">
             <ShieldCheck className="w-5 h-5 mr-2" /> {t.secSettings}
-          </h4>
+          </h4>{" "}
           <div className="space-y-3">
+            {" "}
             <div>
               <label className="text-xs font-bold text-red-700">
                 {t.changeUser}
@@ -1358,7 +1566,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                 onChange={(e) => setNewUsername(e.target.value)}
                 placeholder={t.newUserPlace}
               />
-            </div>
+            </div>{" "}
             <div>
               <label className="text-xs font-bold text-red-700">
                 {t.changePass}
@@ -1369,7 +1577,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder={t.newPassPlace}
               />
-            </div>
+            </div>{" "}
             <div>
               <label className="text-xs font-bold text-red-700">
                 {t.pinLabel}
@@ -1381,14 +1589,14 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                 onChange={(e) => setNewPin(e.target.value)}
                 placeholder={t.newPinPlace}
               />
-            </div>
-          </div>
+            </div>{" "}
+          </div>{" "}
         </div>
       </div>
     </div>
   );
 };
-// --- ADMIN VIEW (CORREGIDO LAYOUT MOVIL) ---
+// --- ADMIN VIEW (CORREGIDO: SIN LOGO REPETIDO) ---
 const AdminView = ({
   t,
   config,
@@ -1428,12 +1636,9 @@ const AdminView = ({
     }
     return () => unsub();
   }, [isAuth]);
-
-  // IMPRESIÓN "PRINT ALL"
   const printAllOrders = () => {
     window.print();
   };
-
   const handleLogin = (e) => {
     e.preventDefault();
     const validUser = config.adminUsername || "admin";
@@ -1515,25 +1720,10 @@ const AdminView = ({
       sender: "admin",
       date: new Date().toISOString(),
     };
-    const updatedMessages = [...(currentMessages || []), newMessage];
-    await updateDoc(doc(db, "orders", orderId), { chat: updatedMessages });
+    await updateDoc(doc(db, "orders", orderId), {
+      chat: [...(currentMessages || []), newMessage],
+    });
     setChatInput("");
-  };
-  const getClientWhatsApp = (o) => {
-    if (!o) return "#";
-    const p = o.customer.phone.replace(/\D/g, "");
-    const txt = `Hola ${o.customer.name}, recibo de orden #${
-      o.orderNumber
-    }. Total: $${o.total.toFixed(2)}.`;
-    return `https://wa.me/${p}?text=${encodeURIComponent(txt)}`;
-  };
-  const getClientSMS = (o) => {
-    if (!o) return "#";
-    const p = o.customer.phone.replace(/\D/g, "");
-    const txt = `Fast Wave: Orden #${o.orderNumber}. Total: $${o.total.toFixed(
-      2
-    )}.`;
-    return `sms:${p}?body=${encodeURIComponent(txt)}`;
   };
   const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
 
@@ -1579,7 +1769,7 @@ const AdminView = ({
           ) : (
             <div className="space-y-4 animate-fade-in">
               <p className="text-sm text-gray-500 text-center">
-                Enter your 6-digit PIN to reset password.
+                {t.enterPinInstruction}
               </p>
               <input
                 type="password"
@@ -1600,7 +1790,7 @@ const AdminView = ({
                 onClick={handleRecovery}
                 className="w-full bg-red-500 text-white font-bold py-3 rounded-lg hover:bg-red-600 transition"
               >
-                Reset Password
+                {t.resetPassword}
               </button>
               <button
                 onClick={() => setIsRecovering(false)}
@@ -1622,7 +1812,6 @@ const AdminView = ({
       </div>
     );
   }
-
   const filteredOrders = orders.filter((o) => {
     const search = searchTerm.toLowerCase();
     return (
@@ -1631,7 +1820,6 @@ const AdminView = ({
       (o.orderNumber && o.orderNumber.toLowerCase().includes(search))
     );
   });
-
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       <ConfirmationModal
@@ -1641,10 +1829,12 @@ const AdminView = ({
         onConfirm={confirmOrderDelete}
         onCancel={() => setOrderToDelete(null)}
       />
+      {/* HEADER ADMIN SIN LOGO (Solo Título) */}
       <div className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center sticky top-0 z-30 no-print">
         <h2 className="font-black text-xl text-cyan-900 flex items-center">
-          <BrandLogo customIcon={config.customIcon} />{" "}
-          <span className="ml-3 hidden md:inline text-gray-400">| Admin</span>
+          <span className="ml-3 hidden md:inline text-gray-400">
+            | {t.adminTitle}
+          </span>
         </h2>
         <div className="flex gap-4">
           <button
@@ -1695,7 +1885,6 @@ const AdminView = ({
               {t.adminSettings}
             </button>
           </div>
-          {/* BOTÓN PRINT ALL - LAYOUT MEJORADO PARA MÓVIL */}
           {tab === "orders" && (
             <button
               onClick={printAllOrders}
@@ -1705,7 +1894,6 @@ const AdminView = ({
             </button>
           )}
         </div>
-
         {tab === "orders" && (
           <div className="space-y-4">
             <div className="relative mb-4 no-print">
@@ -1774,21 +1962,18 @@ const AdminView = ({
                     <button
                       onClick={() => setAdminShareData(o)}
                       className="p-2 text-gray-400 hover:text-cyan-600 hover:bg-gray-100 rounded-full transition"
-                      title="Share"
                     >
                       <Share2 className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => printSpecificOrder(o.id)}
                       className="p-2 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-full transition"
-                      title="Print"
                     >
                       <Printer className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => setOrderToDelete(o.id)}
                       className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition"
-                      title="Delete"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -1804,20 +1989,22 @@ const AdminView = ({
                     className="mt-6 pt-6 border-t border-dashed border-gray-200 text-sm animate-fade-in cursor-auto"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {" "}
                     <div className="flex justify-end mb-4 no-print">
+                      {" "}
                       {isEditingOrder === o.id ? (
                         <div className="flex gap-2">
                           <button
                             onClick={cancelEdit}
                             className="px-3 py-1 bg-gray-200 text-gray-700 rounded font-bold"
                           >
-                            Cancel
+                            {t.cancel}
                           </button>
                           <button
                             onClick={() => saveOrderEdit(o.id)}
                             className="px-3 py-1 bg-green-500 text-white rounded font-bold"
                           >
-                            Save Changes
+                            {t.saveChanges}
                           </button>
                         </div>
                       ) : (
@@ -1827,14 +2014,16 @@ const AdminView = ({
                         >
                           <Edit2 className="w-3 h-3 mr-1" /> Edit Order
                         </button>
-                      )}
-                    </div>
+                      )}{" "}
+                    </div>{" "}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      {" "}
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        {" "}
                         <p className="font-bold text-gray-800 mb-3 flex items-center">
                           <User className="w-4 h-4 mr-2 text-cyan-600" />{" "}
-                          CLIENTE
-                        </p>
+                          {t.client}
+                        </p>{" "}
                         <p className="mb-1">
                           <span className="font-bold">Tel:</span>{" "}
                           <a
@@ -1843,7 +2032,7 @@ const AdminView = ({
                           >
                             {o.customer.phone}
                           </a>
-                        </p>
+                        </p>{" "}
                         <p className="mb-2">
                           <span className="font-bold">Dir:</span>{" "}
                           {isEditingOrder === o.id ? (
@@ -1861,7 +2050,7 @@ const AdminView = ({
                             <span className="flex items-center">
                               {o.customer.address}{" "}
                               <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                href={`http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(
                                   o.customer.address
                                 )}`}
                                 target="_blank"
@@ -1872,16 +2061,17 @@ const AdminView = ({
                               </a>
                             </span>
                           )}
-                        </p>
-                      </div>
+                        </p>{" "}
+                      </div>{" "}
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        {" "}
                         <p className="font-bold text-gray-800 mb-3 flex items-center">
                           <Clock className="w-4 h-4 mr-2 text-cyan-600" />{" "}
-                          HORARIO
-                        </p>
+                          {t.schedule}
+                        </p>{" "}
                         <div className="mb-2">
                           <span className="block text-xs text-gray-400 font-bold uppercase">
-                            Recogida
+                            {t.pickupInfo}
                           </span>
                           {isEditingOrder === o.id ? (
                             <div className="flex gap-2">
@@ -1918,10 +2108,10 @@ const AdminView = ({
                               </span>
                             </>
                           )}
-                        </div>
+                        </div>{" "}
                         <div>
                           <span className="block text-xs text-gray-400 font-bold uppercase">
-                            Entrega
+                            {t.deliveryInfo}
                           </span>
                           {isEditingOrder === o.id ? (
                             <div className="flex gap-2">
@@ -1958,14 +2148,15 @@ const AdminView = ({
                               </span>
                             </>
                           )}
-                        </div>
-                      </div>
-                    </div>
+                        </div>{" "}
+                      </div>{" "}
+                    </div>{" "}
                     <div className="bg-white border-2 border-gray-100 rounded-xl overflow-hidden">
+                      {" "}
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between font-bold text-xs text-gray-500 uppercase">
-                        <span>Item</span>
-                        <span>Total</span>
-                      </div>
+                        <span>{t.item}</span>
+                        <span>{t.total}</span>
+                      </div>{" "}
                       <div className="p-4 space-y-2">
                         {o.items &&
                           Object.entries(o.items).map(([k, v]) => {
@@ -1988,8 +2179,9 @@ const AdminView = ({
                               </div>
                             );
                           })}
-                      </div>
+                      </div>{" "}
                       <div className="bg-gray-50 p-4 border-t border-gray-100">
+                        {" "}
                         <div className="flex justify-between items-center pt-3 mt-2 border-t border-gray-200">
                           <span className="font-bold text-gray-800 text-lg">
                             TOTAL
@@ -2012,12 +2204,13 @@ const AdminView = ({
                               ${o.total.toFixed(2)}
                             </span>
                           )}
-                        </div>
-                      </div>
+                        </div>{" "}
+                      </div>{" "}
                       <div className="mt-4 bg-slate-50 p-3 rounded-xl border border-slate-200 no-print">
+                        {" "}
                         <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">
-                          Mensajes
-                        </h4>
+                          {t.messages}
+                        </h4>{" "}
                         <div className="max-h-40 overflow-y-auto space-y-2 mb-2 p-2">
                           {o.chat ? (
                             o.chat.map((msg, i) => (
@@ -2042,14 +2235,14 @@ const AdminView = ({
                             ))
                           ) : (
                             <p className="text-xs text-gray-400 italic text-center">
-                              No messages yet.
+                              {t.noMessages}
                             </p>
                           )}
-                        </div>
+                        </div>{" "}
                         <div className="flex gap-2">
                           <input
                             className="flex-1 border rounded px-2 text-xs"
-                            placeholder="Escribe una respuesta..."
+                            placeholder={t.writeReply}
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
                             onKeyDown={(e) =>
@@ -2062,9 +2255,9 @@ const AdminView = ({
                           >
                             <Send className="w-3 h-3" />
                           </button>
-                        </div>
-                      </div>
-                    </div>
+                        </div>{" "}
+                      </div>{" "}
+                    </div>{" "}
                   </div>
                 )}
               </div>
@@ -2088,8 +2281,7 @@ const AdminView = ({
           />
         )}
       </div>
-
-      {/* MODAL COMPARTIR ADMIN */}
+      {/* SOLUCIÓN: FUNCIONES GLOBALES USADAS AQUÍ (YA NO DARÁ ERROR) */}
       {adminShareData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative shadow-2xl">
@@ -2100,7 +2292,7 @@ const AdminView = ({
               X
             </button>
             <h3 className="font-black text-xl mb-4 text-gray-800">
-              Enviar al Cliente
+              {t.shareApp || "Share"}
             </h3>
             <div className="grid grid-cols-1 gap-3">
               <a
@@ -2125,7 +2317,7 @@ const AdminView = ({
   );
 };
 
-// --- COMPONENTE ORDER CARD EXTERNO ---
+// --- COMPONENTE ORDER CARD (MÉTODO DE PAGO VISIBLE) ---
 const OrderCard = ({
   o,
   showActions = true,
@@ -2144,7 +2336,6 @@ const OrderCard = ({
     }
   };
   const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
-
   return (
     <div
       id={`order-card-${o.id}`}
@@ -2188,7 +2379,7 @@ const OrderCard = ({
           <MapPin className="w-4 h-4 mr-2 mt-0.5 text-cyan-500" />
           <span>{o.customer.address}</span>
           <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+            href={`http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(
               o.customer.address
             )}`}
             target="_blank"
@@ -2201,13 +2392,14 @@ const OrderCard = ({
         <div className="flex items-center">
           <Calendar className="w-4 h-4 mr-2 text-cyan-500" />
           <span>
-            Pickup: {o.details.pickupDate} ({o.details.pickupTime})
+            {t.pickupInfo}: {o.details.pickupDate} ({o.details.pickupTime})
           </span>
         </div>
         <div className="flex items-center">
           <Truck className="w-4 h-4 mr-2 text-cyan-500" />
           <span>
-            Delivery: {o.details.deliveryDate} ({o.details.deliveryTime})
+            {t.deliveryInfo}: {o.details.deliveryDate} ({o.details.deliveryTime}
+            )
           </span>
         </div>
       </div>
@@ -2232,7 +2424,7 @@ const OrderCard = ({
         <div className="mt-3 pt-2 border-t border-dashed text-sm space-y-1 text-gray-500">
           {(o.express || o.isMember) && (
             <div className="flex justify-between">
-              <span>Subtotal</span>
+              <span>{t.subtotal}</span>
               <span>
                 $
                 {(
@@ -2245,13 +2437,13 @@ const OrderCard = ({
           )}
           {o.express && (
             <div className="flex justify-between text-cyan-600">
-              <span>Express Fee</span>
+              <span>{t.expressFeeLabel}</span>
               <span>+${(o.expressFeeAmount || 0).toFixed(2)}</span>
             </div>
           )}
           {o.isMember && (
             <div className="flex justify-between text-yellow-600">
-              <span>Member Discount</span>
+              <span>{t.memberDiscountLabel}</span>
               <span>-${(o.discountAmount || 0).toFixed(2)}</span>
             </div>
           )}
@@ -2262,8 +2454,10 @@ const OrderCard = ({
             </span>
           </div>
         </div>
-        <div className="mt-2 text-xs text-gray-400 uppercase text-center">
-          {o.details.paymentMethod} ({o.paymentStatus})
+        {/* CORRECCIÓN: MÉTODO DE PAGO VISIBLE EN EL TICKET */}
+        <div className="mt-2 text-xs text-gray-800 font-bold uppercase text-center bg-gray-100 p-2 rounded border border-gray-200">
+          {t.payment}: {t[o.details.paymentMethod] || o.details.paymentMethod} (
+          {o.paymentStatus})
         </div>
         {(o.aroma || o.allergies?.length > 0) && (
           <div className="mt-2 pt-2 border-t border-dashed text-xs text-gray-500">
@@ -2290,7 +2484,7 @@ const OrderCard = ({
         <div className="mt-4 pt-4 border-t border-gray-100 no-print">
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
             <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">
-              {t.chat}
+              {t.messages}
             </h4>
             <div className="max-h-40 overflow-y-auto space-y-2 mb-2 p-2">
               {o.chat && o.chat.length > 0 ? (
@@ -2314,7 +2508,7 @@ const OrderCard = ({
                 ))
               ) : (
                 <p className="text-xs text-gray-400 italic text-center">
-                  No messages yet.
+                  {t.noMessages}
                 </p>
               )}
             </div>
@@ -2348,7 +2542,6 @@ const OrderCard = ({
   );
 };
 
-// --- BOTÓN DE MEMBRESÍA CON LÓGICA DE AHORRO ---
 const MembershipPromoButton = ({
   isMember,
   config,
@@ -2361,7 +2554,6 @@ const MembershipPromoButton = ({
 }) => {
   const estimatedUses = config.minVisits || 2;
   const totalProjectedSavings = (potentialSavings || 0) * estimatedUses;
-
   return (
     <button
       onClick={onClick}
@@ -2414,8 +2606,6 @@ const MembershipPromoButton = ({
   );
 };
 
-// --- APP COMPONENT ---
-// CORREGIDO: Se llama FastWaveApp, no const LANGUAGES
 export default function FastWaveApp() {
   const [view, setView] = useState("home");
   const [cart, setCart] = useState({});
@@ -2424,13 +2614,10 @@ export default function FastWaveApp() {
   const [lang, setLang] = useState("en");
   const [allergies, setAllergies] = useState([]);
   const [aroma, setAroma] = useState("Fresh");
-
   const [toast, setToast] = useState({ message: null, type: "success" });
   const [formErrors, setFormErrors] = useState({});
-
   const showAlert = (msg, type = "success") => setToast({ message: msg, type });
   const closeToast = () => setToast({ ...toast, message: null });
-
   const [form, setForm] = useState(() => {
     const savedName = localStorage.getItem("fw_name");
     const savedPhone = localStorage.getItem("fw_phone");
@@ -2445,7 +2632,6 @@ export default function FastWaveApp() {
       paymentMethod: "cash",
     };
   });
-
   const [services, setServices] = useState(INITIAL_SERVICES);
   const [config, setConfig] = useState({});
   const [lastOrder, setLastOrder] = useState(null);
@@ -2453,7 +2639,6 @@ export default function FastWaveApp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [itemAddedMsg, setItemAddedMsg] = useState(null);
   const [myOrders, setMyOrders] = useState([]);
-
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [showRejoinModal, setShowRejoinModal] = useState(false);
   const [showHomeJoinModal, setShowHomeJoinModal] = useState(false);
@@ -2461,14 +2646,12 @@ export default function FastWaveApp() {
   const [showCelebrationModal, setShowCelebrationModal] = useState(false);
   const [showLossWarning, setShowLossWarning] = useState(false);
   const [shareData, setShareData] = useState(null);
-
   const [members, setMembers] = useState([]);
   const [pastMembers, setPastMembers] = useState([]);
   const [savingsAmount, setSavingsAmount] = useState(0);
   const [qrModal, setQRModal] = useState({ show: false, url: "" });
   const [dateErrorMsg, setDateErrorMsg] = useState(null);
   const [adminUpdateAlert, setAdminUpdateAlert] = useState(null);
-
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isLoadingPayment, setIsLoadingPayment] = useState(false);
@@ -2478,10 +2661,9 @@ export default function FastWaveApp() {
   const [cardElement, setCardElement] = useState(null);
   const [cardHolderName, setCardHolderName] = useState("");
   const [paymentRequest, setPaymentRequest] = useState(null);
-
   useTailwind();
   useAppMode(config.customIcon);
-  const t = LANGUAGES[lang];
+  const t = LANGUAGES[lang] || LANGUAGES["en"];
 
   useEffect(() => {
     localStorage.setItem("fw_name", form.name);
@@ -2489,7 +2671,6 @@ export default function FastWaveApp() {
   useEffect(() => {
     localStorage.setItem("fw_phone", form.phone);
   }, [form.phone]);
-
   useEffect(() => {
     if (db) {
       const unsubConfig = onSnapshot(doc(db, "settings", "general"), (snap) => {
@@ -2534,7 +2715,6 @@ export default function FastWaveApp() {
       };
     }
   }, []);
-
   useEffect(() => {
     if (
       isProcessingPayment &&
@@ -2564,7 +2744,6 @@ export default function FastWaveApp() {
       return () => clearTimeout(timer);
     }
   }, [isProcessingPayment, form.paymentMethod, stripeObj, paymentSuccess]);
-
   useEffect(() => {
     if (form.phone.trim().length > 7 && members.includes(form.phone.trim())) {
       setIsMember(true);
@@ -2572,7 +2751,6 @@ export default function FastWaveApp() {
       setIsMember(false);
     }
   }, [form.phone, members]);
-
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
     if (saved.length > 0 && db) {
@@ -2604,7 +2782,6 @@ export default function FastWaveApp() {
       setAdminUpdateAlert(null);
     }
   };
-
   const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
   const updateCart = (id, qty) => {
     setCart((prev) => {
@@ -2621,7 +2798,6 @@ export default function FastWaveApp() {
     }
   };
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
-
   const calculateTotals = () => {
     const subtotal = Object.entries(cart).reduce((acc, [id, qty]) => {
       const s = services.find((x) => x.id === id);
@@ -2638,8 +2814,6 @@ export default function FastWaveApp() {
     return { subtotal, expressFee, discount, tax, finalTotal: taxable + tax };
   };
   const cartTotals = calculateTotals();
-
-  // --- VARIABLES DE MEMBRESÍA ---
   const currentSavings =
     (cartTotals.subtotal + cartTotals.expressFee) *
     ((config.discountPercent || 10) / 100);
@@ -2880,7 +3054,6 @@ export default function FastWaveApp() {
     const isPaid = form.paymentMethod !== "cash";
     submitOrder(false, false, isPaid, form.paymentMethod);
   };
-
   const submitOrder = async (
     forceMember = false,
     isRejoin = false,
@@ -2960,7 +3133,6 @@ export default function FastWaveApp() {
     }
     setIsSubmitting(false);
   };
-
   const sendClientMessage = async (orderId, msgText) => {
     if (!db) return;
     const newMessage = {
@@ -2975,26 +3147,8 @@ export default function FastWaveApp() {
       await updateDoc(orderRef, { chat: [...currentChat, newMessage] });
     }
   };
-  const getOwnerWhatsApp = (o) => {
-    if (!o) return "#";
-    const p = (config.phone || "").replace(/\D/g, "");
-    return `https://wa.me/${p}?text=Order%20${o.orderNumber}`;
-  };
-  const getOwnerSMS = (o) => {
-    if (!o) return "#";
-    const p = (config.phone || "").replace(/\D/g, "");
-    return `sms:${p}?body=Order%20${o.orderNumber}`;
-  };
   const shareOrder = (o) => {
     setShareData(o);
-  };
-  const dismissScheduleAlert = async () => {
-    if (scheduleUpdateAlert && db) {
-      await updateDoc(doc(db, "orders", scheduleUpdateAlert.id), {
-        scheduleUpdatedByAdmin: false,
-      });
-      setScheduleUpdateAlert(null);
-    }
   };
   const deleteLocalOrder = (id) => {
     const saved = JSON.parse(localStorage.getItem("myOrders") || "[]").filter(
@@ -3011,15 +3165,13 @@ export default function FastWaveApp() {
         type={toast.type}
         onClose={closeToast}
       />
-
-      {/* NAVBAR */}
       <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-cyan-100 no-print">
         <div className="max-w-7xl mx-auto px-4 flex justify-between h-20 items-center">
           <div
             className="flex items-center cursor-pointer"
             onClick={() => setView("home")}
           >
-            <BrandLogo customIcon={config.customIcon} />
+            <BrandLogo customIcon={config.customIcon} t={t} />
           </div>
           <div className="hidden md:flex items-center space-x-4">
             <button
@@ -3123,8 +3275,6 @@ export default function FastWaveApp() {
             >
               Cart ({cartCount})
             </button>
-
-            {/* BOTÓN ADMIN EN MÓVIL AÑADIDO AQUÍ */}
             <button
               onClick={() => {
                 setView("admin");
@@ -3134,7 +3284,6 @@ export default function FastWaveApp() {
             >
               <Lock className="w-4 h-4 mr-2" /> {t.login}
             </button>
-
             <div className="flex justify-between items-center pt-4 border-t">
               <select
                 value={lang}
@@ -3151,7 +3300,6 @@ export default function FastWaveApp() {
         )}
       </nav>
 
-      {/* --- ALERTA GRANDE DE MODIFICACIÓN ADMIN --- */}
       {adminUpdateAlert && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white p-8 rounded-3xl shadow-2xl text-center border-t-8 border-yellow-400 max-w-md w-full relative overflow-hidden">
@@ -3186,7 +3334,6 @@ export default function FastWaveApp() {
         </div>
       )}
 
-      {/* VISTAS */}
       {view === "home" && (
         <div className="animate-fade-in">
           <div className="relative h-[550px] flex items-center justify-center bg-cyan-900 text-white text-center px-4 overflow-hidden">
@@ -3226,7 +3373,6 @@ export default function FastWaveApp() {
               </div>
             </div>
             <div className="absolute top-10 right-10 z-20 hidden md:block">
-              {/* AQUI ESTÁ EL BOTÓN DE MEMBRESÍA PERSUASIVO */}
               <MembershipPromoButton
                 isMember={isMember}
                 config={config}
@@ -3465,7 +3611,7 @@ export default function FastWaveApp() {
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                   <h3 className="font-bold text-gray-700 mb-4">
-                    {t.pickupInfo || "Schedule"}
+                    {t.pickupInfo}
                   </h3>
                   {dateErrorMsg && (
                     <div className="text-red-500 text-xs mb-2">
@@ -3560,7 +3706,7 @@ export default function FastWaveApp() {
                     );
                   })}
                   <div className="border-t mt-4 pt-4 flex justify-between font-black text-xl">
-                    <span>Total</span>
+                    <span>{t.total}</span>
                     <span>${cartTotals.finalTotal.toFixed(2)}</span>
                   </div>
                 </div>
@@ -3601,7 +3747,7 @@ export default function FastWaveApp() {
                     </button>
                     <button
                       onClick={
-                        config.enableApple // CORRECCIÓN: config en lugar de localConfig
+                        config.enableApple
                           ? () => handleMethodClick("apple_pay")
                           : null
                       }
@@ -3610,7 +3756,7 @@ export default function FastWaveApp() {
                           ? "bg-gray-100 border-gray-500"
                           : ""
                       } ${
-                        !config.enableApple // CORRECCIÓN: config en lugar de localConfig
+                        !config.enableApple
                           ? "opacity-50 cursor-not-allowed"
                           : ""
                       }`}
@@ -3619,7 +3765,7 @@ export default function FastWaveApp() {
                     </button>
                     <button
                       onClick={
-                        config.enableGoogle // CORRECCIÓN: config en lugar de localConfig
+                        config.enableGoogle
                           ? () => handleMethodClick("google_pay")
                           : null
                       }
@@ -3628,7 +3774,7 @@ export default function FastWaveApp() {
                           ? "bg-gray-100 border-gray-500"
                           : ""
                       } ${
-                        !config.enableGoogle // CORRECCIÓN: config en lugar de localConfig
+                        !config.enableGoogle
                           ? "opacity-50 cursor-not-allowed"
                           : ""
                       }`}
@@ -3641,7 +3787,7 @@ export default function FastWaveApp() {
                   onClick={() => setView("home")}
                   className="w-full text-center text-gray-400 text-sm"
                 >
-                  Cancelar
+                  {t.cancel}
                 </button>
               </div>
             </div>
@@ -3670,24 +3816,18 @@ export default function FastWaveApp() {
             )}
             <div className="space-y-3 mt-4">
               <a
-                href={getOwnerWhatsApp(lastOrder)}
+                href={getOwnerWhatsApp(lastOrder, config.phone)}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full bg-green-500 text-white py-3 px-4 rounded-xl font-bold shadow-md hover:bg-green-600 transition flex items-center justify-center"
               >
-                <MessageCircle className="w-5 h-5 mr-2" />{" "}
-                {lang === "es"
-                  ? `Notificar a ${config.title || "Fast Wave"}`
-                  : `Notify ${config.title || "Fast Wave"}`}
+                <MessageCircle className="w-5 h-5 mr-2" /> {t.notifyOwner}
               </a>
               <a
-                href={getOwnerSMS(lastOrder)}
+                href={getOwnerSMS(lastOrder, config.phone)}
                 className="w-full bg-blue-500 text-white py-3 px-4 rounded-xl font-bold shadow-md hover:bg-blue-600 transition flex items-center justify-center"
               >
-                <Smartphone className="w-5 h-5 mr-2" />{" "}
-                {lang === "es"
-                  ? "Enviar SMS de Confirmación"
-                  : "Send Confirmation SMS"}
+                <Smartphone className="w-5 h-5 mr-2" /> {t.sendSMS}
               </a>
             </div>
             <button
@@ -3747,20 +3887,15 @@ export default function FastWaveApp() {
         />
       )}
 
-      {/* --- MODAL MIEMBRO MEJORADO (CON CÁLCULOS) --- */}
+      {/* MODALES EXTRA */}
       {showMemberModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white p-8 rounded-2xl text-center max-w-sm w-full shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
             <h3 className="font-black text-3xl mb-1 text-gray-800">
-              {lang === "es" ? "¡Ahorra Ahora!" : "Save Money Now!"}
+              {t.joinClub}
             </h3>
-            <p className="text-gray-500 mb-6 text-sm">
-              {lang === "es"
-                ? "Hazte miembro y obtén descuentos exclusivos."
-                : "Become a member and get exclusive discounts."}
-            </p>
-
+            <p className="text-gray-500 mb-6 text-sm">{t.enterDetails}</p>
             <div className="bg-green-50 p-4 rounded-xl border border-green-100 mb-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-bold text-gray-600">
@@ -3779,11 +3914,9 @@ export default function FastWaveApp() {
                 ${totalProjectedSavings.toFixed(2)}
               </p>
             </div>
-
             <p className="mb-4 text-sm font-bold text-gray-700">
               {t.cost}: ${membershipCost} {t.for} {membershipDuration}
             </p>
-
             <button
               onClick={handleJoinAndContinue}
               className="w-full bg-gradient-to-r from-green-400 to-green-600 text-white py-4 rounded-xl font-black text-lg mb-3 shadow-lg hover:scale-105 transition transform"
@@ -3799,8 +3932,6 @@ export default function FastWaveApp() {
           </div>
         </div>
       )}
-
-      {/* ... Resto de modales (LossWarning, Rejoin, HomeJoin, etc.) ... */}
       {showLossWarning && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-xl text-center max-w-sm w-full">
@@ -3929,8 +4060,6 @@ export default function FastWaveApp() {
           </div>
         </div>
       )}
-
-      {/* MODAL COMPARTIR CLIENTE */}
       {shareData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative shadow-2xl">
@@ -3941,34 +4070,27 @@ export default function FastWaveApp() {
               X
             </button>
             <h3 className="font-black text-xl mb-4 text-gray-800">
-              {lang === "es" ? "Compartir Recibo" : "Share Receipt"}
+              {t.shareApp || "Share"}
             </h3>
             <div className="grid grid-cols-1 gap-3">
               <a
-                href={getOwnerWhatsApp(shareData)}
+                href={getClientWhatsApp(shareData)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center p-4 bg-green-100 text-green-800 rounded-xl font-bold hover:bg-green-200 transition"
               >
-                <MessageCircle className="mr-3 w-5 h-5" /> WhatsApp
+                <MessageCircle className="mr-3 w-5 h-5" /> WhatsApp Cliente
               </a>
               <a
-                href={getOwnerSMS(shareData)}
+                href={getClientSMS(shareData)}
                 className="flex items-center justify-center p-4 bg-blue-100 text-blue-800 rounded-xl font-bold hover:bg-blue-200 transition"
               >
-                <Smartphone className="mr-3 w-5 h-5" /> SMS
-              </a>
-              <a
-                href={`mailto:?subject=Receipt&body=Order%20${shareData.orderNumber}`}
-                className="flex items-center justify-center p-4 bg-gray-100 text-gray-800 rounded-xl font-bold hover:bg-gray-200 transition"
-              >
-                <ExternalLink className="mr-3 w-5 h-5" /> Email
+                <Smartphone className="mr-3 w-5 h-5" /> SMS Cliente
               </a>
             </div>
           </div>
         </div>
       )}
-
       {qrModal.show && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative">
@@ -4005,6 +4127,7 @@ export default function FastWaveApp() {
           </div>
         </div>
       )}
+
       {isProcessingPayment && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl relative">
@@ -4034,35 +4157,29 @@ export default function FastWaveApp() {
                 {form.paymentMethod === "card" && (
                   <div className="mb-6">
                     <label className="block text-xs font-bold text-gray-500 mb-1">
-                      {lang === "es" ? "Nombre en Tarjeta" : "Cardholder Name"}
+                      {t.cardHolderLabel}
                     </label>
                     <input
                       className="w-full p-3 border rounded mb-3 bg-gray-50"
-                      placeholder={
-                        lang === "es" ? "Nombre Completo" : "Full Name"
-                      }
+                      placeholder={t.nameLabel}
                       value={cardHolderName}
                       onChange={(e) => setCardHolderName(e.target.value)}
                     />
                     <label className="block text-xs font-bold text-gray-500 mb-1">
-                      {lang === "es" ? "Datos de Tarjeta" : "Card Details"}
+                      {t.cardDetailsLabel}
                     </label>
                     <div className="p-3 border rounded bg-white shadow-sm">
                       <div id="card-element"></div>
                     </div>
                     <p className="text-[10px] text-gray-400 mt-2 text-center flex justify-center items-center">
-                      <Lock className="w-3 h-3 mr-1" />{" "}
-                      {lang === "es"
-                        ? "Procesado seguro por Stripe"
-                        : "Secure by Stripe"}
+                      <Lock className="w-3 h-3 mr-1" /> {t.secureStripe}
                     </p>
                   </div>
                 )}
                 {form.paymentMethod === "online" && (
                   <div className="bg-purple-50 p-4 rounded mb-4 text-sm text-center">
                     <p className="font-bold text-purple-800">
-                      {lang === "es" ? "Enviar a:" : "Send to:"}{" "}
-                      {config.zelleNumber || "--"}
+                      {t.sendTo} {config.zelleNumber || "--"}
                     </p>
                     <p className="text-gray-600 mt-1">{config.zelleMessage}</p>
                     <p className="text-2xl font-black mt-2 text-purple-900">
@@ -4073,7 +4190,7 @@ export default function FastWaveApp() {
                 {form.paymentMethod === "cash" && (
                   <div className="bg-green-50 p-4 rounded mb-4 text-center">
                     <p className="text-green-800 font-bold mb-2">
-                      {lang === "es" ? "Total a Pagar" : "Total Due"}
+                      {t.totalDue}
                     </p>
                     <span className="text-3xl font-black text-green-600">
                       ${cartTotals.finalTotal.toFixed(2)}
@@ -4092,23 +4209,13 @@ export default function FastWaveApp() {
                   {isLoadingPayment ? (
                     <CustomLoaderIcon className="animate-spin w-5 h-5" />
                   ) : form.paymentMethod === "cash" ? (
-                    lang === "es" ? (
-                      "Confirmar Orden"
-                    ) : (
-                      "Confirm Order"
-                    )
+                    t.confirmOrderBtn
                   ) : ["apple_pay", "google_pay"].includes(
                       form.paymentMethod
                     ) ? (
-                    lang === "es" ? (
-                      "Pagar con Billetera"
-                    ) : (
-                      "Pay with Wallet"
-                    )
-                  ) : lang === "es" ? (
-                    "Pagar Ahora"
+                    t.payWallet
                   ) : (
-                    "Pay Now"
+                    t.payNow
                   )}
                 </button>
               </div>
@@ -4122,7 +4229,7 @@ export default function FastWaveApp() {
                   onClick={handlePaymentComplete}
                   className="w-full bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg"
                 >
-                  {lang === "es" ? "Ver Recibo" : "View Receipt"}
+                  {t.viewReceipt}
                 </button>
               </div>
             )}
