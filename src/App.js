@@ -879,7 +879,6 @@ const CustomLoaderIcon = ({ className }) => (
     <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
   </svg>
 );
-
 const ServiceEditor = ({ services, setServices, t, showAlert }) => {
   const [newService, setNewService] = useState({
     id: "",
@@ -1596,7 +1595,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
     </div>
   );
 };
-// --- ADMIN VIEW (CORREGIDO: SIN LOGO REPETIDO) ---
+// --- ADMIN VIEW (CORREGIDO: MÉTODO DE PAGO VISIBLE EN TICKET) ---
 const AdminView = ({
   t,
   config,
@@ -2204,7 +2203,14 @@ const AdminView = ({
                               ${o.total.toFixed(2)}
                             </span>
                           )}
-                        </div>{" "}
+                        </div>
+                        {/* MODIFICACIÓN: Mostrar método de pago en Admin igual que en Cliente */}
+                        <div className="mt-2 text-xs text-gray-800 font-bold uppercase text-center bg-gray-100 p-2 rounded border border-gray-200">
+                          {t.payment}:{" "}
+                          {t[o.details.paymentMethod] ||
+                            o.details.paymentMethod}{" "}
+                          ({o.paymentStatus})
+                        </div>
                       </div>{" "}
                       <div className="mt-4 bg-slate-50 p-3 rounded-xl border border-slate-200 no-print">
                         {" "}
@@ -2316,7 +2322,6 @@ const AdminView = ({
     </div>
   );
 };
-
 // --- COMPONENTE ORDER CARD (MÉTODO DE PAGO VISIBLE) ---
 const OrderCard = ({
   o,
@@ -2336,6 +2341,10 @@ const OrderCard = ({
     }
   };
   const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
+
+  // Protección contra datos nulos
+  if (!o || !o.details) return null;
+
   return (
     <div
       id={`order-card-${o.id}`}
@@ -2344,11 +2353,11 @@ const OrderCard = ({
       <div className="flex justify-between items-start mb-4 border-b border-dashed pb-4 border-gray-200">
         <div>
           <span className="font-mono text-xl font-black text-cyan-700">
-            #{o.orderNumber || o.id.slice(0, 6)}
+            #{o.orderNumber || (o.id ? o.id.slice(0, 6) : "ORD")}
           </span>
           <p className="text-xs text-gray-400 mt-1">
-            {new Date(o.createdAt).toLocaleDateString()}{" "}
-            {new Date(o.createdAt).toLocaleTimeString()}
+            {o.createdAt ? new Date(o.createdAt).toLocaleDateString() : ""}
+            {o.createdAt ? new Date(o.createdAt).toLocaleTimeString() : ""}
           </p>
           <span
             className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold uppercase ${
@@ -2357,7 +2366,7 @@ const OrderCard = ({
                 : "bg-blue-50 text-blue-600"
             }`}
           >
-            {o.status}
+            {o.status || "Pending"}
           </span>
           {o.paymentStatus === "paid" && (
             <span className="ml-2 bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">
@@ -2404,7 +2413,7 @@ const OrderCard = ({
         </div>
       </div>
       <div className="bg-gray-50 p-4 rounded-xl mb-4">
-        {Object.entries(o.items).map(([id, qty]) => {
+        {Object.entries(o.items || {}).map(([id, qty]) => {
           const s = services.find((x) => x.id === id);
           const translatedName = s ? getServiceName(s) : id;
           return (
@@ -2454,11 +2463,13 @@ const OrderCard = ({
             </span>
           </div>
         </div>
-        {/* CORRECCIÓN: MÉTODO DE PAGO VISIBLE EN EL TICKET */}
+
+        {/* MÉTODO DE PAGO VISIBLE */}
         <div className="mt-2 text-xs text-gray-800 font-bold uppercase text-center bg-gray-100 p-2 rounded border border-gray-200">
           {t.payment}: {t[o.details.paymentMethod] || o.details.paymentMethod} (
           {o.paymentStatus})
         </div>
+
         {(o.aroma || o.allergies?.length > 0) && (
           <div className="mt-2 pt-2 border-t border-dashed text-xs text-gray-500">
             {o.aroma && (
@@ -2715,6 +2726,8 @@ export default function FastWaveApp() {
       };
     }
   }, []);
+
+  // Efecto para Stripe
   useEffect(() => {
     if (
       isProcessingPayment &&
@@ -2744,6 +2757,7 @@ export default function FastWaveApp() {
       return () => clearTimeout(timer);
     }
   }, [isProcessingPayment, form.paymentMethod, stripeObj, paymentSuccess]);
+
   useEffect(() => {
     if (form.phone.trim().length > 7 && members.includes(form.phone.trim())) {
       setIsMember(true);
@@ -2751,6 +2765,7 @@ export default function FastWaveApp() {
       setIsMember(false);
     }
   }, [form.phone, members]);
+
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
     if (saved.length > 0 && db) {
@@ -3054,18 +3069,23 @@ export default function FastWaveApp() {
     const isPaid = form.paymentMethod !== "cash";
     submitOrder(false, false, isPaid, form.paymentMethod);
   };
+
+  // --- FUNCIÓN SUBMIT ORDER MEJORADA ---
   const submitOrder = async (
     forceMember = false,
     isRejoin = false,
     isPaid = false,
     methodOverride = null
   ) => {
+    if (isSubmitting) return; // Prevenir doble click
     setIsSubmitting(true);
+
     const orderNum = generateShortId();
     const currentIsMember = forceMember || isMember;
     let finalTotal = cartTotals.finalTotal;
     let finalExpressFee = cartTotals.expressFee;
     let finalDiscount = cartTotals.discount;
+
     if (forceMember || isMember) {
       const subtotal = cartTotals.subtotal;
       const express = subtotal * ((config.expressPercent || 20) / 100);
@@ -3078,6 +3098,7 @@ export default function FastWaveApp() {
       finalTotal = subtotal + express - disc + tax;
     }
     if (isRejoin) finalTotal += parseFloat(config.rejoinFee) || 10;
+
     const orderData = {
       customer: { name: form.name, phone: form.phone, address: form.address },
       items: cart,
@@ -3105,34 +3126,50 @@ export default function FastWaveApp() {
       scheduleUpdatedByAdmin: false,
       chat: [],
     };
+
+    // Preparamos el objeto final por si Firebase falla, poder mostrarlo igual
+    const finalOrderLocal = { id: "LOCAL-" + orderNum, ...orderData };
+
     try {
       if (db) {
         const docRef = await addDoc(collection(db, "orders"), orderData);
-        const finalOrder = { id: docRef.id, ...orderData };
+        // Si tuvo éxito, usamos el ID real
+        const finalOrderDB = { id: docRef.id, ...orderData };
+        setLastOrder(finalOrderDB);
+
+        // Guardar en localstorage
         const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
         localStorage.setItem("myOrders", JSON.stringify([...saved, docRef.id]));
-        setLastOrder(finalOrder);
       } else {
-        setLastOrder({ id: "DEMO-123", ...orderData, orderNumber: orderNum });
+        // Fallback si no hay DB
+        setLastOrder(finalOrderLocal);
       }
-      setCart({});
-      setForm((prev) => ({
-        ...prev,
-        address: "",
-        pickupDate: "",
-        pickupTime: TIME_SLOTS[0],
-        deliveryDate: "",
-        deliveryTime: TIME_SLOTS[0],
-        paymentMethod: "cash",
-      }));
-      setIsExpress(false);
-      setAllergies([]);
-      setView("success");
     } catch (e) {
-      showAlert("Error sending order to database.", "error");
+      console.error("Error al guardar en Firebase:", e);
+      // AUNQUE falle, mostramos el recibo al usuario para que no pierda la info
+      setLastOrder(finalOrderLocal);
+      showAlert("Offline mode: Order created locally.", "success");
     }
+
+    // Limpieza
+    setCart({});
+    setForm((prev) => ({
+      ...prev,
+      address: "",
+      pickupDate: "",
+      pickupTime: TIME_SLOTS[0],
+      deliveryDate: "",
+      deliveryTime: TIME_SLOTS[0],
+      paymentMethod: "cash",
+    }));
+    setIsExpress(false);
+    setAllergies([]);
     setIsSubmitting(false);
+
+    // CAMBIAR VISTA AL FINAL
+    setView("success");
   };
+
   const sendClientMessage = async (orderId, msgText) => {
     if (!db) return;
     const newMessage = {
@@ -3141,10 +3178,14 @@ export default function FastWaveApp() {
       date: new Date().toISOString(),
     };
     const orderRef = doc(db, "orders", orderId);
-    const snap = await getDoc(orderRef);
-    if (snap.exists()) {
-      const currentChat = snap.data().chat || [];
-      await updateDoc(orderRef, { chat: [...currentChat, newMessage] });
+    try {
+      const snap = await getDoc(orderRef);
+      if (snap.exists()) {
+        const currentChat = snap.data().chat || [];
+        await updateDoc(orderRef, { chat: [...currentChat, newMessage] });
+      }
+    } catch (e) {
+      console.log(e);
     }
   };
   const shareOrder = (o) => {
@@ -3191,6 +3232,7 @@ export default function FastWaveApp() {
             <div className="flex items-center bg-cyan-50 px-4 py-2 rounded-full text-cyan-800 font-mono text-sm">
               <Phone className="h-4 w-4 mr-2" /> {config.phone}
             </div>
+            {/* SELECTOR DE IDIOMA CON BANDERAS (PC) */}
             <select
               value={lang}
               onChange={(e) => setLang(e.target.value)}
@@ -3285,15 +3327,16 @@ export default function FastWaveApp() {
               <Lock className="w-4 h-4 mr-2" /> {t.login}
             </button>
             <div className="flex justify-between items-center pt-4 border-t">
+              {/* SELECTOR DE IDIOMA CON BANDERAS (MÓVIL) - CORREGIDO */}
               <select
                 value={lang}
                 onChange={(e) => setLang(e.target.value)}
                 className="bg-gray-100 rounded px-2 py-1 text-sm"
               >
-                <option value="en">EN</option>
-                <option value="es">ES</option>
-                <option value="fr">FR</option>
-                <option value="hi">HI</option>
+                <option value="en">🇺🇸 EN</option>
+                <option value="es">🇪🇸 ES</option>
+                <option value="fr">🇫🇷 FR</option>
+                <option value="hi">🇮🇳 HI</option>
               </select>
             </div>
           </div>
