@@ -131,8 +131,7 @@ const useAppMode = (customIcon) => {
   }, [customIcon]);
 };
 
-// --- 3. FUNCIONES GLOBALES (SOLUCIÓN AL ERROR DE REFERENCE) ---
-// Estas funciones ahora viven fuera para que cualquiera las pueda usar sin error.
+// --- 3. FUNCIONES GLOBALES ---
 
 const getClientWhatsApp = (o) => {
   if (!o) return "#";
@@ -198,10 +197,6 @@ const printSpecificOrder = (orderId) => {
     const s = document.getElementById("print-style-temp");
     if (s) s.remove();
   }, 1000);
-};
-
-const printAllOrders = () => {
-  window.print();
 };
 
 const generateShortId = () =>
@@ -1595,7 +1590,6 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
     </div>
   );
 };
-// --- ADMIN VIEW (CORREGIDO: MÉTODO DE PAGO VISIBLE EN TICKET) ---
 const AdminView = ({
   t,
   config,
@@ -1828,7 +1822,6 @@ const AdminView = ({
         onConfirm={confirmOrderDelete}
         onCancel={() => setOrderToDelete(null)}
       />
-      {/* HEADER ADMIN SIN LOGO (Solo Título) */}
       <div className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center sticky top-0 z-30 no-print">
         <h2 className="font-black text-xl text-cyan-900 flex items-center">
           <span className="ml-3 hidden md:inline text-gray-400">
@@ -2204,7 +2197,6 @@ const AdminView = ({
                             </span>
                           )}
                         </div>
-                        {/* MODIFICACIÓN: Mostrar método de pago en Admin igual que en Cliente */}
                         <div className="mt-2 text-xs text-gray-800 font-bold uppercase text-center bg-gray-100 p-2 rounded border border-gray-200">
                           {t.payment}:{" "}
                           {t[o.details.paymentMethod] ||
@@ -2287,7 +2279,6 @@ const AdminView = ({
           />
         )}
       </div>
-      {/* SOLUCIÓN: FUNCIONES GLOBALES USADAS AQUÍ (YA NO DARÁ ERROR) */}
       {adminShareData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative shadow-2xl">
@@ -2322,7 +2313,6 @@ const AdminView = ({
     </div>
   );
 };
-// --- COMPONENTE ORDER CARD (MÉTODO DE PAGO VISIBLE) ---
 const OrderCard = ({
   o,
   showActions = true,
@@ -2342,7 +2332,6 @@ const OrderCard = ({
   };
   const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
 
-  // Protección contra datos nulos
   if (!o || !o.details) return null;
 
   return (
@@ -2464,7 +2453,6 @@ const OrderCard = ({
           </div>
         </div>
 
-        {/* MÉTODO DE PAGO VISIBLE */}
         <div className="mt-2 text-xs text-gray-800 font-bold uppercase text-center bg-gray-100 p-2 rounded border border-gray-200">
           {t.payment}: {t[o.details.paymentMethod] || o.details.paymentMethod} (
           {o.paymentStatus})
@@ -3198,15 +3186,18 @@ export default function FastWaveApp() {
     localStorage.setItem("myOrders", JSON.stringify(saved));
     setMyOrders((prev) => prev.filter((o) => o.id !== id));
   };
-
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-gray-800">
+    <div
+      className="min-h-screen bg-slate-50 font-sans text-gray-800"
+      style={{ opacity: 0, animation: "fadeIn 0.5s ease-out forwards 0.2s" }}
+    >
+      <style>{`@keyframes fadeIn { to { opacity: 1; } }`}</style>
       <CustomToast
         message={toast.message}
         type={toast.type}
         onClose={closeToast}
       />
-      <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-cyan-100 no-print">
+      <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-cyan-100 no-print pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-4 flex justify-between h-20 items-center">
           <div
             className="flex items-center cursor-pointer"
@@ -3232,7 +3223,6 @@ export default function FastWaveApp() {
             <div className="flex items-center bg-cyan-50 px-4 py-2 rounded-full text-cyan-800 font-mono text-sm">
               <Phone className="h-4 w-4 mr-2" /> {config.phone}
             </div>
-            {/* SELECTOR DE IDIOMA CON BANDERAS (PC) */}
             <select
               value={lang}
               onChange={(e) => setLang(e.target.value)}
@@ -3327,7 +3317,6 @@ export default function FastWaveApp() {
               <Lock className="w-4 h-4 mr-2" /> {t.login}
             </button>
             <div className="flex justify-between items-center pt-4 border-t">
-              {/* SELECTOR DE IDIOMA CON BANDERAS (MÓVIL) - CORREGIDO */}
               <select
                 value={lang}
                 onChange={(e) => setLang(e.target.value)}
@@ -3961,7 +3950,7 @@ export default function FastWaveApp() {
               {t.cost}: ${membershipCost} {t.for} {membershipDuration}
             </p>
             <button
-              onClick={handleJoinAndContinue}
+              onClick={joinMembershipFromCheckout}
               className="w-full bg-gradient-to-r from-green-400 to-green-600 text-white py-4 rounded-xl font-black text-lg mb-3 shadow-lg hover:scale-105 transition transform"
             >
               {t.yesJoin}
