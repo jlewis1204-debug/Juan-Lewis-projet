@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect, useRef } from "react";
 import {
   ShoppingBag,
@@ -92,10 +93,48 @@ try {
 // --- 2. UTILS & HOOKS ---
 const useTailwind = () => {
   useEffect(() => {
+    // --- FIX PRINCIPAL PARA CELULARES ---
+    // Esto asegura que la pantalla no se vea alejada (zoom out) en móviles
+    let meta = document.querySelector("meta[name='viewport']");
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "viewport";
+      meta.content =
+        "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no";
+      document.getElementsByTagName("head")[0].appendChild(meta);
+    }
+
+    // PRECARGA DE ESTILOS CRÍTICOS (CSS PLAN B)
+    if (!document.querySelector("#critical-fix")) {
+      const style = document.createElement("style");
+      style.id = "critical-fix";
+      style.innerHTML = `
+        /* Seguridad para móviles */
+        body { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; font-family: sans-serif; }
+        /* Fix calendario iPhone */
+        input[type="date"], input[type="time"] {
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          background-color: #fff !important;
+          min-height: 50px !important;
+          padding: 10px !important;
+          border: 1px solid #e2e8f0 !important;
+          border-radius: 0.5rem !important;
+          width: 100% !important;
+          display: block !important;
+        }
+        svg { max-width: 100%; height: auto; }
+      `;
+      document.head.appendChild(style);
+    }
+
     if (!document.querySelector("#tailwind-script")) {
       const script = document.createElement("script");
       script.id = "tailwind-script";
       script.src = "https://cdn.tailwindcss.com";
+      script.onload = () => {
+        window.tailwindLoaded = true;
+      };
       document.head.appendChild(script);
     }
   }, []);
@@ -283,7 +322,6 @@ const AROMAS = [
   { id: "Unscented", en: "Unscented", es: "Sin Olor" },
 ];
 
-// --- IDIOMAS ---
 const ENGLISH_CONTENT = {
   brandName: "Fast Wave",
   brandSubtitle: "Laundry Service",
@@ -715,7 +753,6 @@ const LANGUAGES = {
     google_pay: "Google Pay",
   },
 };
-
 const getLabel = (id, type, lang) => {
   if (!id) return "";
   if (type === "aroma") {
@@ -783,12 +820,14 @@ const ConfirmationModal = ({ show, title, message, onConfirm, onCancel }) => {
           {" "}
           <button
             onClick={onCancel}
+            type="button"
             className="flex-1 py-3 rounded-xl font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
           >
             Cancel
           </button>{" "}
           <button
             onClick={onConfirm}
+            type="button"
             className="flex-1 py-3 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 transition shadow-lg shadow-red-200"
           >
             Confirm
@@ -935,6 +974,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
         </h3>
         <button
           onClick={saveServices}
+          type="button"
           className="bg-cyan-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition flex items-center shadow-lg"
         >
           <Save className="w-5 h-5 mr-2" /> {t.save}
@@ -1030,6 +1070,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
             </div>{" "}
             <button
               onClick={() => setItemToDelete(s.id)}
+              type="button"
               className="absolute -top-2 -right-2 bg-red-100 text-red-500 p-2 rounded-full shadow hover:bg-red-500 hover:text-white transition"
             >
               <Trash2 className="w-4 h-4" />
@@ -1098,6 +1139,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
           </div>{" "}
           <button
             onClick={handleAddService}
+            type="button"
             className="bg-gray-800 text-white py-2 rounded font-bold flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" /> Add Service
@@ -1179,6 +1221,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
         <h3 className="text-2xl font-black text-gray-800">{t.genSettings}</h3>
         <button
           onClick={handleSave}
+          type="button"
           className="bg-cyan-900 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition flex items-center"
         >
           <Save className="w-5 h-5 mr-2" /> {t.save}
@@ -1417,6 +1460,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                 />
                 <button
                   onClick={handleUnlockStripe}
+                  type="button"
                   className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 flex items-center"
                 >
                   <Unlock className="w-4 h-4 mr-1" /> {t.unlock}
@@ -1520,6 +1564,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
               />
               <button
                 onClick={addMember}
+                type="button"
                 className="bg-yellow-500 text-white font-bold px-4 rounded-lg shadow-sm hover:bg-yellow-600"
               >
                 {t.addMember}
@@ -1534,6 +1579,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                   <span className="font-mono text-sm text-gray-600">{m}</span>
                   <button
                     onClick={() => setMemberToDelete(m)}
+                    type="button"
                     className="text-red-400 hover:text-red-600"
                   >
                     <XCircle className="w-4 h-4" />
@@ -1781,12 +1827,14 @@ const AdminView = ({
               />
               <button
                 onClick={handleRecovery}
+                type="button"
                 className="w-full bg-red-500 text-white font-bold py-3 rounded-lg hover:bg-red-600 transition"
               >
                 {t.resetPassword}
               </button>
               <button
                 onClick={() => setIsRecovering(false)}
+                type="button"
                 className="w-full text-gray-400 text-sm"
               >
                 {t.back}
@@ -1796,6 +1844,7 @@ const AdminView = ({
           {!isRecovering && (
             <button
               onClick={() => setView("home")}
+              type="button"
               className="mt-4 text-sm text-gray-400 w-full text-center"
             >
               {t.back}
@@ -1831,12 +1880,14 @@ const AdminView = ({
         <div className="flex gap-4">
           <button
             onClick={() => setView("home")}
+            type="button"
             className="text-sm font-bold text-gray-500"
           >
             {t.back}
           </button>
           <button
             onClick={() => setIsAuth(false)}
+            type="button"
             className="text-sm font-bold text-red-500"
           >
             Logout
@@ -1848,6 +1899,7 @@ const AdminView = ({
           <div className="flex gap-2 overflow-x-auto pb-2 w-full md:w-auto">
             <button
               onClick={() => setTab("orders")}
+              type="button"
               className={`px-6 py-2 rounded-full font-bold transition whitespace-nowrap ${
                 tab === "orders"
                   ? "bg-cyan-900 text-white"
@@ -1858,6 +1910,7 @@ const AdminView = ({
             </button>
             <button
               onClick={() => setTab("services")}
+              type="button"
               className={`px-6 py-2 rounded-full font-bold transition whitespace-nowrap ${
                 tab === "services"
                   ? "bg-cyan-900 text-white"
@@ -1868,6 +1921,7 @@ const AdminView = ({
             </button>
             <button
               onClick={() => setTab("settings")}
+              type="button"
               className={`px-6 py-2 rounded-full font-bold transition whitespace-nowrap ${
                 tab === "settings"
                   ? "bg-cyan-900 text-white"
@@ -1953,18 +2007,21 @@ const AdminView = ({
                     </select>
                     <button
                       onClick={() => setAdminShareData(o)}
+                      type="button"
                       className="p-2 text-gray-400 hover:text-cyan-600 hover:bg-gray-100 rounded-full transition"
                     >
                       <Share2 className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => printSpecificOrder(o.id)}
+                      type="button"
                       className="p-2 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-full transition"
                     >
                       <Printer className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => setOrderToDelete(o.id)}
+                      type="button"
                       className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition"
                     >
                       <Trash2 className="w-5 h-5" />
@@ -2337,7 +2394,7 @@ const OrderCard = ({
   return (
     <div
       id={`order-card-${o.id}`}
-      className="bg-white p-6 rounded-2xl shadow-sm border-2 border-gray-100 mb-4 relative"
+      className="bg-white p-6 rounded-2xl shadow-sm border-2 border-gray-100 mb-4 relative cursor-pointer"
     >
       <div className="flex justify-between items-start mb-4 border-b border-dashed pb-4 border-gray-200">
         <div>
@@ -2366,6 +2423,7 @@ const OrderCard = ({
         <div className="text-right no-print">
           <button
             onClick={() => onShare(o)}
+            type="button"
             className="text-gray-400 hover:text-cyan-600"
           >
             <Share2 className="w-5 h-5" />
@@ -2521,6 +2579,7 @@ const OrderCard = ({
               />
               <button
                 onClick={handleSend}
+                type="button"
                 className="bg-blue-600 text-white p-2 rounded"
               >
                 <Send className="w-3 h-3" />
@@ -2532,6 +2591,7 @@ const OrderCard = ({
       {showActions && o.status === "completed" && (
         <button
           onClick={() => onDelete(o.id)}
+          type="button"
           className="w-full mt-4 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition no-print"
         >
           <Trash2 className="w-4 h-4 mr-2" /> {t.deleteReceipt}
@@ -2556,6 +2616,7 @@ const MembershipPromoButton = ({
   return (
     <button
       onClick={onClick}
+      type="button"
       className={`rounded-2xl flex flex-col items-center justify-center text-center font-bold shadow-xl border-4 border-white transition cursor-pointer ${
         float
           ? "fixed bottom-24 right-4 z-40 w-24 h-24 rounded-full rotate-0 shadow-xl"
@@ -2604,7 +2665,6 @@ const MembershipPromoButton = ({
     </button>
   );
 };
-
 export default function FastWaveApp() {
   const [view, setView] = useState("home");
   const [cart, setCart] = useState({});
@@ -2615,6 +2675,8 @@ export default function FastWaveApp() {
   const [aroma, setAroma] = useState("Fresh");
   const [toast, setToast] = useState({ message: null, type: "success" });
   const [formErrors, setFormErrors] = useState({});
+  const [isAppReady, setIsAppReady] = useState(false); // ESTADO DE CARGA
+
   const showAlert = (msg, type = "success") => setToast({ message: msg, type });
   const closeToast = () => setToast({ ...toast, message: null });
   const [form, setForm] = useState(() => {
@@ -2663,6 +2725,13 @@ export default function FastWaveApp() {
   useTailwind();
   useAppMode(config.customIcon);
   const t = LANGUAGES[lang] || LANGUAGES["en"];
+
+  // --- PLAN C: CARGA FORZADA ---
+  useEffect(() => {
+    // Esperamos 2 segundos completos antes de mostrar nada
+    const timer = setTimeout(() => setIsAppReady(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("fw_name", form.name);
@@ -2800,6 +2869,7 @@ export default function FastWaveApp() {
       setTimeout(() => setItemAddedMsg(null), 800);
     }
   };
+
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
   const calculateTotals = () => {
     const subtotal = Object.entries(cart).reduce((acc, [id, qty]) => {
@@ -3186,18 +3256,60 @@ export default function FastWaveApp() {
     localStorage.setItem("myOrders", JSON.stringify(saved));
     setMyOrders((prev) => prev.filter((o) => o.id !== id));
   };
+
+  // --- PANTALLA DE CARGA (LOADING SCREEN) - PLAN C ---
+  // Si no está listo, mostramos solo esto y ocultamos el resto del mundo
+  if (!isAppReady) {
+    return (
+      <div
+        style={{
+          height: "100vh",
+          width: "100vw",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#ffffff",
+          zIndex: 20000, // Z-Index altísimo para tapar todo
+          position: "fixed",
+          top: 0,
+          left: 0,
+        }}
+      >
+        <svg
+          style={{
+            animation: "spin 1s linear infinite",
+            width: "50px",
+            height: "50px",
+          }}
+          viewBox="0 0 24 24"
+        >
+          <path
+            fill="none"
+            stroke="#0891b2"
+            strokeWidth="4"
+            d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2"
+          ></path>
+        </svg>
+        <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // --- RENDERIZADO PRINCIPAL (SOLO SE MUESTRA CUANDO TODO ESTÁ LISTO) ---
   return (
     <div
       className="min-h-screen bg-slate-50 font-sans text-gray-800"
-      style={{ opacity: 0, animation: "fadeIn 0.5s ease-out forwards 0.2s" }}
+      style={{ opacity: 0, animation: "fadeIn 0.5s ease-out forwards" }}
     >
-      <style>{`@keyframes fadeIn { to { opacity: 1; } }`}</style>
+      <style>{`
+        @keyframes fadeIn { to { opacity: 1; } }
+      `}</style>
       <CustomToast
         message={toast.message}
         type={toast.type}
         onClose={closeToast}
       />
-      <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-cyan-100 no-print pt-[env(safe-area-inset-top)]">
+      <nav className="bg-white backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-cyan-100 no-print pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-4 flex justify-between h-20 items-center">
           <div
             className="flex items-center cursor-pointer"
@@ -3207,6 +3319,7 @@ export default function FastWaveApp() {
           </div>
           <div className="hidden md:flex items-center space-x-4">
             <button
+              type="button"
               onClick={() =>
                 setQRModal({ show: true, url: window.location.href })
               }
@@ -3215,6 +3328,7 @@ export default function FastWaveApp() {
               <QrCode className="w-6 h-6" />
             </button>
             <button
+              type="button"
               onClick={() => setView("track")}
               className="flex items-center font-bold bg-gray-100 px-3 py-2 rounded-lg"
             >
@@ -3234,6 +3348,7 @@ export default function FastWaveApp() {
               <option value="hi">🇮🇳 HI</option>
             </select>
             <button
+              type="button"
               onClick={() => setView("cart")}
               className="relative p-3 text-gray-500"
             >
@@ -3245,6 +3360,7 @@ export default function FastWaveApp() {
               )}
             </button>
             <button
+              type="button"
               onClick={() => setView("admin")}
               className="p-2 text-gray-400"
             >
@@ -3253,6 +3369,7 @@ export default function FastWaveApp() {
           </div>
           <div className="md:hidden flex items-center gap-3">
             <button
+              type="button"
               onClick={() =>
                 setQRModal({ show: true, url: window.location.href })
               }
@@ -3260,13 +3377,18 @@ export default function FastWaveApp() {
             >
               <QrCode className="w-6 h-6" />
             </button>
-            <button onClick={() => setView("cart")} className="relative p-2">
+            <button
+              type="button"
+              onClick={() => setView("cart")}
+              className="relative p-2"
+            >
               <ShoppingBag className="h-6 w-6" />
               {cartCount > 0 && (
                 <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full"></span>
               )}
             </button>
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-cyan-800"
             >
@@ -3281,6 +3403,7 @@ export default function FastWaveApp() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t p-4 shadow-xl absolute w-full z-40">
             <button
+              type="button"
               onClick={() => {
                 setView("home");
                 setMobileMenuOpen(false);
@@ -3290,6 +3413,7 @@ export default function FastWaveApp() {
               Home
             </button>
             <button
+              type="button"
               onClick={() => {
                 setView("track");
                 setMobileMenuOpen(false);
@@ -3299,6 +3423,7 @@ export default function FastWaveApp() {
               My Orders
             </button>
             <button
+              type="button"
               onClick={() => {
                 setView("cart");
                 setMobileMenuOpen(false);
@@ -3308,6 +3433,7 @@ export default function FastWaveApp() {
               Cart ({cartCount})
             </button>
             <button
+              type="button"
               onClick={() => {
                 setView("admin");
                 setMobileMenuOpen(false);
@@ -3387,6 +3513,7 @@ export default function FastWaveApp() {
               </p>
               <div className="flex flex-col md:flex-row gap-4 justify-center">
                 <button
+                  type="button"
                   onClick={() =>
                     document
                       .getElementById("services")
@@ -3397,6 +3524,7 @@ export default function FastWaveApp() {
                   {t.orderNow}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setView("cart")}
                   className="bg-cyan-500 text-white px-8 py-4 rounded-full font-bold shadow-xl hover:scale-105 transition border-2 border-white/20 flex items-center justify-center"
                 >
@@ -3453,6 +3581,7 @@ export default function FastWaveApp() {
                       </span>
                       <div className="flex items-center gap-2">
                         <button
+                          type="button"
                           onClick={() => updateCart(s.id, -1)}
                           className="w-8 h-8 bg-gray-200 rounded-full font-bold text-gray-600"
                         >
@@ -3460,6 +3589,7 @@ export default function FastWaveApp() {
                         </button>
                         <span className="font-bold">{cart[s.id] || 0}</span>
                         <button
+                          type="button"
                           onClick={() => updateCart(s.id, 1)}
                           className="w-8 h-8 bg-cyan-600 text-white rounded-full font-bold"
                         >
@@ -3481,6 +3611,7 @@ export default function FastWaveApp() {
                   {AROMAS.map((a) => (
                     <button
                       key={a.id}
+                      type="button"
                       onClick={() => setAroma(a.id)}
                       className={`px-4 py-2 rounded-full text-sm font-bold ${
                         aroma === a.id
@@ -3557,6 +3688,7 @@ export default function FastWaveApp() {
             {cartCount > 0 && (
               <div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 animate-bounce-slow">
                 <button
+                  type="button"
                   onClick={() => setView("cart")}
                   className="bg-gray-900 text-white w-full max-w-md py-4 px-8 rounded-full shadow-2xl flex justify-between items-center border-4 border-white/20 backdrop-blur-lg"
                 >
@@ -3595,6 +3727,7 @@ export default function FastWaveApp() {
             <div className="text-center py-20 bg-white rounded-xl">
               <p className="text-gray-400">{t.emptyCart}</p>
               <button
+                type="button"
                 onClick={() => setView("home")}
                 className="mt-4 text-cyan-600 font-bold"
               >
@@ -3746,6 +3879,7 @@ export default function FastWaveApp() {
                   <h3 className="font-bold text-gray-700 mb-4">{t.payment}</h3>
                   <div className="grid grid-cols-2 gap-3">
                     <button
+                      type="button"
                       onClick={() => handleMethodClick("cash")}
                       className={`p-3 border rounded flex flex-col items-center ${
                         form.paymentMethod === "cash"
@@ -3757,6 +3891,7 @@ export default function FastWaveApp() {
                       {t.payCashLabel}
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleMethodClick("card")}
                       className={`p-3 border rounded flex flex-col items-center ${
                         form.paymentMethod === "card"
@@ -3768,6 +3903,7 @@ export default function FastWaveApp() {
                       {t.payCardLabel}
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleMethodClick("online")}
                       className={`p-3 border rounded flex flex-col items-center ${
                         form.paymentMethod === "online"
@@ -3778,6 +3914,7 @@ export default function FastWaveApp() {
                       <ExternalLink className="mb-1 text-purple-600" /> Zelle
                     </button>
                     <button
+                      type="button"
                       onClick={
                         config.enableApple
                           ? () => handleMethodClick("apple_pay")
@@ -3796,6 +3933,7 @@ export default function FastWaveApp() {
                       <Smartphone className="mb-1 text-gray-800" /> Apple Pay
                     </button>
                     <button
+                      type="button"
                       onClick={
                         config.enableGoogle
                           ? () => handleMethodClick("google_pay")
@@ -3816,6 +3954,7 @@ export default function FastWaveApp() {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setView("home")}
                   className="w-full text-center text-gray-400 text-sm"
                 >
@@ -3863,12 +4002,14 @@ export default function FastWaveApp() {
               </a>
             </div>
             <button
+              type="button"
               onClick={() => setView("track")}
               className="w-full text-cyan-600 font-bold mt-4 hover:underline"
             >
               {t.trackOrder}
             </button>
             <button
+              type="button"
               onClick={() => setView("home")}
               className="w-full text-gray-400 text-sm mt-4"
             >
@@ -3882,6 +4023,7 @@ export default function FastWaveApp() {
         <div className="min-h-screen bg-slate-50 p-4 pb-24">
           <div className="flex justify-between mb-6">
             <button
+              type="button"
               onClick={() => setView("home")}
               className="font-bold text-gray-600"
             >
@@ -3950,12 +4092,14 @@ export default function FastWaveApp() {
               {t.cost}: ${membershipCost} {t.for} {membershipDuration}
             </p>
             <button
+              type="button"
               onClick={joinMembershipFromCheckout}
               className="w-full bg-gradient-to-r from-green-400 to-green-600 text-white py-4 rounded-xl font-black text-lg mb-3 shadow-lg hover:scale-105 transition transform"
             >
               {t.yesJoin}
             </button>
             <button
+              type="button"
               onClick={handleNoAndContinue}
               className="w-full text-gray-400 font-bold py-2 text-sm hover:text-gray-600"
             >
@@ -3974,12 +4118,14 @@ export default function FastWaveApp() {
               {t.loseSavings} ${savingsAmount.toFixed(2)}.
             </p>
             <button
+              type="button"
               onClick={confirmLossAndPay}
               className="w-full bg-gray-200 text-gray-700 font-bold py-3 rounded-xl mb-2"
             >
               {t.yesLose}
             </button>
             <button
+              type="button"
               onClick={goBackToOffer}
               className="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-md"
             >
@@ -3993,12 +4139,14 @@ export default function FastWaveApp() {
           <div className="bg-white p-6 rounded-xl text-center">
             <h3 className="font-black text-2xl mb-4">{t.rejoinTitle}</h3>
             <button
+              type="button"
               onClick={rejoinMembership}
               className="w-full bg-red-500 text-white py-3 rounded-xl font-bold mb-2"
             >
               {t.rejoinYes}
             </button>
             <button
+              type="button"
               onClick={() => {
                 setShowRejoinModal(false);
                 openPaymentModal(pendingMethod);
@@ -4014,6 +4162,7 @@ export default function FastWaveApp() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-xl w-full max-w-sm relative shadow-2xl">
             <button
+              type="button"
               onClick={() => setShowHomeJoinModal(false)}
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 font-bold text-xl"
             >
@@ -4038,6 +4187,7 @@ export default function FastWaveApp() {
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
             />
             <button
+              type="button"
               onClick={joinFromHome}
               className="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-md hover:bg-green-600 transition"
             >
@@ -4054,12 +4204,14 @@ export default function FastWaveApp() {
             </h3>
             <p className="text-sm text-gray-600 mb-6">{t.loseDiscounts}</p>
             <button
+              type="button"
               onClick={cancelMembership}
               className="w-full bg-red-100 text-red-600 font-bold py-3 rounded-xl mb-2 hover:bg-red-200"
             >
               {t.yesCancel}
             </button>
             <button
+              type="button"
               onClick={() => setShowCancelMemberModal(false)}
               className="w-full text-gray-400 py-2 hover:text-gray-600"
             >
@@ -4083,6 +4235,7 @@ export default function FastWaveApp() {
                   : "Get ready for big savings!"}
               </p>
               <button
+                type="button"
                 onClick={continueFromCelebration}
                 className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black py-4 rounded-2xl shadow-lg hover:scale-105 transition text-xl"
               >
@@ -4096,6 +4249,7 @@ export default function FastWaveApp() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative shadow-2xl">
             <button
+              type="button"
               onClick={() => setShareData(null)}
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 font-bold text-xl"
             >
@@ -4127,6 +4281,7 @@ export default function FastWaveApp() {
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative">
             <button
+              type="button"
               onClick={() => setQRModal({ show: false, url: "" })}
               className="absolute top-2 right-2"
             >
@@ -4164,6 +4319,7 @@ export default function FastWaveApp() {
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl relative">
             <button
+              type="button"
               onClick={() => setIsProcessingPayment(false)}
               className="absolute top-4 right-4 text-gray-400"
             >
@@ -4230,6 +4386,7 @@ export default function FastWaveApp() {
                   </div>
                 )}
                 <button
+                  type="button"
                   onClick={handlePayNow}
                   disabled={isLoadingPayment}
                   className={`w-full py-3 rounded-xl font-bold text-white shadow-lg flex justify-center items-center ${
@@ -4258,6 +4415,7 @@ export default function FastWaveApp() {
                   {t.paymentSuccess}
                 </h3>
                 <button
+                  type="button"
                   onClick={handlePaymentComplete}
                   className="w-full bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg"
                 >
