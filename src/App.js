@@ -1159,6 +1159,29 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
   const [stripeLocked, setStripeLocked] = useState(true);
   const [unlockPass, setUnlockPass] = useState("");
   const [memberToDelete, setMemberToDelete] = useState(null);
+
+  // --- EFECTO VISUAL: CAMBIAR COLORES EN VIVO ---
+  useEffect(() => {
+    if (localConfig.primaryColor) {
+      const styleId = "dynamic-theme-styles";
+      let style = document.getElementById(styleId);
+      if (!style) {
+        style = document.createElement("style");
+        style.id = styleId;
+        document.head.appendChild(style);
+      }
+      // Esto sobrescribe los colores visuales de la tienda (cyan-900, etc)
+      // sin tocar el codigo logico del resto de la app.
+      style.innerHTML = `
+        .bg-cyan-900, .bg-slate-900, .bg-gray-900, .bg-blue-600 { background-color: ${localConfig.primaryColor} !important; }
+        .text-cyan-900, .text-blue-600, .text-cyan-700 { color: ${localConfig.primaryColor} !important; }
+        .ring-cyan-200 { --tw-ring-color: ${localConfig.primaryColor}40 !important; }
+        .bg-cyan-50, .bg-blue-50 { background-color: ${localConfig.secondaryColor || "#f0f9ff"} !important; }
+        .border-cyan-100 { border-color: ${localConfig.primaryColor}20 !important; }
+      `;
+    }
+  }, [localConfig.primaryColor, localConfig.secondaryColor]);
+
   useEffect(() => {
     setLocalConfig(config);
     if (db) {
@@ -1167,12 +1190,15 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
       });
     }
   }, [config]);
+
   const handleSave = async () => {
     let updates = { ...localConfig };
     if (newUsername.trim()) updates.adminUsername = newUsername;
     if (newPassword.trim()) updates.adminPassword = newPassword;
     if (newPin.trim()) updates.recoveryPin = newPin;
+
     if (db) {
+      // Guardamos la configuración general, incluyendo nombre de tienda y colores
       await setDoc(doc(db, "settings", "general"), updates, { merge: true });
       setConfig(updates);
       setNewUsername("");
@@ -1181,6 +1207,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
       showAlert(t.saved, "success");
     }
   };
+
   const addMember = async () => {
     if (db && newMemberPhone) {
       await setDoc(
@@ -1192,6 +1219,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
       showAlert(t.memberAdded, "success");
     }
   };
+
   const confirmMemberDelete = async () => {
     if (db && memberToDelete) {
       await updateDoc(doc(db, "settings", "members"), {
@@ -1200,6 +1228,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
       setMemberToDelete(null);
     }
   };
+
   const handleUnlockStripe = () => {
     if (unlockPass === (config.adminPassword || "1234")) {
       setStripeLocked(false);
@@ -1208,6 +1237,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
       showAlert(t.wrongPin, "error");
     }
   };
+
   return (
     <div className="max-w-4xl mx-auto animate-fade-in pb-10">
       <ConfirmationModal
@@ -1227,19 +1257,91 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
           <Save className="w-5 h-5 mr-2" /> {t.save}
         </button>
       </div>
+
       <div className="space-y-6">
+        {/* --- NUEVA SECCIÓN: IDENTIDAD DE LA TIENDA (NOMBRE Y COLORES) --- */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <h4 className="font-bold text-gray-800 mb-4 flex items-center">
+            <Edit2 className="w-5 h-5 mr-2" /> Identidad de la Tienda
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-3">
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+                Nombre de la Tienda
+              </label>
+              <input
+                className="w-full p-3 border rounded-xl font-bold text-lg"
+                value={localConfig.brandName || ""}
+                onChange={(e) =>
+                  setLocalConfig({ ...localConfig, brandName: e.target.value })
+                }
+                placeholder="Ej: Fast Wave Laundry"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+                Color Principal
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  className="h-10 w-10 border rounded cursor-pointer"
+                  value={localConfig.primaryColor || "#164e63"}
+                  onChange={(e) =>
+                    setLocalConfig({
+                      ...localConfig,
+                      primaryColor: e.target.value,
+                    })
+                  }
+                />
+                <span className="text-xs font-mono">
+                  {localConfig.primaryColor || "#164e63"}
+                </span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+                Color de Fondo (Suave)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  className="h-10 w-10 border rounded cursor-pointer"
+                  value={localConfig.secondaryColor || "#ecfeff"}
+                  onChange={(e) =>
+                    setLocalConfig({
+                      ...localConfig,
+                      secondaryColor: e.target.value,
+                    })
+                  }
+                />
+                <span className="text-xs font-mono">
+                  {localConfig.secondaryColor || "#ecfeff"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* --- ALERTAS SMS --- */}
         <div className="bg-green-50 border-2 border-green-100 p-6 rounded-2xl">
           <label className="flex items-center text-green-800 font-bold mb-2">
-            <MessageCircle className="w-5 h-5 mr-2" /> {t.whatsappNum}
+            <Smartphone className="w-5 h-5 mr-2" /> Teléfono para Alertas
+            (WhatsApp/SMS)
           </label>
+          <p className="text-xs text-green-600 mb-2">
+            * Este número recibirá los mensajes de "Nueva Orden".
+          </p>
           <input
             className="w-full text-2xl font-black p-4 rounded-xl border-2 border-green-200 text-gray-800 focus:border-green-500 outline-none"
             value={localConfig.phone || ""}
             onChange={(e) =>
               setLocalConfig({ ...localConfig, phone: e.target.value })
             }
+            placeholder="+1 555 000 0000"
           />
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-cyan-50 border-2 border-cyan-100 p-6 rounded-2xl flex items-center gap-4">
             <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-sm border overflow-hidden">
@@ -1247,6 +1349,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                 <img
                   src={localConfig.customIcon}
                   className="w-full h-full object-cover"
+                  alt="icon"
                 />
               ) : (
                 <Camera className="text-gray-300" />
@@ -1277,6 +1380,7 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
                 <img
                   src={localConfig.heroImage}
                   className="w-full h-full object-cover"
+                  alt="hero"
                 />
               ) : (
                 <PhotoIcon className="text-gray-300" />
