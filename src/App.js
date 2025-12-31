@@ -2203,9 +2203,9 @@ const AdminView = ({
                             <span className="flex items-center">
                               {o.customer.address}{" "}
                               <a
-                                href={`http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(
-                                  o.customer.address
-                                )}`}
+                               href={`https://www.google.com/maps?q=${encodeURIComponent(
+                              o.customer.address.replace(/\n/g, " ")
+                               )}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="ml-2 text-cyan-600 hover:text-cyan-800"
@@ -2539,9 +2539,9 @@ const OrderCard = ({
           <MapPin className="w-4 h-4 mr-2 mt-0.5 text-cyan-500" />
           <span>{o.customer.address}</span>
           <a
-            href={`http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(
-              o.customer.address
-            )}`}
+           href={`https://www.google.com/maps?q=${encodeURIComponent(
+          o.customer.address.replace(/\n/g, " ")
+          )}`}
             target="_blank"
             rel="noreferrer"
             className="ml-2 inline-flex items-center text-cyan-600 hover:underline font-bold text-xs no-print"
