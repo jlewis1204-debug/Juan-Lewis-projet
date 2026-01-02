@@ -100,8 +100,13 @@ const useTailwind = () => {
       meta = document.createElement("meta");
       meta.name = "viewport";
       meta.content =
-        "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no";
+        "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"; // Agregado viewport-fit=cover
       document.getElementsByTagName("head")[0].appendChild(meta);
+    } else {
+       // Aseguramos que viewport-fit=cover esté presente si el meta ya existe
+       if (!meta.content.includes('viewport-fit=cover')) {
+           meta.content += ', viewport-fit=cover';
+       }
     }
 
     // PRECARGA DE ESTILOS CRÍTICOS (CSS PLAN B)
@@ -110,7 +115,22 @@ const useTailwind = () => {
       style.id = "critical-fix";
       style.innerHTML = `
         /* Seguridad para móviles */
-        body { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; font-family: sans-serif; }
+        body { 
+            margin: 0; 
+            padding: 0; 
+            -webkit-tap-highlight-color: transparent; 
+            font-family: sans-serif; 
+            background-color: #fff; /* Evita bordes negros al rebotar el scroll */
+        }
+        
+        /* --- FIX APPLE SAFE AREA --- */
+        /* Esto empuja el contenido hacia abajo en iPhones con Notch/Isla Dinámica */
+        nav {
+            padding-top: env(safe-area-inset-top) !important;
+            height: auto !important; /* Deja que crezca con el padding */
+            min-height: 80px; /* Mantiene un tamaño mínimo decente */
+        }
+
         /* Fix calendario iPhone */
         input[type="date"], input[type="time"] {
           -webkit-appearance: none !important;
