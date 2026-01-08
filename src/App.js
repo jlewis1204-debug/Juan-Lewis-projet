@@ -53,6 +53,15 @@ import {
   ImageIcon as PhotoIcon,
   Wallet,
 } from "lucide-react";
+
+// --- IMPORTACIONES DE STRIPE (NUEVO) ---
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
+
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -2789,6 +2798,63 @@ const MembershipPromoButton = ({
     </button>
   );
 };
+
+// --- NUEVO COMPONENTE PARA MANEJAR PAYMENT ELEMENT ---
+const CheckoutForm = ({ amount, onSuccess, onError, payBtnText }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!stripe || !elements) return;
+    setIsProcessing(true);
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: window.location.href, // Vuelve a la misma pagina
+      },
+      redirect: "if_required", // Evita redireccion si no es necesaria
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
+      onError(error.message);
+      setIsProcessing(false);
+    } else {
+      // Exito sin redireccion
+      onSuccess();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full">
+      <PaymentElement />
+      {errorMessage && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs font-bold flex items-center">
+          <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0" />
+          {errorMessage}
+        </div>
+      )}
+      <button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        className={`w-full py-3 rounded-xl font-bold text-white shadow-lg flex justify-center items-center mt-4 ${
+          isProcessing
+            ? "bg-gray-400 cursor-wait"
+            : "bg-cyan-900 hover:bg-black"
+        }`}
+      >
+        {isProcessing ? (
+          <CustomLoaderIcon className="animate-spin w-5 h-5" />
+        ) : (
+          payBtnText
+        )}
+      </button>
+    </form>
+  );
+};
 export default function FastWaveApp() {
   const [view, setView] = useState("home");
   const [cart, setCart] = useState({});
@@ -2800,6 +2866,9 @@ export default function FastWaveApp() {
   const [toast, setToast] = useState({ message: null, type: "success" });
   const [formErrors, setFormErrors] = useState({});
   const [isAppReady, setIsAppReady] = useState(false); // ESTADO DE CARGA
+
+  // --- ESTADO NUEVO PARA PAYMENT ELEMENT ---
+  const [clientSecret, setClientSecret] = useState(null);
 
   const showAlert = (msg, type = "success") => setToast({ message: msg, type });
   const closeToast = () => setToast({ ...toast, message: null });
@@ -2843,16 +2912,18 @@ export default function FastWaveApp() {
   const [paymentError, setPaymentError] = useState(null);
   const [pendingMethod, setPendingMethod] = useState(null);
   const [stripeObj, setStripeObj] = useState(null);
-  const [cardElement, setCardElement] = useState(null);
-  const [cardHolderName, setCardHolderName] = useState("");
+  const [cardHolderName, setCardHolderName] = useState(""); // Mantenido por compatibilidad, aunque PaymentElement lo maneja
   const [paymentRequest, setPaymentRequest] = useState(null);
+  
   useTailwind();
   useAppMode(config.customIcon);
   const t = LANGUAGES[lang] || LANGUAGES["en"];
 
+  // PEGA ESTO DENTRO DE FastWaveApp, ANTES DEL return
+  const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
+
   // --- PLAN C: CARGA FORZADA ---
   useEffect(() => {
-    // Esperamos 2 segundos completos antes de mostrar nada
     const timer = setTimeout(() => setIsAppReady(true), 2000);
     return () => clearTimeout(timer);
   }, []);
@@ -2908,37 +2979,6 @@ export default function FastWaveApp() {
     }
   }, []);
 
-  // Efecto para Stripe
-  useEffect(() => {
-    if (
-      isProcessingPayment &&
-      form.paymentMethod === "card" &&
-      stripeObj &&
-      !paymentSuccess
-    ) {
-      const timer = setTimeout(() => {
-        const mountPoint = document.getElementById("card-element");
-        if (mountPoint && !mountPoint.hasChildNodes()) {
-          const elements = stripeObj.elements();
-          const card = elements.create("card", {
-            style: {
-              base: {
-                fontSize: "16px",
-                color: "#32325d",
-                "::placeholder": { color: "#aab7c4" },
-              },
-              invalid: { color: "#ef4444", iconColor: "#ef4444" },
-            },
-            hidePostalCode: true,
-          });
-          card.mount("#card-element");
-          setCardElement(card);
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isProcessingPayment, form.paymentMethod, stripeObj, paymentSuccess]);
-
   useEffect(() => {
     if (form.phone.trim().length > 7 && members.includes(form.phone.trim())) {
       setIsMember(true);
@@ -2978,7 +3018,6 @@ export default function FastWaveApp() {
       setAdminUpdateAlert(null);
     }
   };
-  const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
   const updateCart = (id, qty) => {
     setCart((prev) => {
       const newQty = (prev[id] || 0) + qty;
@@ -3087,9 +3126,6 @@ export default function FastWaveApp() {
     setShowRejoinModal(false);
     openPaymentModal(pendingMethod);
   };
-  const handleJoinAndContinue = () => {
-    joinMembershipFromCheckout();
-  };
 
   const validateForm = () => {
     let errors = {};
@@ -3133,13 +3169,62 @@ export default function FastWaveApp() {
     openPaymentModal(method);
   };
 
-  const openPaymentModal = (method) => {
+  // --- REEMPLAZA TU FUNCIÓN openPaymentModal POR ESTA ---
+  const openPaymentModal = async (method) => {
     setPaymentError(null);
+    setClientSecret(null);
     setIsProcessingPayment(true);
+
+    if (method === "card") {
+      setIsLoadingPayment(true);
+      try {
+        // Stripe suele pedir el monto en centavos (ej: $10.00 -> 1000)
+        // Multiplicamos por 100 y redondeamos para evitar errores
+        const amountInCents = Math.round(cartTotals.finalTotal * 100);
+
+        const res = await fetch(
+          "https://createpaymentintent-sjtw6tdx4q-uc.a.run.app", 
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              amount: amountInCents, // Enviamos centavos
+              currency: "usd",
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error(`Error del servidor: ${res.status}`);
+        }
+
+        const data = await res.json();
+        
+        if (data?.clientSecret) {
+          setClientSecret(data.clientSecret);
+        } else {
+          // Si el servidor responde pero sin el secreto
+          throw new Error("El servidor no devolvió el Client Secret.");
+        }
+      } catch (err) {
+        console.error("Error detallado:", err);
+        // Aquí mostramos el error real en la pantalla para saber qué pasa
+        setPaymentError(`Falló: ${err.message}`);
+      } finally {
+        setIsLoadingPayment(false);
+      }
+    }
   };
 
+  // --- MODIFICADO: HANDLE PAY NOW ---
+  // Esta función ahora solo maneja Cash, Zelle y Wallets antiguos.
+  // El pago con tarjeta lo maneja el CheckoutForm.
   const handlePayNow = async () => {
     setPaymentError(null);
+    
+    // Si es tarjeta, no hacemos nada aquí porque el botón está oculto/manejado por el componente
+    if (form.paymentMethod === "card") return;
+
     if (form.paymentMethod === "cash" || form.paymentMethod === "online") {
       setIsLoadingPayment(true);
       setTimeout(() => {
@@ -3148,54 +3233,9 @@ export default function FastWaveApp() {
       }, 1000);
       return;
     }
-    if (form.paymentMethod === "card") {
-      if (!stripeObj || !cardElement) {
-        setPaymentError("Error: Stripe no está listo.");
-        return;
-      }
-      try {
-        setIsLoadingPayment(true);
-        const res = await fetch(
-          "https://createpaymentintent-sjtw6tdx4q-uc.a.run.app",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              amount: cartTotals.finalTotal,
-              currency: "usd",
-            }),
-          }
-        );
-        const data = await res.json();
-        if (!data?.clientSecret)
-          throw new Error("No se pudo iniciar el pago (Sin ClientSecret).");
-        const { error, paymentIntent } = await stripeObj.confirmCardPayment(
-          data.clientSecret,
-          {
-            payment_method: {
-              card: cardElement,
-              billing_details: {
-                name: cardHolderName || form.name,
-                phone: form.phone,
-              },
-            },
-          }
-        );
-        if (error) {
-          setPaymentError(error.message);
-          setIsLoadingPayment(false);
-          return;
-        }
-        if (paymentIntent.status === "succeeded") {
-          setPaymentSuccess(true);
-        }
-      } catch (err) {
-        console.error(err);
-        setPaymentError(err.message || "Error procesando el pago.");
-      } finally {
-        setIsLoadingPayment(false);
-      }
-    } else if (["apple_pay", "google_pay"].includes(form.paymentMethod)) {
+    
+    // Lógica antigua de Wallets (Apple/Google) se mantiene igual
+    if (["apple_pay", "google_pay"].includes(form.paymentMethod)) {
       if (!paymentRequest) {
         setPaymentError("Billetera digital no disponible en este dispositivo.");
         return;
@@ -3247,19 +3287,18 @@ export default function FastWaveApp() {
     setIsProcessingPayment(false);
     setPaymentSuccess(false);
     setCardHolderName("");
-    if (cardElement) cardElement.clear();
     const isPaid = form.paymentMethod !== "cash";
     submitOrder(false, false, isPaid, form.paymentMethod);
   };
 
-  // --- FUNCIÓN SUBMIT ORDER MEJORADA ---
+  // --- FUNCIÓN SUBMIT ORDER ---
   const submitOrder = async (
     forceMember = false,
     isRejoin = false,
     isPaid = false,
     methodOverride = null
   ) => {
-    if (isSubmitting) return; // Prevenir doble click
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
     const orderNum = generateShortId();
@@ -3309,31 +3348,24 @@ export default function FastWaveApp() {
       chat: [],
     };
 
-    // Preparamos el objeto final por si Firebase falla, poder mostrarlo igual
     const finalOrderLocal = { id: "LOCAL-" + orderNum, ...orderData };
 
     try {
       if (db) {
         const docRef = await addDoc(collection(db, "orders"), orderData);
-        // Si tuvo éxito, usamos el ID real
         const finalOrderDB = { id: docRef.id, ...orderData };
         setLastOrder(finalOrderDB);
-
-        // Guardar en localstorage
         const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
         localStorage.setItem("myOrders", JSON.stringify([...saved, docRef.id]));
       } else {
-        // Fallback si no hay DB
         setLastOrder(finalOrderLocal);
       }
     } catch (e) {
       console.error("Error al guardar en Firebase:", e);
-      // AUNQUE falle, mostramos el recibo al usuario para que no pierda la info
       setLastOrder(finalOrderLocal);
       showAlert("Offline mode: Order created locally.", "success");
     }
 
-    // Limpieza
     setCart({});
     setForm((prev) => ({
       ...prev,
@@ -3347,8 +3379,6 @@ export default function FastWaveApp() {
     setIsExpress(false);
     setAllergies([]);
     setIsSubmitting(false);
-
-    // CAMBIAR VISTA AL FINAL
     setView("success");
   };
 
@@ -3381,8 +3411,6 @@ export default function FastWaveApp() {
     setMyOrders((prev) => prev.filter((o) => o.id !== id));
   };
 
-  // --- PANTALLA DE CARGA (LOADING SCREEN) - PLAN C ---
-  // Si no está listo, mostramos solo esto y ocultamos el resto del mundo
   if (!isAppReady) {
     return (
       <div
@@ -3393,7 +3421,7 @@ export default function FastWaveApp() {
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: "#ffffff",
-          zIndex: 20000, // Z-Index altísimo para tapar todo
+          zIndex: 20000,
           position: "fixed",
           top: 0,
           left: 0,
@@ -3419,7 +3447,6 @@ export default function FastWaveApp() {
     );
   }
 
-  // --- RENDERIZADO PRINCIPAL (SOLO SE MUESTRA CUANDO TODO ESTÁ LISTO) ---
   return (
     <div
       className="min-h-screen bg-slate-50 font-sans text-gray-800"
@@ -4351,7 +4378,9 @@ export default function FastWaveApp() {
             <div className="relative z-10">
               <div className="text-6xl mb-4 animate-bounce">🎉</div>
               <h3 className="font-black text-3xl mb-2 text-cyan-900 leading-tight">
-                {lang === "es" ? "¡YA ERES MIEMBRO!" : "YOU ARE NOW A MEMBER!"}
+                {lang === "es"
+                  ? "¡YA ERES MIEMBRO!"
+                  : "YOU ARE NOW A MEMBER!"}
               </h3>
               <p className="text-lg text-gray-600 mb-6 font-bold">
                 {lang === "es"
@@ -4466,71 +4495,83 @@ export default function FastWaveApp() {
                     {paymentError}
                   </div>
                 )}
-                {form.paymentMethod === "card" && (
+                {/* --- AQUÍ SE RENDERIZA EL NUEVO PAYMENT ELEMENT O LA LÓGICA ANTIGUA --- */}
+                {form.paymentMethod === "card" ? (
                   <div className="mb-6">
-                    <label className="block text-xs font-bold text-gray-500 mb-1">
-                      {t.cardHolderLabel}
-                    </label>
-                    <input
-                      className="w-full p-3 border rounded mb-3 bg-gray-50"
-                      placeholder={t.nameLabel}
-                      value={cardHolderName}
-                      onChange={(e) => setCardHolderName(e.target.value)}
-                    />
-                    <label className="block text-xs font-bold text-gray-500 mb-1">
-                      {t.cardDetailsLabel}
-                    </label>
-                    <div className="p-3 border rounded bg-white shadow-sm">
-                      <div id="card-element"></div>
-                    </div>
+                    {clientSecret && stripeObj ? (
+                      <Elements
+                        stripe={stripeObj}
+                        options={{
+                          clientSecret: clientSecret,
+                          appearance: { theme: "stripe" },
+                        }}
+                      >
+                        <CheckoutForm
+                          amount={cartTotals.finalTotal}
+                          onSuccess={handlePaymentComplete}
+                          onError={(msg) => setPaymentError(msg)}
+                          payBtnText={t.payNow}
+                        />
+                      </Elements>
+                    ) : (
+                      <div className="flex justify-center p-4">
+                        <CustomLoaderIcon className="animate-spin w-8 h-8 text-cyan-600" />
+                      </div>
+                    )}
                     <p className="text-[10px] text-gray-400 mt-2 text-center flex justify-center items-center">
                       <Lock className="w-3 h-3 mr-1" /> {t.secureStripe}
                     </p>
                   </div>
+                ) : (
+                  <>
+                    {form.paymentMethod === "online" && (
+                      <div className="bg-purple-50 p-4 rounded mb-4 text-sm text-center">
+                        <p className="font-bold text-purple-800">
+                          {t.sendTo} {config.zelleNumber || "--"}
+                        </p>
+                        <p className="text-gray-600 mt-1">
+                          {config.zelleMessage}
+                        </p>
+                        <p className="text-2xl font-black mt-2 text-purple-900">
+                          ${cartTotals.finalTotal.toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                    {form.paymentMethod === "cash" && (
+                      <div className="bg-green-50 p-4 rounded mb-4 text-center">
+                        <p className="text-green-800 font-bold mb-2">
+                          {t.totalDue}
+                        </p>
+                        <span className="text-3xl font-black text-green-600">
+                          ${cartTotals.finalTotal.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    {/* Botón de pago genérico para NO-TARJETAS (Cash, Zelle, Wallet viejo) */}
+                    <button
+                      type="button"
+                      onClick={handlePayNow}
+                      disabled={isLoadingPayment}
+                      className={`w-full py-3 rounded-xl font-bold text-white shadow-lg flex justify-center items-center ${
+                        isLoadingPayment
+                          ? "bg-gray-400 cursor-wait"
+                          : "bg-cyan-900 hover:bg-black"
+                      }`}
+                    >
+                      {isLoadingPayment ? (
+                        <CustomLoaderIcon className="animate-spin w-5 h-5" />
+                      ) : form.paymentMethod === "cash" ? (
+                        t.confirmOrderBtn
+                      ) : ["apple_pay", "google_pay"].includes(
+                          form.paymentMethod
+                        ) ? (
+                        t.payWallet
+                      ) : (
+                        t.payNow
+                      )}
+                    </button>
+                  </>
                 )}
-                {form.paymentMethod === "online" && (
-                  <div className="bg-purple-50 p-4 rounded mb-4 text-sm text-center">
-                    <p className="font-bold text-purple-800">
-                      {t.sendTo} {config.zelleNumber || "--"}
-                    </p>
-                    <p className="text-gray-600 mt-1">{config.zelleMessage}</p>
-                    <p className="text-2xl font-black mt-2 text-purple-900">
-                      ${cartTotals.finalTotal.toFixed(2)}
-                    </p>
-                  </div>
-                )}
-                {form.paymentMethod === "cash" && (
-                  <div className="bg-green-50 p-4 rounded mb-4 text-center">
-                    <p className="text-green-800 font-bold mb-2">
-                      {t.totalDue}
-                    </p>
-                    <span className="text-3xl font-black text-green-600">
-                      ${cartTotals.finalTotal.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={handlePayNow}
-                  disabled={isLoadingPayment}
-                  className={`w-full py-3 rounded-xl font-bold text-white shadow-lg flex justify-center items-center ${
-                    isLoadingPayment
-                      ? "bg-gray-400 cursor-wait"
-                      : "bg-cyan-900 hover:bg-black"
-                  }`}
-                >
-                  {isLoadingPayment ? (
-                    <CustomLoaderIcon className="animate-spin w-5 h-5" />
-                  ) : form.paymentMethod === "cash" ? (
-                    t.confirmOrderBtn
-                  ) : ["apple_pay", "google_pay"].includes(
-                      form.paymentMethod
-                    ) ? (
-                    t.payWallet
-                  ) : (
-                    t.payNow
-                  )}
-                </button>
               </div>
             ) : (
               <div className="py-4 text-center animate-fade-in">
@@ -4543,7 +4584,7 @@ export default function FastWaveApp() {
                   onClick={handlePaymentComplete}
                   className="w-full bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg"
                 >
-                  {t.viewReceipt}
+                 {t.viewReceipt}
                 </button>
               </div>
             )}
