@@ -54,14 +54,11 @@ import {
   Wallet,
 } from "lucide-react";
 
-// --- IMPORTACIONES DE STRIPE (NUEVO) ---
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
+// Stripe
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
+// Firebase
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -77,6 +74,7 @@ import {
   getDoc,
   arrayUnion,
   arrayRemove,
+  orderBy  // <--- ¡ESTE ES EL QUE FALTABA!
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
@@ -103,16 +101,14 @@ try {
 const useTailwind = () => {
   useEffect(() => {
     // --- FIX PRINCIPAL PARA CELULARES ---
-    // Esto asegura que la pantalla no se vea alejada (zoom out) en móviles
     let meta = document.querySelector("meta[name='viewport']");
     if (!meta) {
       meta = document.createElement("meta");
       meta.name = "viewport";
       meta.content =
-        "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"; // Agregado viewport-fit=cover
+        "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
       document.getElementsByTagName("head")[0].appendChild(meta);
     } else {
-       // Aseguramos que viewport-fit=cover esté presente si el meta ya existe
        if (!meta.content.includes('viewport-fit=cover')) {
            meta.content += ', viewport-fit=cover';
        }
@@ -129,15 +125,14 @@ const useTailwind = () => {
             padding: 0; 
             -webkit-tap-highlight-color: transparent; 
             font-family: sans-serif; 
-            background-color: #fff; /* Evita bordes negros al rebotar el scroll */
+            background-color: #fff; 
         }
         
         /* --- FIX APPLE SAFE AREA --- */
-        /* Esto empuja el contenido hacia abajo en iPhones con Notch/Isla Dinámica */
         nav {
             padding-top: env(safe-area-inset-top) !important;
-            height: auto !important; /* Deja que crezca con el padding */
-            min-height: 80px; /* Mantiene un tamaño mínimo decente */
+            height: auto !important;
+            min-height: 80px;
         }
 
         /* Fix calendario iPhone */
@@ -171,6 +166,7 @@ const useTailwind = () => {
 
 const useAppMode = (customIcon) => {
   useEffect(() => {
+    // Script de Stripe se carga aquí por seguridad
     if (!document.querySelector("#stripe-js")) {
       const script = document.createElement("script");
       script.id = "stripe-js";
@@ -516,8 +512,7 @@ const ENGLISH_CONTENT = {
   cash: "Cash",
   card: "Credit Card",
   online: "Zelle/Online",
-  apple_pay: "Apple Pay",
-  google_pay: "Google Pay",
+  
 };
 
 const LANGUAGES = {
@@ -688,8 +683,7 @@ const LANGUAGES = {
     cash: "Efectivo",
     card: "Tarjeta Crédito",
     online: "Zelle/Online",
-    apple_pay: "Apple Pay",
-    google_pay: "Google Pay",
+    
   },
   fr: {
     ...ENGLISH_CONTENT,
@@ -736,8 +730,7 @@ const LANGUAGES = {
     cash: "Espèces",
     card: "Carte Crédit",
     online: "En Ligne",
-    apple_pay: "Apple Pay",
-    google_pay: "Google Pay",
+    
   },
   hi: {
     ...ENGLISH_CONTENT,
@@ -778,10 +771,16 @@ const LANGUAGES = {
     cash: "नकद",
     card: "कार्ड",
     online: "ऑनलाइन",
-    apple_pay: "Apple Pay",
-    google_pay: "Google Pay",
+    
   },
 };
+
+// --- FIX GLOBAL: DEFINIR ESTO AQUÍ PARA QUE TODOS LO VEAN ---
+const getServiceName = (s, lang = 'en') => {
+  if (!s) return "";
+  return s[`name_${lang}`] || s.name_en || s.name_es || s.id || "";
+};
+
 const getLabel = (id, type, lang) => {
   if (!id) return "";
   if (type === "aroma") {
@@ -795,13 +794,22 @@ const getLabel = (id, type, lang) => {
   return id;
 };
 const validateScheduleLogic = (pd, pt, dd, dt) => {
-  if (!pd || !dd) return null;
-  const start = new Date(`${pd}T${pt.split(" ")[0]}`);
-  const end = new Date(`${dd}T${dt.split(" ")[0]}`);
-  if (start < new Date().setHours(0, 0, 0, 0)) return "errorPastDate";
+  if (!pd || !dd || !pt || !dt) return null;
+
+  const pickupTime = (pt.split(" - ")[0] || pt).trim();       // "08:00 AM"
+  const deliveryTime = (dt.split(" - ")[0] || dt).trim();     // "10:00 AM"
+
+  const start = new Date(`${pd} ${pickupTime}`);
+  const end = new Date(`${dd} ${deliveryTime}`);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  if (start < todayStart) return "errorPastDate";
   if (end <= start) return "errorDeliveryOrder";
   return null;
 };
+
 const handleImageUpload = (e, callback) => {
   const file = e.target.files[0];
   if (file) {
@@ -810,6 +818,7 @@ const handleImageUpload = (e, callback) => {
     reader.readAsDataURL(file);
   }
 };
+// --- PARTE 2: COMPONENTES UI, ICONOS Y PANELES ---
 
 const CustomToast = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -832,6 +841,7 @@ const CustomToast = ({ message, type, onClose }) => {
     </div>
   );
 };
+
 const ConfirmationModal = ({ show, title, message, onConfirm, onCancel }) => {
   if (!show) return null;
   return (
@@ -866,6 +876,7 @@ const ConfirmationModal = ({ show, title, message, onConfirm, onCancel }) => {
     </div>
   );
 };
+
 const BrandLogo = ({ customIcon, t }) => (
   <div className="relative flex items-center justify-center px-5 py-2 overflow-hidden rounded-full border-2 border-cyan-100 shadow-sm group hover:shadow-md transition-all cursor-pointer bg-white">
     {" "}
@@ -890,6 +901,7 @@ const BrandLogo = ({ customIcon, t }) => (
     </div>{" "}
   </div>
 );
+
 const CustomIronIcon = () => (
   <svg
     viewBox="0 0 64 64"
@@ -911,6 +923,7 @@ const CustomIronIcon = () => (
     <circle cx="34" cy="34" r="2" fill="#155e75" />
   </svg>
 );
+
 const CustomPackageIcon = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -928,6 +941,7 @@ const CustomPackageIcon = ({ className }) => (
     <line x1="12" y1="22.08" x2="12" y2="12"></line>
   </svg>
 );
+
 const CustomLoaderIcon = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -942,8 +956,11 @@ const CustomLoaderIcon = ({ className }) => (
     <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
   </svg>
 );
+
 const ServiceEditor = ({ services, setServices, t, showAlert }) => {
   const [newService, setNewService] = useState({
+    
+
     id: "",
     name_en: "",
     name_es: "",
@@ -952,6 +969,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
     price: 0,
     image: "",
   });
+  const [showAdminNotifications, setShowAdminNotifications] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const handleServiceChange = (id, field, value) => {
     const updated = services.map((s) =>
@@ -1178,6 +1196,7 @@ const ServiceEditor = ({ services, setServices, t, showAlert }) => {
     </div>
   );
 };
+
 const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
   const [localConfig, setLocalConfig] = useState(config);
   const [membersList, setMembersList] = useState([]);
@@ -1199,8 +1218,6 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
         style.id = styleId;
         document.head.appendChild(style);
       }
-      // Esto sobrescribe los colores visuales de la tienda (cyan-900, etc)
-      // sin tocar el codigo logico del resto de la app.
       style.innerHTML = `
         .bg-cyan-900, .bg-slate-900, .bg-gray-900, .bg-blue-600 { background-color: ${localConfig.primaryColor} !important; }
         .text-cyan-900, .text-blue-600, .text-cyan-700 { color: ${localConfig.primaryColor} !important; }
@@ -1370,7 +1387,20 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
             placeholder="+1 555 000 0000"
           />
         </div>
-
+{/* --- CORREO DE NOTIFICACIONES (EMAILJS) --- */}
+        <div className="bg-orange-50 border-2 border-orange-100 p-6 rounded-2xl mt-4">
+          <label className="flex items-center text-orange-800 font-bold mb-2">
+            <Send className="w-5 h-5 mr-2" /> Correo para Notificaciones
+          </label>
+          <input
+            className="w-full text-lg p-3 rounded-xl border-2 border-orange-200 text-gray-800 focus:border-orange-500 outline-none"
+            value={localConfig.adminEmail || ""}
+            onChange={(e) =>
+              setLocalConfig({ ...localConfig, adminEmail: e.target.value })
+            }
+            placeholder="tu-email@gmail.com"
+          />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-cyan-50 border-2 border-cyan-100 p-6 rounded-2xl flex items-center gap-4">
             <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-sm border overflow-hidden">
@@ -1769,6 +1799,9 @@ const SettingsPanel = ({ config, setConfig, t, showAlert }) => {
     </div>
   );
 };
+// --- PARTE 3: HELPER, ADMIN, TARJETAS Y FORMULARIO DE PAGO ---
+
+
 const AdminView = ({
   t,
   config,
@@ -1798,13 +1831,15 @@ const AdminView = ({
     if (!isAuth) return;
     let unsub = () => {};
     if (db) {
-      unsub = onSnapshot(collection(db, "orders"), (snap) => {
+    // --- CÓDIGO NUEVO: Pedimos la lista ya ordenada ---
+      const q = query(collection(db, "orders"), orderBy("date", "desc"));
+
+      unsub = onSnapshot(q, (snap) => {
         setOrders(
-          snap.docs
-            .map((d) => ({ id: d.id, ...d.data() }))
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          snap.docs.map((d) => ({ id: d.id, ...d.data() }))
         );
       });
+      // -------------------------------------------------
     }
     return () => unsub();
   }, [isAuth]);
@@ -1897,7 +1932,6 @@ const AdminView = ({
     });
     setChatInput("");
   };
-  const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
 
   if (!isAuth) {
     return (
@@ -1987,12 +2021,24 @@ const AdminView = ({
       </div>
     );
   }
-  const filteredOrders = orders.filter((o) => {
+ // --- BUSCA ESTO EN AdminView Y REEMPLÁZALO ---
+ const filteredOrders = orders.filter((o) => {
+    // --- 🛡️ BLINDAJE TOTAL (Línea Nueva) ---
+    // Si la orden no tiene datos de cliente, la IGNORAMOS completamente.
+    // Esto hace que desaparezca de la lista y no rompa la app.
+    if (!o.customer) return false; 
+
     const search = searchTerm.toLowerCase();
+    
+    // Ahora podemos leer tranquilos porque ya sabemos que el cliente existe
+    const clientName = o.customer.name ? o.customer.name.toLowerCase() : "";
+    const clientPhone = o.customer.phone ? o.customer.phone : "";
+    const orderNum = o.orderNumber ? o.orderNumber.toLowerCase() : "";
+
     return (
-      o.customer.name.toLowerCase().includes(search) ||
-      o.customer.phone.includes(search) ||
-      (o.orderNumber && o.orderNumber.toLowerCase().includes(search))
+      clientName.includes(search) ||
+      clientPhone.includes(search) ||
+      orderNum.includes(search)
     );
   });
   return (
@@ -2063,7 +2109,16 @@ const AdminView = ({
             >
               {t.adminSettings}
             </button>
-          </div>
+            {/* --- BOTÓN DE NOTIFICACIONES --- */}
+            <button
+              onClick={() => setTab("inbox")}
+              className={`px-6 py-2 rounded-full font-bold transition whitespace-nowrap ${
+                tab === "inbox" ? "bg-cyan-900 text-white" : "bg-white text-gray-600"
+              }`}
+            >
+             {lang === "es" ? "Notificaciones" : "Notifications"}
+            </button>
+          </div> 
           {tab === "orders" && (
             <button
               onClick={printAllOrders}
@@ -2232,7 +2287,7 @@ const AdminView = ({
                             <span className="flex items-center">
                               {o.customer.address}{" "}
                               <a
-                               href={`https://www.google.com/maps?q=${encodeURIComponent(
+                                href={`https://www.google.com/maps?q=${encodeURIComponent(
                               o.customer.address.replace(/\n/g, " ")
                                )}`}
                                 target="_blank"
@@ -2343,7 +2398,8 @@ const AdminView = ({
                         {o.items &&
                           Object.entries(o.items).map(([k, v]) => {
                             const s = services.find((x) => x.id === k);
-                            const name = s ? s[`name_${lang}`] || s.name_en : k;
+                            // --- USO DE HELPER ARREGLADO ---
+                            const name = getServiceName(s, lang) || k;
                             return (
                               <div
                                 key={k}
@@ -2468,6 +2524,9 @@ const AdminView = ({
             showAlert={showAlert}
           />
         )}
+        {tab === "inbox" && (
+           <AdminNotificationsInbox db={db} />
+        )}
       </div>
       {adminShareData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
@@ -2520,8 +2579,7 @@ const OrderCard = ({
       setLocalChatInput("");
     }
   };
-  const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
-
+  
   if (!o || !o.details) return null;
 
   return (
@@ -2568,7 +2626,7 @@ const OrderCard = ({
           <MapPin className="w-4 h-4 mr-2 mt-0.5 text-cyan-500" />
           <span>{o.customer.address}</span>
           <a
-           href={`https://www.google.com/maps?q=${encodeURIComponent(
+            href={`https://www.google.com/maps?q=${encodeURIComponent(
           o.customer.address.replace(/\n/g, " ")
           )}`}
             target="_blank"
@@ -2595,7 +2653,8 @@ const OrderCard = ({
       <div className="bg-gray-50 p-4 rounded-xl mb-4">
         {Object.entries(o.items || {}).map(([id, qty]) => {
           const s = services.find((x) => x.id === id);
-          const translatedName = s ? getServiceName(s) : id;
+          // --- USO DE HELPER ARREGLADO ---
+          const translatedName = getServiceName(s, lang) || id;
           return (
             <div
               key={id}
@@ -2733,7 +2792,6 @@ const OrderCard = ({
     </div>
   );
 };
-
 const MembershipPromoButton = ({
   isMember,
   config,
@@ -2799,7 +2857,7 @@ const MembershipPromoButton = ({
   );
 };
 
-// --- NUEVO COMPONENTE PARA MANEJAR PAYMENT ELEMENT ---
+// --- CHECKOUT FORM MODERNO (SIN BOTONES MANUALES) ---
 const CheckoutForm = ({ amount, onSuccess, onError, payBtnText }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -2809,13 +2867,16 @@ const CheckoutForm = ({ amount, onSuccess, onError, payBtnText }) => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!stripe || !elements) return;
+    
     setIsProcessing(true);
+    setErrorMessage(null);
+
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: window.location.href, // Vuelve a la misma pagina
+        return_url: window.location.href, 
       },
-      redirect: "if_required", // Evita redireccion si no es necesaria
+      redirect: "if_required", 
     });
 
     if (error) {
@@ -2823,7 +2884,6 @@ const CheckoutForm = ({ amount, onSuccess, onError, payBtnText }) => {
       onError(error.message);
       setIsProcessing(false);
     } else {
-      // Exito sin redireccion
       onSuccess();
     }
   };
@@ -2840,9 +2900,9 @@ const CheckoutForm = ({ amount, onSuccess, onError, payBtnText }) => {
       <button
         type="submit"
         disabled={!stripe || isProcessing}
-        className={`w-full py-3 rounded-xl font-bold text-white shadow-lg flex justify-center items-center mt-4 ${
+        className={`w-full py-4 rounded-xl font-bold text-white shadow-lg flex justify-center items-center mt-6 ${
           isProcessing
-            ? "bg-gray-400 cursor-wait"
+            ? "bg-gray-600 cursor-wait"
             : "bg-cyan-900 hover:bg-black"
         }`}
       >
@@ -2855,6 +2915,8 @@ const CheckoutForm = ({ amount, onSuccess, onError, payBtnText }) => {
     </form>
   );
 };
+// --- PARTE 4: LÓGICA PRINCIPAL (FastWaveApp) ---
+
 export default function FastWaveApp() {
   const [view, setView] = useState("home");
   const [cart, setCart] = useState({});
@@ -2865,13 +2927,21 @@ export default function FastWaveApp() {
   const [aroma, setAroma] = useState("Fresh");
   const [toast, setToast] = useState({ message: null, type: "success" });
   const [formErrors, setFormErrors] = useState({});
-  const [isAppReady, setIsAppReady] = useState(false); // ESTADO DE CARGA
+  const [isAppReady, setIsAppReady] = useState(false); 
 
-  // --- ESTADO NUEVO PARA PAYMENT ELEMENT ---
+  // --- ESTADO PARA PAYMENT ELEMENT (STRIPE MODERNO) ---
   const [clientSecret, setClientSecret] = useState(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [isLoadingPayment, setIsLoadingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
+  const [pendingMethod, setPendingMethod] = useState(null);
+  
+  // Stripe Objects
+  const [stripeObj, setStripeObj] = useState(null);
+  const lastStripeKeyRef = useRef(null);
 
-  const showAlert = (msg, type = "success") => setToast({ message: msg, type });
-  const closeToast = () => setToast({ ...toast, message: null });
+  // Otros estados
   const [form, setForm] = useState(() => {
     const savedName = localStorage.getItem("fw_name");
     const savedPhone = localStorage.getItem("fw_phone");
@@ -2886,6 +2956,7 @@ export default function FastWaveApp() {
       paymentMethod: "cash",
     };
   });
+  
   const [services, setServices] = useState(INITIAL_SERVICES);
   const [config, setConfig] = useState({});
   const [lastOrder, setLastOrder] = useState(null);
@@ -2893,12 +2964,15 @@ export default function FastWaveApp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [itemAddedMsg, setItemAddedMsg] = useState(null);
   const [myOrders, setMyOrders] = useState([]);
+  
+  // Modales
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [showRejoinModal, setShowRejoinModal] = useState(false);
   const [showHomeJoinModal, setShowHomeJoinModal] = useState(false);
   const [showCancelMemberModal, setShowCancelMemberModal] = useState(false);
   const [showCelebrationModal, setShowCelebrationModal] = useState(false);
   const [showLossWarning, setShowLossWarning] = useState(false);
+  
   const [shareData, setShareData] = useState(null);
   const [members, setMembers] = useState([]);
   const [pastMembers, setPastMembers] = useState([]);
@@ -2906,21 +2980,42 @@ export default function FastWaveApp() {
   const [qrModal, setQRModal] = useState({ show: false, url: "" });
   const [dateErrorMsg, setDateErrorMsg] = useState(null);
   const [adminUpdateAlert, setAdminUpdateAlert] = useState(null);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [isLoadingPayment, setIsLoadingPayment] = useState(false);
-  const [paymentError, setPaymentError] = useState(null);
-  const [pendingMethod, setPendingMethod] = useState(null);
-  const [stripeObj, setStripeObj] = useState(null);
-  const [cardHolderName, setCardHolderName] = useState(""); // Mantenido por compatibilidad, aunque PaymentElement lo maneja
-  const [paymentRequest, setPaymentRequest] = useState(null);
-  
+
+  const showAlert = (msg, type = "success") => setToast({ message: msg, type });
+  const closeToast = () => setToast({ ...toast, message: null });
+    
   useTailwind();
   useAppMode(config.customIcon);
   const t = LANGUAGES[lang] || LANGUAGES["en"];
 
-  // PEGA ESTO DENTRO DE FastWaveApp, ANTES DEL return
-  const getServiceName = (s) => (s ? s[`name_${lang}`] || s.name_en : "");
+  // ✅ ARREGLO 1: Helper function definida aquí para evitar errores de "not defined"
+  const getServiceName = (s) => {
+    if (!s) return "";
+    return s[`name_${lang}`] || s.name_en || s.name_es || s.id || "";
+  };
+
+  // ✅ ARREGLO 2: CÁLCULOS AQUÍ ARRIBA (Antes de usarlos)
+  // Esto evita la pantalla blanca.
+  const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
+
+  const calculateTotals = () => {
+    const subtotal = Object.entries(cart).reduce((acc, [id, qty]) => {
+      const s = services.find((x) => x.id === id);
+      return acc + (s?.price || 0) * qty;
+    }, 0);
+    const expressFee = isExpress
+      ? subtotal * ((config.expressPercent || 20) / 100)
+      : 0;
+    const discount = isMember
+      ? (subtotal + expressFee) * ((config.discountPercent || 10) / 100)
+      : 0;
+    const taxable = subtotal + expressFee - discount;
+    const tax = taxable * ((config.taxPercent || 0) / 100);
+    return { subtotal, expressFee, discount, tax, finalTotal: taxable + tax };
+  };
+  
+  // Ahora sí podemos declarar cartTotals sin que rompa la app
+  const cartTotals = calculateTotals();
 
   // --- PLAN C: CARGA FORZADA ---
   useEffect(() => {
@@ -2931,52 +3026,59 @@ export default function FastWaveApp() {
   useEffect(() => {
     localStorage.setItem("fw_name", form.name);
   }, [form.name]);
+  
   useEffect(() => {
     localStorage.setItem("fw_phone", form.phone);
   }, [form.phone]);
+
+   // Carga settings + inicializa Stripe
   useEffect(() => {
-    if (db) {
-      const unsubConfig = onSnapshot(doc(db, "settings", "general"), (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          setConfig(data);
-          if (data.stripePublicKey && window.Stripe) {
-            const stripe = window.Stripe(data.stripePublicKey);
-            setStripeObj(stripe);
-            const pr = stripe.paymentRequest({
-              country: "US",
-              currency: "usd",
-              total: { label: "Laundry Service", amount: 0 },
-              requestPayerName: true,
-              requestPayerEmail: true,
-            });
-            pr.canMakePayment().then((result) => {
-              if (result) setPaymentRequest(pr);
-            });
-          }
-        }
-      });
-      const unsubServices = onSnapshot(
-        doc(db, "settings", "services"),
-        (snap) => {
-          if (snap.exists()) setServices(snap.data().list);
-        }
-      );
-      const unsubMembers = onSnapshot(
-        doc(db, "settings", "members"),
-        (snap) => {
-          if (snap.exists()) {
-            setMembers(snap.data().list || []);
-            setPastMembers(snap.data().history || []);
-          }
-        }
-      );
-      return () => {
-        unsubConfig();
-        unsubServices();
-        unsubMembers();
-      };
-    }
+    if (!db) return;
+
+    const unsubConfig = onSnapshot(doc(db, "settings", "general"), (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data() || {};
+      setConfig(data);
+
+      const pk = (data.stripePublicKey || "").trim();
+
+      // Si cambió la llave, recargamos Stripe una sola vez
+      if (pk && pk !== lastStripeKeyRef.current) {
+        lastStripeKeyRef.current = pk;
+
+        loadStripe(pk)
+          .then((s) => {
+            setStripeObj(s || null);
+          })
+          .catch((err) => {
+            console.error("Error loading Stripe:", err);
+            setStripeObj(null);
+          });
+      }
+
+      // Si no hay pk, deshabilitamos Stripe
+      if (!pk) {
+        lastStripeKeyRef.current = null;
+        setStripeObj(null);
+      }
+    });
+
+    const unsubServices = onSnapshot(doc(db, "settings", "services"), (snap) => {
+      if (snap.exists()) setServices(snap.data().list || []);
+    });
+
+    const unsubMembers = onSnapshot(doc(db, "settings", "members"), (snap) => {
+      if (snap.exists()) {
+        setMembers(snap.data().list || []);
+        setPastMembers(snap.data().history || []);
+      }
+    });
+
+    return () => {
+      unsubConfig();
+      unsubServices();
+      unsubMembers();
+    };
   }, []);
 
   useEffect(() => {
@@ -3033,23 +3135,6 @@ export default function FastWaveApp() {
     }
   };
 
-  const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
-  const calculateTotals = () => {
-    const subtotal = Object.entries(cart).reduce((acc, [id, qty]) => {
-      const s = services.find((x) => x.id === id);
-      return acc + (s?.price || 0) * qty;
-    }, 0);
-    const expressFee = isExpress
-      ? subtotal * ((config.expressPercent || 20) / 100)
-      : 0;
-    const discount = isMember
-      ? (subtotal + expressFee) * ((config.discountPercent || 10) / 100)
-      : 0;
-    const taxable = subtotal + expressFee - discount;
-    const tax = taxable * ((config.taxPercent || 0) / 100);
-    return { subtotal, expressFee, discount, tax, finalTotal: taxable + tax };
-  };
-  const cartTotals = calculateTotals();
   const currentSavings =
     (cartTotals.subtotal + cartTotals.expressFee) *
     ((config.discountPercent || 10) / 100);
@@ -3169,60 +3254,54 @@ export default function FastWaveApp() {
     openPaymentModal(method);
   };
 
-  // --- REEMPLAZA TU FUNCIÓN openPaymentModal POR ESTA ---
+  // --- LÓGICA DE PAGO (Stripe PaymentElement) ---
   const openPaymentModal = async (method) => {
     setPaymentError(null);
     setClientSecret(null);
     setIsProcessingPayment(true);
 
+    // Si es tarjeta (que incluye Apple/Google Pay en el modo moderno)
     if (method === "card") {
       setIsLoadingPayment(true);
+
       try {
-        // Stripe suele pedir el monto en centavos (ej: $10.00 -> 1000)
-        // Multiplicamos por 100 y redondeamos para evitar errores
-        const amountInCents = Math.round(cartTotals.finalTotal * 100);
+        // Llamada al servidor para crear el PaymentIntent
+        const res = await fetch("https://us-central1-fast-wave-laundry-86d9f.cloudfunctions.net/createPaymentIntent", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    amount: Math.round(cartTotals.finalTotal * 100),
+    currency: "usd",
+  }),
+});
 
-        const res = await fetch(
-          "https://createpaymentintent-sjtw6tdx4q-uc.a.run.app", 
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              amount: amountInCents, // Enviamos centavos
-              currency: "usd",
-            }),
-          }
-        );
+const text = await res.text();
+let data;
+try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
-        if (!res.ok) {
-          throw new Error(`Error del servidor: ${res.status}`);
-        }
+if (!res.ok) {
+  throw new Error(data?.error || `HTTP ${res.status}: ${text?.slice(0, 120)}`);
+}
 
-        const data = await res.json();
-        
-        if (data?.clientSecret) {
-          setClientSecret(data.clientSecret);
-        } else {
-          // Si el servidor responde pero sin el secreto
-          throw new Error("El servidor no devolvió el Client Secret.");
-        }
+if (!data?.clientSecret) throw new Error("No clientSecret returned");
+setClientSecret(data.clientSecret);
+;
+
+        setClientSecret(data.clientSecret);
       } catch (err) {
-        console.error("Error detallado:", err);
-        // Aquí mostramos el error real en la pantalla para saber qué pasa
-        setPaymentError(`Falló: ${err.message}`);
+        console.error(err);
+        setPaymentError("Error starting payment. Check server connection.");
       } finally {
         setIsLoadingPayment(false);
       }
+
     }
   };
 
-  // --- MODIFICADO: HANDLE PAY NOW ---
-  // Esta función ahora solo maneja Cash, Zelle y Wallets antiguos.
-  // El pago con tarjeta lo maneja el CheckoutForm.
+  // --- MANEJO DE PAGO MANUAL (Cash / Zelle) ---
   const handlePayNow = async () => {
     setPaymentError(null);
     
-    // Si es tarjeta, no hacemos nada aquí porque el botón está oculto/manejado por el componente
     if (form.paymentMethod === "card") return;
 
     if (form.paymentMethod === "cash" || form.paymentMethod === "online") {
@@ -3233,60 +3312,11 @@ export default function FastWaveApp() {
       }, 1000);
       return;
     }
-    
-    // Lógica antigua de Wallets (Apple/Google) se mantiene igual
-    if (["apple_pay", "google_pay"].includes(form.paymentMethod)) {
-      if (!paymentRequest) {
-        setPaymentError("Billetera digital no disponible en este dispositivo.");
-        return;
-      }
-      paymentRequest.update({
-        total: {
-          label: "Fast Wave Laundry",
-          amount: Math.round(cartTotals.finalTotal * 100),
-        },
-      });
-      paymentRequest.show();
-      paymentRequest.on("paymentmethod", async (ev) => {
-        try {
-          const res = await fetch(
-            "https://createpaymentintent-sjtw6tdx4q-uc.a.run.app",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ amount: cartTotals.finalTotal }),
-            }
-          );
-          const data = await res.json();
-          if (!data?.clientSecret) {
-            ev.complete("fail");
-            setPaymentError("Error del servidor al iniciar pago.");
-            return;
-          }
-          const { error: confirmError } = await stripeObj.confirmCardPayment(
-            data.clientSecret,
-            { payment_method: ev.paymentMethod.id },
-            { handleActions: false }
-          );
-          if (confirmError) {
-            ev.complete("fail");
-            setPaymentError(confirmError.message);
-          } else {
-            ev.complete("success");
-            setPaymentSuccess(true);
-          }
-        } catch (e) {
-          ev.complete("fail");
-          setPaymentError("Error de conexión.");
-        }
-      });
-    }
   };
 
   const handlePaymentComplete = () => {
     setIsProcessingPayment(false);
     setPaymentSuccess(false);
-    setCardHolderName("");
     const isPaid = form.paymentMethod !== "cash";
     submitOrder(false, false, isPaid, form.paymentMethod);
   };
@@ -3321,6 +3351,8 @@ export default function FastWaveApp() {
     if (isRejoin) finalTotal += parseFloat(config.rejoinFee) || 10;
 
     const orderData = {
+      customerName: form.name,  // <--- Etiqueta para el Servidor
+      total: Number(cartTotals.finalTotal).toFixed(2), // <--- Total bonito (ej: 25.50)
       customer: { name: form.name, phone: form.phone, address: form.address },
       items: cart,
       details: {
@@ -3348,23 +3380,70 @@ export default function FastWaveApp() {
       chat: [],
     };
 
-    const finalOrderLocal = { id: "LOCAL-" + orderNum, ...orderData };
+   // Definimos la orden local por si falla internet
+  const finalOrderLocal = { id: "LOCAL-" + orderNum, ...orderData };
 
-    try {
-      if (db) {
-        const docRef = await addDoc(collection(db, "orders"), orderData);
-        const finalOrderDB = { id: docRef.id, ...orderData };
-        setLastOrder(finalOrderDB);
-        const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
-        localStorage.setItem("myOrders", JSON.stringify([...saved, docRef.id]));
-      } else {
-        setLastOrder(finalOrderLocal);
-      }
-    } catch (e) {
-      console.error("Error al guardar en Firebase:", e);
+  try {
+    if (db) {
+     // 1. INTENTAMOS GUARDAR LA ORDEN EN FIREBASE CON FECHA EXACTA
+      const docRef = await addDoc(collection(db, "orders"), {
+        ...orderData,
+        date: new Date().toISOString() // <--- ESTO ES VITAL PARA ORDENAR DESPUÉS
+      });
+      
+      // Si llegamos aquí, la orden SE GUARDÓ. Ahora preparamos la confirmación.
+      const finalOrderDB = { id: docRef.id, ...orderData };
+      setLastOrder(finalOrderDB);
+
+      // 2. CREAMOS LA NOTIFICACIÓN (Usando orderData.total que es más seguro)
+      await addDoc(collection(db, "admin_notifications"), {
+        
+        type: "NEW_ORDER",
+        title: "Nueva Orden",
+        message: `Cliente: ${form.name} - Total: $${Number(orderData.total).toFixed(2)}`,
+        date: new Date().toISOString(),
+        read: false,
+        orderId: docRef.id
+      });
+// 2B. --- ENVÍO DE CORREO AUTOMÁTICO (EMAILJS) ---
+        if (config.adminEmail) {
+          
+          const SERVICE_ID = "service_bkbc9ye";   
+          const TEMPLATE_ID = "template_52asres"; 
+          const PUBLIC_KEY = "AFILo6XhfEoEPYVBK";
+          
+          const templateParams = {
+            to_email: config.adminEmail, 
+            customer_name: form.name,
+            phone: form.phone,
+            total_price: Number(orderData.total).toFixed(2),
+            
+            // --- CAMBIA ESTA LÍNEA ---
+            order_id: orderNum   // Antes decía: docRef.id
+            // -------------------------
+          };
+
+          emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY)
+            .then(() => console.log("Correo enviado con éxito"))
+            .catch((err) => console.error("Error al enviar correo:", err));
+        }
+
+      // 3. GUARDAMOS EN EL HISTORIAL DEL TELÉFONO
+      const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
+      localStorage.setItem("myOrders", JSON.stringify([...saved, docRef.id]));
+      
+    } else {
+      // Si no hay conexión a base de datos configurada
       setLastOrder(finalOrderLocal);
-      showAlert("Offline mode: Order created locally.", "success");
     }
+  } catch (e) {
+    // --- SI ALGO FALLA, ESTO TE DIRÁ QUÉ FUE ---
+    console.error("Error crítico:", e);
+    alert("Ocurrió un error al guardar: " + e.message); 
+    
+    // Activamos modo offline para no perder la venta
+    setLastOrder(finalOrderLocal);
+  }
 
     setCart({});
     setForm((prev) => ({
@@ -3872,6 +3951,9 @@ export default function FastWaveApp() {
       )}
 
       {view === "cart" && (
+       
+  
+
         <div className="max-w-4xl mx-auto p-6 pb-24 animate-fade-in">
           <h2 className="text-3xl font-black mb-6">{t.sendOrder}</h2>
           {cartCount === 0 ? (
@@ -4041,6 +4123,7 @@ export default function FastWaveApp() {
                       <DollarSign className="mb-1 text-green-600" />{" "}
                       {t.payCashLabel}
                     </button>
+                    {/* Botón de Tarjeta / Stripe */}
                     <button
                       type="button"
                       onClick={() => handleMethodClick("card")}
@@ -4053,6 +4136,7 @@ export default function FastWaveApp() {
                       <CreditCard className="mb-1 text-blue-600" />{" "}
                       {t.payCardLabel}
                     </button>
+                    {/* Botón Zelle */}
                     <button
                       type="button"
                       onClick={() => handleMethodClick("online")}
@@ -4063,44 +4147,6 @@ export default function FastWaveApp() {
                       }`}
                     >
                       <ExternalLink className="mb-1 text-purple-600" /> Zelle
-                    </button>
-                    <button
-                      type="button"
-                      onClick={
-                        config.enableApple
-                          ? () => handleMethodClick("apple_pay")
-                          : null
-                      }
-                      className={`p-3 border rounded flex flex-col items-center ${
-                        form.paymentMethod === "apple_pay"
-                          ? "bg-gray-100 border-gray-500"
-                          : ""
-                      } ${
-                        !config.enableApple
-                          ? "opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
-                    >
-                      <Smartphone className="mb-1 text-gray-800" /> Apple Pay
-                    </button>
-                    <button
-                      type="button"
-                      onClick={
-                        config.enableGoogle
-                          ? () => handleMethodClick("google_pay")
-                          : null
-                      }
-                      className={`p-3 border rounded flex flex-col items-center ${
-                        form.paymentMethod === "google_pay"
-                          ? "bg-gray-100 border-gray-500"
-                          : ""
-                      } ${
-                        !config.enableGoogle
-                          ? "opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
-                    >
-                      <Smartphone className="mb-1 text-blue-500" /> Google Pay
                     </button>
                   </div>
                 </div>
@@ -4198,67 +4244,93 @@ export default function FastWaveApp() {
           </div>
         </div>
       )}
+{/* CART */}
+{view === "cart" && (
+  <div className="max-w-4xl mx-auto p-6 pb-24">
+    {/* TODO tu código del carrito */}
+  </div>
+)}
 
-      {view === "admin" && (
-        <AdminView
-          t={t}
-          config={config}
-          setConfig={setConfig}
-          services={services}
-          setServices={setServices}
-          setView={setView}
-          lang={lang}
-          showAlert={showAlert}
-        />
-      )}
+{/* CART */}
+{view === "cart" && (
+  <div className="max-w-4xl mx-auto p-6 pb-24">
+    {/* TODO tu código del carrito */}
+  </div>
+)}
 
-      {/* MODALES EXTRA */}
-      {showMemberModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-8 rounded-2xl text-center max-w-sm w-full shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
-            <h3 className="font-black text-3xl mb-1 text-gray-800">
-              {t.joinClub}
-            </h3>
-            <p className="text-gray-500 mb-6 text-sm">{t.enterDetails}</p>
-            <div className="bg-green-50 p-4 rounded-xl border border-green-100 mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-bold text-gray-600">
-                  {t.savingsToday}
-                </span>
-                <span className="text-xl font-black text-green-600">
-                  ${currentSavings.toFixed(2)}
-                </span>
-              </div>
-              <div className="h-px bg-green-200 my-2"></div>
-              <p className="text-xs text-green-700 leading-tight">
-                {t.ifYouUse} {estimatedUses} {t.timesIn} {membershipDuration},{" "}
-                {t.couldSave}
-              </p>
-              <p className="text-2xl font-black text-green-700 mt-1">
-                ${totalProjectedSavings.toFixed(2)}
-              </p>
-            </div>
-            <p className="mb-4 text-sm font-bold text-gray-700">
-              {t.cost}: ${membershipCost} {t.for} {membershipDuration}
-            </p>
-            <button
-              type="button"
-              onClick={joinMembershipFromCheckout}
-              className="w-full bg-gradient-to-r from-green-400 to-green-600 text-white py-4 rounded-xl font-black text-lg mb-3 shadow-lg hover:scale-105 transition transform"
-            >
-              {t.yesJoin}
-            </button>
-            <button
-              type="button"
-              onClick={handleNoAndContinue}
-              className="w-full text-gray-400 font-bold py-2 text-sm hover:text-gray-600"
-            >
-              {t.noThanks}
-            </button>
-          </div>
+{/* ADMIN */}
+{view === "admin" && (
+  <div className="max-w-6xl mx-auto p-6 pb-24">
+    <AdminView
+      t={t}
+      config={config}
+      setConfig={setConfig}
+      services={services}
+      setServices={setServices}
+      setView={setView}
+      lang={lang}
+      showAlert={showAlert}
+    />
+  </div>
+)}
+
+{/* MODAL JOIN CLUB (NO SALE EN ADMIN) */}
+{view !== "admin" && showMemberModal && (
+  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="bg-white p-8 rounded-2xl text-center max-w-sm w-full shadow-2xl relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
+
+      <h3 className="font-black text-3xl mb-1 text-gray-800">
+        {t.joinClub}
+      </h3>
+
+      <p className="text-gray-500 mb-6 text-sm">{t.enterDetails}</p>
+
+      <div className="bg-green-50 p-4 rounded-xl border border-green-100 mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-bold text-gray-600">
+            {t.savingsToday}
+          </span>
+          <span className="text-xl font-black text-green-600">
+            ${currentSavings.toFixed(2)}
+          </span>
         </div>
-      )}
+
+        <div className="h-px bg-green-200 my-2"></div>
+
+        <p className="text-xs text-green-700 leading-tight">
+          {t.ifYouUse} {estimatedUses} {t.timesIn} {membershipDuration},{" "}
+          {t.couldSave}
+        </p>
+
+        <p className="text-2xl font-black text-green-700 mt-1">
+          ${totalProjectedSavings.toFixed(2)}
+        </p>
+      </div>
+
+      <p className="mb-4 text-sm font-bold text-gray-700">
+        {t.cost}: ${membershipCost} {t.for} {membershipDuration}
+      </p>
+
+      <button
+        type="button"
+        onClick={joinMembershipFromCheckout}
+        className="w-full bg-gradient-to-r from-green-400 to-green-600 text-white py-4 rounded-xl font-black text-lg mb-3 shadow-lg hover:scale-105 transition transform"
+      >
+        {t.yesJoin}
+      </button>
+
+      <button
+        type="button"
+        onClick={handleNoAndContinue}
+        className="w-full text-gray-400 font-bold py-2 text-sm hover:text-gray-600"
+      >
+        {t.noThanks}
+      </button>
+    </div>
+  </div>
+)}
+
       {showLossWarning && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-xl text-center max-w-sm w-full">
@@ -4402,7 +4474,6 @@ export default function FastWaveApp() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative shadow-2xl">
             <button
-              type="button"
               onClick={() => setShareData(null)}
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 font-bold text-xl"
             >
@@ -4470,7 +4541,7 @@ export default function FastWaveApp() {
 
       {isProcessingPayment && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl relative">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl relative">
             <button
               type="button"
               onClick={() => setIsProcessingPayment(false)}
@@ -4495,7 +4566,7 @@ export default function FastWaveApp() {
                     {paymentError}
                   </div>
                 )}
-                {/* --- AQUÍ SE RENDERIZA EL NUEVO PAYMENT ELEMENT O LA LÓGICA ANTIGUA --- */}
+                {/* --- AQUI ESTA LA LOGICA MODERNA DE STRIPE ELEMENTS QUE PEDISTE --- */}
                 {form.paymentMethod === "card" ? (
                   <div className="mb-6">
                     {clientSecret && stripeObj ? (
@@ -4547,7 +4618,7 @@ export default function FastWaveApp() {
                         </span>
                       </div>
                     )}
-                    {/* Botón de pago genérico para NO-TARJETAS (Cash, Zelle, Wallet viejo) */}
+                    {/* Botón para métodos NO-TARJETA (Cash, Zelle, Wallet viejo) */}
                     <button
                       type="button"
                       onClick={handlePayNow}
@@ -4562,10 +4633,6 @@ export default function FastWaveApp() {
                         <CustomLoaderIcon className="animate-spin w-5 h-5" />
                       ) : form.paymentMethod === "cash" ? (
                         t.confirmOrderBtn
-                      ) : ["apple_pay", "google_pay"].includes(
-                          form.paymentMethod
-                        ) ? (
-                        t.payWallet
                       ) : (
                         t.payNow
                       )}
@@ -4575,16 +4642,18 @@ export default function FastWaveApp() {
               </div>
             ) : (
               <div className="py-4 text-center animate-fade-in">
-                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
                 <h3 className="text-2xl font-black text-gray-800 mb-2">
                   {t.paymentSuccess}
                 </h3>
                 <button
                   type="button"
                   onClick={handlePaymentComplete}
-                  className="w-full bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg"
+                  className="w-full bg-gray-900 text-white py-2 rounded-lg"
                 >
-                 {t.viewReceipt}
+                  {t.viewReceipt}
                 </button>
               </div>
             )}
