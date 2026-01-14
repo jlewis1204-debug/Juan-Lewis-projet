@@ -2524,9 +2524,7 @@ const AdminView = ({
             showAlert={showAlert}
           />
         )}
-        {tab === "inbox" && (
-           <AdminNotificationsInbox db={db} />
-        )}
+       
       </div>
       {adminShareData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
