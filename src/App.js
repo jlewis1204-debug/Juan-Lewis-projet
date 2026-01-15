@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from "react";
+import emailjs from '@emailjs/browser';
 import {
   ShoppingBag,
   Lock,
