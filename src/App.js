@@ -1827,6 +1827,7 @@ const AdminView = ({
   const [editForm, setEditForm] = useState({});
   const [chatInput, setChatInput] = useState("");
   const [orderToDelete, setOrderToDelete] = useState(null);
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     if (!isAuth) return;
@@ -2526,7 +2527,56 @@ const AdminView = ({
             showAlert={showAlert}
           />
         )}
-       
+       {tab === "inbox" && (
+          <div className="max-w-2xl mx-auto space-y-4 animate-fade-in">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-2xl font-bold text-gray-800">
+                Notificaciones ({notifications.length})
+              </h3>
+            </div>
+
+            {notifications.length === 0 && (
+              <div className="text-center py-10 bg-white rounded-xl border border-dashed">
+                <p className="text-gray-400">No hay notificaciones nuevas.</p>
+              </div>
+            )}
+
+            {notifications.map((note) => (
+              <div
+                key={note.id}
+                className={`p-4 rounded-xl border transition hover:shadow-md ${
+                  note.read
+                    ? "bg-gray-50 border-gray-100"
+                    : "bg-white border-l-4 border-l-cyan-500 shadow-sm"
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                      {note.type === "NEW_ORDER" && <ShoppingBag className="w-4 h-4 text-cyan-600"/>}
+                      {note.title}
+                    </h4>
+                    <p className="text-sm text-gray-600 mt-1">{note.message}</p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      {new Date(note.date).toLocaleString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if(window.confirm("¿Borrar notificación?")) {
+                        await deleteDoc(doc(db, "admin_notifications", note.id));
+                      }
+                    }}
+                    className="text-gray-300 hover:text-red-500 p-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
       {adminShareData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
