@@ -3351,8 +3351,8 @@ setClientSecret(data.clientSecret);
     if (isRejoin) finalTotal += parseFloat(config.rejoinFee) || 10;
 
     const orderData = {
-      customerName: form.name,  // <--- Etiqueta para el Servidor
-      total: Number(cartTotals.finalTotal).toFixed(2), // <--- Total bonito (ej: 25.50)
+      customerName: form.name,
+      total: Number(cartTotals.finalTotal).toFixed(2),
       customer: { name: form.name, phone: form.phone, address: form.address },
       items: cart,
       details: {
@@ -3380,71 +3380,58 @@ setClientSecret(data.clientSecret);
       chat: [],
     };
 
-   // Definimos la orden local por si falla internet
-  const finalOrderLocal = { id: "LOCAL-" + orderNum, ...orderData };
+    const finalOrderLocal = { id: "LOCAL-" + orderNum, ...orderData };
 
-  try {
-    if (db) {
-     // 1. INTENTAMOS GUARDAR LA ORDEN EN FIREBASE CON FECHA EXACTA
-      const docRef = await addDoc(collection(db, "orders"), {
-        ...orderData,
-        date: new Date().toISOString() // <--- ESTO ES VITAL PARA ORDENAR DESPUÉS
-      });
-      
-      // Si llegamos aquí, la orden SE GUARDÓ. Ahora preparamos la confirmación.
-      const finalOrderDB = { id: docRef.id, ...orderData };
-      setLastOrder(finalOrderDB);
+    try {
+      if (db) {
+        // 1. GUARDAR ORDEN EN FIREBASE
+        const docRef = await addDoc(collection(db, "orders"), {
+          ...orderData,
+          date: new Date().toISOString(),
+        });
 
-      // 2. CREAMOS LA NOTIFICACIÓN (Usando orderData.total que es más seguro)
-      await addDoc(collection(db, "admin_notifications"), {
-        
-        type: "NEW_ORDER",
-        title: "Nueva Orden",
-        message: `Cliente: ${form.name} - Total: $${Number(orderData.total).toFixed(2)}`,
-        date: new Date().toISOString(),
-        read: false,
-        orderId: docRef.id
-      });
-// 2B. --- ENVÍO DE CORREO AUTOMÁTICO (EMAILJS) ---
+        // 2. GUARDAR TICKET EN EL TELÉFONO (¡Aquí está el arreglo!)
+        const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
+        localStorage.setItem("myOrders", JSON.stringify([...saved, docRef.id]));
+
+        const finalOrderDB = { id: docRef.id, ...orderData };
+        setLastOrder(finalOrderDB);
+
+        // 3. NOTIFICACIÓN AL ADMIN
+        await addDoc(collection(db, "admin_notifications"), {
+          type: "NEW_ORDER",
+          title: "Nueva Orden",
+          message: `Cliente: ${form.name} - Total: $${Number(orderData.total).toFixed(2)}`,
+          date: new Date().toISOString(),
+          read: false,
+          orderId: docRef.id,
+        });
+
+        // 4. ENVÍO DE CORREO (EmailJS)
         if (config.adminEmail) {
-          
-          const SERVICE_ID = "service_bkbc9ye";   
-          const TEMPLATE_ID = "template_52asres"; 
-          const PUBLIC_KEY = "AFILo6XhfEoEPYVBK";
-          
           const templateParams = {
-            to_email: config.adminEmail, 
+            to_email: config.adminEmail,
             customer_name: form.name,
             phone: form.phone,
             total_price: Number(orderData.total).toFixed(2),
-            
-            // --- CAMBIA ESTA LÍNEA ---
-            order_id: orderNum   // Antes decía: docRef.id
-            // -------------------------
+            order_id: orderNum,
           };
 
-          emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY)
-            .then(() => console.log("Correo enviado con éxito"))
-            .catch((err) => console.error("Error al enviar correo:", err));
+          emailjs
+            .send("service_bkbc9ye", "template_52asres", templateParams, "AFILo6XhfEoEPYVBK")
+            .then(() => console.log("Correo enviado"))
+            .catch((err) => console.error("Error correo:", err));
         }
-
-      // 3. GUARDAMOS EN EL HISTORIAL DEL TELÉFONO
-      const saved = JSON.parse(localStorage.getItem("myOrders") || "[]");
-      localStorage.setItem("myOrders", JSON.stringify([...saved, docRef.id]));
-      
-    } else {
-      // Si no hay conexión a base de datos configurada
+      } else {
+        setLastOrder(finalOrderLocal);
+      }
+    } catch (e) {
+      console.error("Error crítico:", e);
+      alert("Error al guardar: " + e.message);
       setLastOrder(finalOrderLocal);
     }
-  } catch (e) {
-    // --- SI ALGO FALLA, ESTO TE DIRÁ QUÉ FUE ---
-    console.error("Error crítico:", e);
-    alert("Ocurrió un error al guardar: " + e.message); 
-    
-    // Activamos modo offline para no perder la venta
-    setLastOrder(finalOrderLocal);
-  }
 
+    // LIMPIEZA DEL FORMULARIO
     setCart({});
     setForm((prev) => ({
       ...prev,
