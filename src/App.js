@@ -2022,15 +2022,15 @@ const AdminView = ({
     );
   }
  // --- BUSCA ESTO EN AdminView Y REEMPLÁZALO ---
+ // --- BUSCA ESTO EN AdminView Y REEMPLÁZALO ---
  const filteredOrders = orders.filter((o) => {
-    // --- 🛡️ BLINDAJE TOTAL (Línea Nueva) ---
-    // Si la orden no tiene datos de cliente, la IGNORAMOS completamente.
-    // Esto hace que desaparezca de la lista y no rompa la app.
+    // --- 🛡️ BLINDAJE TOTAL ---
+    // Si la orden viene rota (sin cliente), la saltamos para que no tumbe la app
     if (!o.customer) return false; 
 
     const search = searchTerm.toLowerCase();
     
-    // Ahora podemos leer tranquilos porque ya sabemos que el cliente existe
+    // Usamos validaciones seguras antes de leer
     const clientName = o.customer.name ? o.customer.name.toLowerCase() : "";
     const clientPhone = o.customer.phone ? o.customer.phone : "";
     const orderNum = o.orderNumber ? o.orderNumber.toLowerCase() : "";
@@ -2041,6 +2041,7 @@ const AdminView = ({
       orderNum.includes(search)
     );
   });
+ 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       <ConfirmationModal
