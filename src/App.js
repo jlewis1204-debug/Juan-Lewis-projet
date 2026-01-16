@@ -75,8 +75,10 @@ import {
   getDoc,
   arrayUnion,
   arrayRemove,
-  orderBy  // <--- ¡ESTE ES EL QUE FALTABA!
+  orderBy,          // ✅ coma aquí
+  serverTimestamp,  // ✅ y esto debajo
 } from "firebase/firestore";
+
 import { getAuth } from "firebase/auth";
 
 // --- 1. CONFIGURACIÓN FIREBASE ---
@@ -1829,34 +1831,72 @@ const AdminView = ({
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [notifications, setNotifications] = useState([]);
 
- useEffect(() => {
-  if (!isAuth) return;
-
-  let unsubOrders = () => {};
-  let unsubNotes = () => {};
-
-  if (db) {
-    // 1) ORDENES
-    const qOrders = query(collection(db, "orders"), orderBy("date", "desc"));
-    unsubOrders = onSnapshot(qOrders, (snap) => {
-      setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-
-    // 2) NOTIFICACIONES
-    const qNotes = query(
-      collection(db, "admin_notifications"),
-      orderBy("date", "desc")
-    );
-    unsubNotes = onSnapshot(qNotes, (snap) => {
-      setNotifications(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-  }
-
-  return () => {
-    unsubOrders();
-    unsubNotes();
+  // --- 1. HELPERS (FECHA Y DINERO) ---
+  const fmtDate = (v) => {
+    try {
+      if (!v) return "—";
+      if (typeof v === "string") return new Date(v).toLocaleString();
+      if (v?.toDate) return v.toDate().toLocaleString();
+      return new Date(v).toLocaleString();
+    } catch { return "—"; }
   };
-}, [isAuth]);
+
+  const getNoteTime = (n) => {
+    // Prioridad 1: Timestamp de Firestore
+    if (n?.createdAt?.toMillis) return n.createdAt.toMillis();
+    if (n?.createdAt?.toDate) return n.createdAt.toDate().getTime();
+    
+    // Prioridad 2: Fecha de texto (para orden inmediato)
+    if (n?.date) {
+       const t = Date.parse(n.date);
+       return Number.isNaN(t) ? 0 : t;
+    }
+    return 0;
+  };
+
+  const fmtMoney = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? `$${n.toFixed(2)}` : "—";
+  };
+
+  // --- 2. LISTA FILTRADA Y ORDENADA ---
+  // AQUI ESTA EL TRUCO: .filter elimina las notificaciones que NO digan "Total"
+  const sortedNotifications = [...notifications]
+    .filter((n) => n.message && n.message.includes("Total")) 
+    .sort((a, b) => getNoteTime(b) - getNoteTime(a));
+
+  // --- 3. USE EFFECT ---
+  useEffect(() => {
+    if (!isAuth) return;
+
+    let unsubOrders = () => {};
+    let unsubNotes = () => {};
+
+    if (db) {
+      const qOrders = query(collection(db, "orders"), orderBy("date", "desc"));
+      unsubOrders = onSnapshot(qOrders, (snap) => {
+        setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      });
+
+      const qNotes = query(
+        collection(db, "admin_notifications"),
+        orderBy("createdAt", "desc")
+      );
+      unsubNotes = onSnapshot(
+        qNotes,
+        (snap) => {
+          setNotifications(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        },
+        (err) => console.error(err)
+      );
+    }
+
+    return () => {
+      unsubOrders();
+      unsubNotes();
+    };
+  }, [isAuth]);
+
 ;
   const printAllOrders = () => {
     window.print();
@@ -2540,7 +2580,8 @@ const AdminView = ({
             showAlert={showAlert}
           />
         )}
-       {tab === "inbox" && (
+     {/* --- PESTAÑA DE NOTIFICACIONES --- */}
+        {tab === "inbox" && (
           <div className="max-w-2xl mx-auto space-y-4 animate-fade-in">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-2xl font-bold text-gray-800">
@@ -2548,35 +2589,33 @@ const AdminView = ({
               </h3>
             </div>
 
-            {notifications.length === 0 && (
-              <div className="text-center py-10 bg-white rounded-xl border border-dashed">
+            {sortedNotifications.length === 0 && (
+              <div className="text-center py-10 bg-white rounded-xl border border-gray-100">
                 <p className="text-gray-400">No hay notificaciones nuevas.</p>
               </div>
             )}
 
-            {notifications.map((note) => (
+            {sortedNotifications.map((note) => (
               <div
                 key={note.id}
                 className={`p-4 rounded-xl border transition hover:shadow-md ${
-                  note.read
-                    ? "bg-gray-50 border-gray-100"
-                    : "bg-white border-l-4 border-l-cyan-500 shadow-sm"
+                  note.read ? "bg-gray-50 border-gray-100" : "bg-white border-l-4 border-l-cyan-500 shadow-sm"
                 }`}
               >
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-bold text-gray-800 flex items-center gap-2">
-                      {note.type === "NEW_ORDER" && <ShoppingBag className="w-4 h-4 text-cyan-600"/>}
+                      {note.type === "NEW_ORDER" && <ShoppingBag className="w-4 h-4" />}
                       {note.title}
                     </h4>
                     <p className="text-sm text-gray-600 mt-1">{note.message}</p>
                     <p className="text-xs text-gray-400 mt-2">
-                      {new Date(note.date).toLocaleString()}
+                      {fmtDate(note.createdAt || note.date)}
                     </p>
                   </div>
                   <button
                     onClick={async () => {
-                      if(window.confirm("¿Borrar notificación?")) {
+                      if (window.confirm("¿Borrar notificación?")) {
                         await deleteDoc(doc(db, "admin_notifications", note.id));
                       }
                     }}
@@ -2589,8 +2628,9 @@ const AdminView = ({
             ))}
           </div>
         )}
-
       </div>
+
+      {/* --- MODAL COMPARTIR --- */}
       {adminShareData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white p-6 rounded-xl max-w-sm w-full text-center relative shadow-2xl">
@@ -3462,13 +3502,19 @@ setClientSecret(data.clientSecret);
 
         // 3. NOTIFICACIÓN AL ADMIN
         await addDoc(collection(db, "admin_notifications"), {
-          type: "NEW_ORDER",
-          title: "Nueva Orden",
-          message: `Cliente: ${form.name} - Total: $${Number(orderData.total).toFixed(2)}`,
-          date: new Date().toISOString(),
-          read: false,
-          orderId: docRef.id,
-        });
+           type: "NEW_ORDER",
+  title: "Nueva orden",
+  message: `Orden #${orderNum} - Cliente: ${form.name} - Total: $${Number(orderData.total).toFixed(2)}`,
+  date: new Date().toISOString(),
+  createdAt: serverTimestamp(),
+  read: false,
+  orderId: docRef.id,       // id real del doc en "orders"
+  orderNumber: orderNum,    // ✅ este es el # que ve la app
+  customerName: form.name,
+  customerEmail: form.email || "",
+  total: Number(orderData.total),
+});
+
 
         // 4. ENVÍO DE CORREO (EmailJS)
         if (config.adminEmail) {
@@ -4213,91 +4259,99 @@ setClientSecret(data.clientSecret);
         </div>
       )}
 
-      {view === "success" && (
-        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-cyan-50">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full animate-fade-in my-4">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-black text-gray-800 mb-1">
-              {t.successMsg}
-            </h1>
-            <p className="text-gray-500 mb-6 text-sm">{t.successSub}</p>
-            {lastOrder && (
-              <OrderCard
-                o={lastOrder}
-                showActions={false}
-                services={services}
-                lang={lang}
-                t={t}
-                onShare={shareOrder}
-                onChatSend={sendClientMessage}
-              />
-            )}
-            <div className="space-y-3 mt-4">
-              <a
-                href={getOwnerWhatsApp(lastOrder, config.phone)}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full bg-green-500 text-white py-3 px-4 rounded-xl font-bold shadow-md hover:bg-green-600 transition flex items-center justify-center"
-              >
-                <MessageCircle className="w-5 h-5 mr-2" /> {t.notifyOwner}
-              </a>
-              <a
-                href={getOwnerSMS(lastOrder, config.phone)}
-                className="w-full bg-blue-500 text-white py-3 px-4 rounded-xl font-bold shadow-md hover:bg-blue-600 transition flex items-center justify-center"
-              >
-                <Smartphone className="w-5 h-5 mr-2" /> {t.sendSMS}
-              </a>
-            </div>
-            <button
-              type="button"
-              onClick={() => setView("track")}
-              className="w-full text-cyan-600 font-bold mt-4 hover:underline"
-            >
-              {t.trackOrder}
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("home")}
-              className="w-full text-gray-400 text-sm mt-4"
-            >
-              {t.back}
-            </button>
-          </div>
-        </div>
+   {/* SUCCESS */}
+{view === "success" && (
+  <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-cyan-50">
+    <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full animate-fade-in my-4">
+      <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+      <h1 className="text-2xl font-black text-gray-800 mb-1">
+        {t.successMsg}
+      </h1>
+      <p className="text-gray-500 mb-6 text-sm">{t.successSub}</p>
+
+      {lastOrder && (
+        <OrderCard
+          o={lastOrder}
+          showActions={false}
+          services={services}
+          lang={lang}
+          t={t}
+          onShare={shareOrder}
+          onChatSend={sendClientMessage}
+        />
       )}
 
-      {view === "track" && (
-        <div className="min-h-screen bg-slate-50 p-4 pb-24">
-          <div className="flex justify-between mb-6">
-            <button
-              type="button"
-              onClick={() => setView("home")}
-              className="font-bold text-gray-600"
-            >
-              <ArrowLeft className="inline mr-2" /> {t.back}
-            </button>
-            <h2 className="text-2xl font-black">{t.yourOrders}</h2>
-          </div>
-          <div className="space-y-4">
-            {myOrders.map((o) => (
-              <OrderCard
-                key={o.id}
-                o={o}
-                services={services}
-                lang={lang}
-                t={t}
-                onDelete={deleteLocalOrder}
-                onShare={shareOrder}
-                onChatSend={sendClientMessage}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-{/* CART */}
-{view === "cart" && (
-  <div className="max-w-4xl mx-auto p-6 pb-24">
-    {/* TODO tu código del carrito */}
+      <div className="space-y-3 mt-4">
+        <a
+          href={lastOrder ? getOwnerWhatsApp(lastOrder, config.phone) : "#"}
+          onClick={(e) => {
+            if (!lastOrder) e.preventDefault();
+          }}
+          target="_blank"
+          rel="noreferrer"
+          className="w-full bg-green-500 text-white py-3 px-4 rounded-xl font-bold shadow-md hover:bg-green-600 transition flex items-center justify-center"
+        >
+          <MessageCircle className="w-5 h-5 mr-2" /> {t.notifyOwner}
+        </a>
+
+        <a
+          href={lastOrder ? getOwnerSMS(lastOrder, config.phone) : "#"}
+          onClick={(e) => {
+            if (!lastOrder) e.preventDefault();
+          }}
+          className="w-full bg-blue-500 text-white py-3 px-4 rounded-xl font-bold shadow-md hover:bg-blue-600 transition flex items-center justify-center"
+        >
+          <Smartphone className="w-5 h-5 mr-2" /> {t.sendSMS}
+        </a>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setView("track")}
+        className="w-full text-cyan-600 font-bold mt-4 hover:underline"
+      >
+        {t.trackOrder}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setView("home")}
+        className="w-full text-gray-400 text-sm mt-4"
+      >
+        {t.back}
+      </button>
+    </div>
+  </div>
+)}
+
+{/* TRACK */}
+{view === "track" && (
+  <div className="min-h-screen bg-slate-50 p-4 pb-24">
+    <div className="flex justify-between mb-6">
+      <button
+        type="button"
+        onClick={() => setView("home")}
+        className="font-bold text-gray-600"
+      >
+        <ArrowLeft className="inline mr-2" /> {t.back}
+      </button>
+      <h2 className="text-2xl font-black">{t.yourOrders}</h2>
+    </div>
+
+    <div className="space-y-4">
+      {(myOrders || []).map((o) => (
+        <OrderCard
+          key={o.id}
+          o={o}
+          services={services}
+          lang={lang}
+          t={t}
+          onDelete={deleteLocalOrder}
+          onShare={shareOrder}
+          onChatSend={sendClientMessage}
+        />
+      ))}
+    </div>
   </div>
 )}
 
@@ -4323,6 +4377,8 @@ setClientSecret(data.clientSecret);
     />
   </div>
 )}
+
+
 
 {/* MODAL JOIN CLUB (NO SALE EN ADMIN) */}
 {view !== "admin" && showMemberModal && (
