@@ -1829,22 +1829,35 @@ const AdminView = ({
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [notifications, setNotifications] = useState([]);
 
-  useEffect(() => {
-    if (!isAuth) return;
-    let unsub = () => {};
-    if (db) {
-    // --- CÓDIGO NUEVO: Pedimos la lista ya ordenada ---
-      const q = query(collection(db, "orders"), orderBy("date", "desc"));
+ useEffect(() => {
+  if (!isAuth) return;
 
-      unsub = onSnapshot(q, (snap) => {
-        setOrders(
-          snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-        );
-      });
-      // -------------------------------------------------
-    }
-    return () => unsub();
-  }, [isAuth]);
+  let unsubOrders = () => {};
+  let unsubNotes = () => {};
+
+  if (db) {
+    // 1) ORDENES
+    const qOrders = query(collection(db, "orders"), orderBy("date", "desc"));
+    unsubOrders = onSnapshot(qOrders, (snap) => {
+      setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+
+    // 2) NOTIFICACIONES
+    const qNotes = query(
+      collection(db, "admin_notifications"),
+      orderBy("date", "desc")
+    );
+    unsubNotes = onSnapshot(qNotes, (snap) => {
+      setNotifications(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+  }
+
+  return () => {
+    unsubOrders();
+    unsubNotes();
+  };
+}, [isAuth]);
+;
   const printAllOrders = () => {
     window.print();
   };
